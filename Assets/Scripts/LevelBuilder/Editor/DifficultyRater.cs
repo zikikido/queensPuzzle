@@ -32,9 +32,10 @@ namespace QueensPuzzle
     /// </summary>
     public static class DifficultyRater
     {
-        const int GuessBase = 3; // base cost of any what-if — small, so a trivial guess can stay Medium
-        const int Mult = 10;     // each nesting level multiplies hard → a nested guess always hits Expert
-        const int MaxProbe = 2;  // stop exploring once a disproof needs depth-2 nesting (already Expert)
+        const int GuessBase = 3;     // base cost of any what-if — small, so a trivial guess can stay Medium
+        const int Mult = 10;         // each nesting level multiplies hard → a nested guess always hits Expert
+        const int BreadthWeight = 2; // a wider guess (more cells to consider) costs more, per cell past 2
+        const int MaxProbe = 2;      // stop exploring once a disproof needs depth-2 nesting (already Expert)
         const int StepCap = 1_500_000; // safety net against pathological recursion
 
         public struct Report
@@ -131,10 +132,12 @@ namespace QueensPuzzle
                 // stuck → cross out the wrong cell that is cheapest to disprove
                 int row = state.MostConstrainedRow();
                 if (row < 0) return (false, hardness);
+                var cols = state.RowCandidateCols(row);
+                int breadth = Math.Max(0, cols.Count - 2) * BreadthWeight; // a wider guess is harder
                 int correctCol = sol[row];
 
                 int best = -1, bestH = int.MaxValue;
-                foreach (int col in state.RowCandidateCols(row))
+                foreach (int col in cols)
                 {
                     if (col == correctCol) continue; // never eliminate the real cell
                     var b = state.Clone();
@@ -148,7 +151,7 @@ namespace QueensPuzzle
                 state.EliminateCell(row * state.n + best, m);
                 m.trials++;
                 trace.Note(SolveTechnique.Trial); // the next placement was unlocked by a what-if
-                hardness = Math.Max(hardness, bestH);
+                hardness = Math.Max(hardness, bestH + breadth);
             }
         }
 
@@ -168,9 +171,11 @@ namespace QueensPuzzle
 
             int row = s.MostConstrainedRow();
             if (row < 0) return GuessBase + chain;
+            var cols = s.RowCandidateCols(row);
+            int breadth = Math.Max(0, cols.Count - 2) * BreadthWeight; // wider nested guess is harder
 
             int best = int.MaxValue;
-            foreach (int col in s.RowCandidateCols(row))
+            foreach (int col in cols)
             {
                 var b = s.Clone();
                 var dm = new Metrics();
@@ -178,7 +183,7 @@ namespace QueensPuzzle
                 int h = ContradictionHardness(b, m, ctx, depth + 1);
                 if (h < best) best = h;
             }
-            return best == int.MaxValue ? GuessBase + chain : GuessBase + chain + Mult * best;
+            return best == int.MaxValue ? GuessBase + chain : GuessBase + chain + breadth + Mult * best;
         }
 
         static PResult Propagate(State s, Metrics m, Ctx ctx, Trace trace = null)
