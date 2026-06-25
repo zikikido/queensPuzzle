@@ -50,7 +50,8 @@ namespace QueensPuzzle
             public int regionSingles;
             public int lineSingles;
             public int eliminations;
-            public int regionLineUses;
+            public int lineToRegionUses;
+            public int regionToLineUses;
             public int squeezeUses;
             public int subsetUses;
             public int trials;
@@ -79,7 +80,8 @@ namespace QueensPuzzle
                 regionSingles = m.regionSingles,
                 lineSingles = m.lineSingles,
                 eliminations = m.eliminations,
-                regionLineUses = m.regionLineUses,
+                lineToRegionUses = m.lineToRegionUses,
+                regionToLineUses = m.regionToLineUses,
                 squeezeUses = m.squeezeUses,
                 subsetUses = m.subsetUses,
                 trials = m.trials,
@@ -107,7 +109,8 @@ namespace QueensPuzzle
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
             if (m.subsetUses > 0) return "subset";
             if (m.squeezeUses > 0) return "squeeze";
-            if (m.regionLineUses > 0) return "region-line";
+            if (m.regionToLineUses > 0) return "region→line";
+            if (m.lineToRegionUses > 0) return "line→region";
             if (m.lineSingles > 0) return "line single";
             return "region single";
         }
@@ -161,7 +164,7 @@ namespace QueensPuzzle
             var pr = Propagate(s, t, ctx);
             // mental cost of following THIS hypothetical layer: how long the forced chain is,
             // with harder tricks counting more (you have no board to lean on)
-            int chain = t.placements + 2 * t.regionLineUses + 4 * t.squeezeUses + 6 * t.subsetUses;
+            int chain = t.placements + t.lineToRegionUses + 2 * t.regionToLineUses + 4 * t.squeezeUses + 6 * t.subsetUses;
             if (pr.status != PStatus.Stuck) return GuessBase + chain;       // reached the contradiction
             if (depth >= MaxProbe) return GuessBase + chain + 24;           // needs deeper nesting — cap (Expert)
 
@@ -199,8 +202,12 @@ namespace QueensPuzzle
                 if (ls >= 0) { s.PlaceQueen(ls / s.n, ls % s.n, m); m.placements++; m.lineSingles++; w = Math.Max(w, 1); continue; }
 
                 int before = m.eliminations;
-                s.RegionLineEliminations(m);
-                if (m.eliminations > before) { m.regionLineUses++; w = Math.Max(w, 2); continue; }
+                s.LineToRegionEliminations(m); // a line is one colour (easy) — weight 1
+                if (m.eliminations > before) { m.lineToRegionUses++; w = Math.Max(w, 1); continue; }
+
+                before = m.eliminations;
+                s.RegionToLineEliminations(m); // a region confined to a line — weight 2
+                if (m.eliminations > before) { m.regionToLineUses++; w = Math.Max(w, 2); continue; }
 
                 before = m.eliminations;
                 s.SqueezeEliminations(m);
@@ -221,7 +228,7 @@ namespace QueensPuzzle
         class Metrics
         {
             public int cycles, placements, regionSingles, lineSingles, eliminations,
-                regionLineUses, squeezeUses, subsetUses, trials, maxTrialDepth;
+                lineToRegionUses, regionToLineUses, squeezeUses, subsetUses, trials, maxTrialDepth;
         }
 
         // ---- board state -------------------------------------------------------------
@@ -328,7 +335,8 @@ namespace QueensPuzzle
                 return cols;
             }
 
-            public void RegionLineEliminations(Metrics m)
+            // a region's cells all sit in one row/column → no other region can use that line
+            public void RegionToLineEliminations(Metrics m)
             {
                 for (int g = 0; g < n; g++)
                 {
@@ -340,6 +348,11 @@ namespace QueensPuzzle
                     if (AllSameCol(out int cc))
                         for (int r = 0; r < n; r++) { int i = r * n + cc; if (region[i] != g) Kill(i, -1, m); }
                 }
+            }
+
+            // a row/column is a single colour → that colour's queen is there → clear it elsewhere
+            public void LineToRegionEliminations(Metrics m)
+            {
                 for (int r = 0; r < n; r++)
                 {
                     if (rowDone[r]) continue;

@@ -84,8 +84,10 @@ namespace QueensPuzzle
                             $"{(isRow ? "row" : "column")} {line} has only ({r},{c}) left → place queen");
                         Place(r, c); continue;
                     }
-                    if (TryRegionLine(out string note))
-                    { cur = Add(cur, NodeKind.Elimination, -1, -1, SolveTechnique.RegionLine, Outcome.Continues, note); continue; }
+                    if (TryLineToRegion(out string note))
+                    { cur = Add(cur, NodeKind.Elimination, -1, -1, SolveTechnique.LineToRegion, Outcome.Continues, note); continue; }
+                    if (TryRegionToLine(out note))
+                    { cur = Add(cur, NodeKind.Elimination, -1, -1, SolveTechnique.RegionToLine, Outcome.Continues, note); continue; }
                     if (TrySqueeze(out note))
                     { cur = Add(cur, NodeKind.Elimination, -1, -1, SolveTechnique.Squeeze, Outcome.Continues, note); continue; }
                     if (TrySubset(out note))
@@ -165,7 +167,8 @@ namespace QueensPuzzle
                 isRow = false; line = -1; return -1;
             }
 
-            bool TryRegionLine(out string note)
+            // region's cells all sit in one row/column → no other region can use that line
+            bool TryRegionToLine(out string note)
             {
                 for (int g = 0; g < n; g++)
                 {
@@ -185,6 +188,12 @@ namespace QueensPuzzle
                         if (_elim.Count > 0) { note = $"region {Lr(g)} is confined to column {cc}, so column {cc} is its queen → remove {Cells(_elim)}"; return true; }
                     }
                 }
+                note = null; return false;
+            }
+
+            // a row/column is a single colour → that colour's queen is there → clear it elsewhere
+            bool TryLineToRegion(out string note)
+            {
                 for (int r = 0; r < n; r++)
                 {
                     if (rowDone[r]) continue;
@@ -193,7 +202,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i / n != r) Elim(i);
-                        if (_elim.Count > 0) { note = $"row {r} can only be filled by region {Lr(g)} → remove {Lr(g)} elsewhere: {Cells(_elim)}"; return true; }
+                        if (_elim.Count > 0) { note = $"row {r} is a single colour ({Lr(g)}) → its queen is in this row, remove {Lr(g)} elsewhere: {Cells(_elim)}"; return true; }
                     }
                 }
                 for (int c = 0; c < n; c++)
@@ -204,7 +213,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i % n != c) Elim(i);
-                        if (_elim.Count > 0) { note = $"column {c} can only be filled by region {Lr(g)} → remove {Lr(g)} elsewhere: {Cells(_elim)}"; return true; }
+                        if (_elim.Count > 0) { note = $"column {c} is a single colour ({Lr(g)}) → its queen is in this column, remove {Lr(g)} elsewhere: {Cells(_elim)}"; return true; }
                     }
                 }
                 note = null; return false;

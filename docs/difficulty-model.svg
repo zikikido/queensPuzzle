@@ -1,5 +1,5 @@
 <svg viewBox="0 0 940 1400" xmlns="http://www.w3.org/2000/svg" role="img" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
-<title>Queens difficulty model</title><desc>Seven solving tricks with example boards and weights, plus the no-pencil scoring formula and tier table.</desc>
+<title>Queens difficulty model</title><desc>Eight solving tricks with example boards and weights, plus the no-pencil scoring formula and tier table.</desc>
 <defs><g id="cr"><path d="M3 17L3 8L8 13L12 5L16 13L21 8L21 17Z"/></g></defs>
 <rect x="0" y="0" width="940" height="1400" fill="#FBFAF7"/>
 <rect x="0.5" y="0.5" width="939" height="1399" fill="none" stroke="#E7E5DF"/>
@@ -22,8 +22,8 @@
 <rect x="830" y="158" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="173" font-size="11" fill="#5f5e5a" text-anchor="middle">w1</text>
 <rect x="500" y="190" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="500" y="250" width="30" height="30" fill="#FAC775"/><rect x="530" y="250" width="30" height="30" fill="#C0DD97"/><rect x="560" y="250" width="30" height="30" fill="#B5D4F4"/><rect x="590" y="250" width="30" height="30" fill="#CECBF6"/><rect x="620" y="250" width="30" height="30" fill="#9FE1CB"/><path d="M500 190V340M530 190V340M560 190V340M590 190V340M620 190V340M650 190V340M500 190H650M500 220H650M500 250H650M500 280H650M500 310H650M500 340H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M509 259L521 271M521 259L509 271M539 259L551 271M551 259L539 271M569 259L581 271M581 259L569 271M599 259L611 271M611 259L599 271" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><use href="#cr" x="623" y="254" fill="#2a2a30"/><rect x="500" y="190" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
 <text x="665" y="220">A row or column with one cell</text>
-<text x="665" y="238">left. No colour cue - it is</text>
-<text x="665" y="256">easy to overlook.</text>
+<text x="665" y="238">left. No colour cue - easy to</text>
+<text x="665" y="256">overlook.</text>
 <rect x="20" y="400" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="54" cy="430" r="11" fill="#EFEDE6"/><text x="54" y="434" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">3</text>
 <text x="72" y="435" font-size="14" font-weight="600" fill="#2b2b2b">Queen elimination</text>
@@ -34,37 +34,45 @@
 <text x="205" y="516">The game marks these for you.</text>
 <rect x="480" y="400" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="514" cy="430" r="11" fill="#EFEDE6"/><text x="514" y="434" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">4</text>
-<text x="532" y="435" font-size="14" font-weight="600" fill="#2b2b2b">Region in a line</text>
-<rect x="830" y="418" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="433" font-size="11" fill="#5f5e5a" text-anchor="middle">w2</text>
-<rect x="500" y="450" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="530" y="480" width="30" height="30" fill="#9FE1CB"/><rect x="560" y="480" width="30" height="30" fill="#9FE1CB"/><rect x="590" y="480" width="30" height="30" fill="#9FE1CB"/><path d="M500 450V600M530 450V600M560 450V600M590 450V600M620 450V600M650 450V600M500 450H650M500 480H650M500 510H650M500 540H650M500 570H650M500 600H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M509 489L521 501M521 489L509 501M629 489L641 501M641 489L629 501" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="545" cy="495" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="495" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="605" cy="495" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="500" y="450" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
-<text x="665" y="480">A region trapped in one row</text>
-<text x="665" y="498">owns it -> clear that row in</text>
-<text x="665" y="516">every other region.</text>
+<text x="532" y="435" font-size="14" font-weight="600" fill="#2b2b2b">Line is one colour</text>
+<rect x="830" y="418" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="433" font-size="11" fill="#5f5e5a" text-anchor="middle">w1</text>
+<rect x="500" y="450" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="500" y="510" width="30" height="30" fill="#9FE1CB"/><rect x="530" y="510" width="30" height="30" fill="#9FE1CB"/><rect x="560" y="510" width="30" height="30" fill="#9FE1CB"/><rect x="590" y="510" width="30" height="30" fill="#9FE1CB"/><rect x="620" y="510" width="30" height="30" fill="#9FE1CB"/><rect x="530" y="450" width="30" height="30" fill="#9FE1CB"/><rect x="590" y="570" width="30" height="30" fill="#9FE1CB"/><path d="M500 450V600M530 450V600M560 450V600M590 450V600M620 450V600M650 450V600M500 450H650M500 480H650M500 510H650M500 540H650M500 570H650M500 600H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M539 459L551 471M551 459L539 471M599 579L611 591M611 579L599 591" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="515" cy="525" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="545" cy="525" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="525" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="605" cy="525" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="635" cy="525" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="500" y="450" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="665" y="480">A whole row/column is one colour</text>
+<text x="665" y="498">-> that colour's queen is here -></text>
+<text x="665" y="516">mark its other cells X.</text>
 <rect x="20" y="660" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="54" cy="690" r="11" fill="#EFEDE6"/><text x="54" y="694" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">5</text>
-<text x="72" y="695" font-size="14" font-weight="600" fill="#2b2b2b">Common-neighbor squeeze</text>
-<rect x="370" y="678" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="409" y="693" font-size="11" fill="#5f5e5a" text-anchor="middle">w4</text>
-<rect x="40" y="710" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="70" y="770" width="30" height="30" fill="#FAC775"/><rect x="100" y="770" width="30" height="30" fill="#FAC775"/><path d="M40 710V860M70 710V860M100 710V860M130 710V860M160 710V860M190 710V860M40 710H190M40 740H190M40 770H190M40 800H190M40 830H190M40 860H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M79 749L91 761M91 749L79 761M109 749L121 761M121 749L109 761M79 809L91 821M91 809L79 821M109 809L121 821M121 809L109 821" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="85" cy="785" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="785" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="40" y="710" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
-<text x="205" y="740">Queen is within a set of cells</text>
-<text x="205" y="758">-> eliminate every cell that</text>
-<text x="205" y="776">touches all of them.</text>
+<text x="72" y="695" font-size="14" font-weight="600" fill="#2b2b2b">Region in a line</text>
+<rect x="370" y="678" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="409" y="693" font-size="11" fill="#5f5e5a" text-anchor="middle">w2</text>
+<rect x="40" y="710" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="70" y="740" width="30" height="30" fill="#9FE1CB"/><rect x="100" y="740" width="30" height="30" fill="#9FE1CB"/><rect x="130" y="740" width="30" height="30" fill="#9FE1CB"/><path d="M40 710V860M70 710V860M100 710V860M130 710V860M160 710V860M190 710V860M40 710H190M40 740H190M40 770H190M40 800H190M40 830H190M40 860H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M49 749L61 761M61 749L49 761M169 749L181 761M181 749L169 761" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="85" cy="755" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="755" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="145" cy="755" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="40" y="710" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="205" y="740">A region's cells all sit in one</text>
+<text x="205" y="758">row -> no other region can use</text>
+<text x="205" y="776">that row -> remove them.</text>
 <rect x="480" y="660" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="514" cy="690" r="11" fill="#EFEDE6"/><text x="514" y="694" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">6</text>
-<text x="532" y="695" font-size="14" font-weight="600" fill="#2b2b2b">Subset (region pairs)</text>
-<rect x="830" y="678" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="693" font-size="11" fill="#5f5e5a" text-anchor="middle">w6</text>
-<rect x="500" y="710" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="500" y="710" width="50" height="50" fill="#B5D4F4"/><rect x="550" y="710" width="50" height="50" fill="#9FE1CB"/><rect x="600" y="710" width="50" height="50" fill="#FAC775"/><rect x="500" y="760" width="50" height="50" fill="#9FE1CB"/><rect x="550" y="760" width="50" height="50" fill="#B5D4F4"/><rect x="600" y="760" width="50" height="50" fill="#FAC775"/><rect x="500" y="810" width="50" height="50" fill="#FAC775"/><rect x="550" y="810" width="50" height="50" fill="#FAC775"/><rect x="600" y="810" width="50" height="50" fill="#FAC775"/><path d="M500 710V860M550 710V860M600 710V860M650 710V860M500 710H650M500 760H650M500 810H650M500 860H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M615 725L635 745M635 725L615 745M615 775L635 795M635 775L615 795" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="525" cy="735" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="735" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="525" cy="785" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="785" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="525" cy="835" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="835" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="625" cy="835" r="6.0" fill="#000" fill-opacity="0.32"/><rect x="500" y="710" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
-<text x="665" y="740">Regions 1 &amp; 2 fill the top two</text>
-<text x="665" y="758">rows -> region 3 is forced to</text>
-<text x="665" y="776">the bottom row.</text>
+<text x="532" y="695" font-size="14" font-weight="600" fill="#2b2b2b">Common-neighbor squeeze</text>
+<rect x="830" y="678" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="693" font-size="11" fill="#5f5e5a" text-anchor="middle">w4</text>
+<rect x="500" y="710" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="530" y="770" width="30" height="30" fill="#FAC775"/><rect x="560" y="770" width="30" height="30" fill="#FAC775"/><path d="M500 710V860M530 710V860M560 710V860M590 710V860M620 710V860M650 710V860M500 710H650M500 740H650M500 770H650M500 800H650M500 830H650M500 860H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M539 749L551 761M551 749L539 761M569 749L581 761M581 749L569 761M539 809L551 821M551 809L539 821M569 809L581 821M581 809L569 821" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="545" cy="785" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="575" cy="785" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="500" y="710" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="665" y="740">Queen is within a set of cells</text>
+<text x="665" y="758">-> eliminate every cell that</text>
+<text x="665" y="776">touches all of them.</text>
 <rect x="20" y="920" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="54" cy="950" r="11" fill="#EFEDE6"/><text x="54" y="954" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">7</text>
-<text x="72" y="955" font-size="14" font-weight="600" fill="#2b2b2b">What-if (trial)</text>
-<rect x="352" y="938" width="96" height="22" rx="11" fill="#F1EFE8"/><text x="400" y="953" font-size="11" fill="#5f5e5a" text-anchor="middle">chain x depth</text>
-<rect x="40" y="970" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="40" y="970" width="30" height="30" fill="#FAC775"/><rect x="130" y="1090" width="30" height="30" fill="#F09595"/><rect x="160" y="1090" width="30" height="30" fill="#F09595"/><path d="M40 970V1120M70 970V1120M100 970V1120M130 970V1120M160 970V1120M190 970V1120M40 970H190M40 1000H190M40 1030H190M40 1060H190M40 1090H190M40 1120H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M79 979L91 991M91 979L79 991M109 979L121 991M121 979L109 991M49 1009L61 1021M61 1009L49 1021M49 1039L61 1051M61 1039L49 1051M79 1009L91 1021M91 1009L79 1021M139 1099L151 1111M151 1099L139 1111M169 1099L181 1111M181 1099L169 1111" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><rect x="40" y="970" width="30" height="30" fill="none" stroke="#b07a00" stroke-width="2" stroke-dasharray="3 2"/><use href="#cr" x="43" y="974" fill="#7a5600"/><rect x="40" y="970" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
-<text x="205" y="1000">Assume a queen and follow it.</text>
-<text x="205" y="1018">If a region ends fully blocked</text>
-<text x="205" y="1036">(red), the guess was impossible.</text>
-<text x="205" y="1054">No pencil -> the chain &amp; nesting hurt.</text>
+<text x="72" y="955" font-size="14" font-weight="600" fill="#2b2b2b">Subset (region pairs)</text>
+<rect x="370" y="938" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="409" y="953" font-size="11" fill="#5f5e5a" text-anchor="middle">w6</text>
+<rect x="40" y="970" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="40" y="970" width="50" height="50" fill="#B5D4F4"/><rect x="90" y="970" width="50" height="50" fill="#9FE1CB"/><rect x="140" y="970" width="50" height="50" fill="#FAC775"/><rect x="40" y="1020" width="50" height="50" fill="#9FE1CB"/><rect x="90" y="1020" width="50" height="50" fill="#B5D4F4"/><rect x="140" y="1020" width="50" height="50" fill="#FAC775"/><rect x="40" y="1070" width="50" height="50" fill="#FAC775"/><rect x="90" y="1070" width="50" height="50" fill="#FAC775"/><rect x="140" y="1070" width="50" height="50" fill="#FAC775"/><path d="M40 970V1120M90 970V1120M140 970V1120M190 970V1120M40 970H190M40 1020H190M40 1070H190M40 1120H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M155 985L175 1005M175 985L155 1005M155 1035L175 1055M175 1035L155 1055" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="65" cy="995" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="995" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="65" cy="1045" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="1045" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="65" cy="1095" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="1095" r="6.0" fill="#000" fill-opacity="0.32"/><circle cx="165" cy="1095" r="6.0" fill="#000" fill-opacity="0.32"/><rect x="40" y="970" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="205" y="1000">Regions 1 &amp; 2 fill the top two</text>
+<text x="205" y="1018">rows -> region 3 is forced to</text>
+<text x="205" y="1036">the bottom row.</text>
+<rect x="480" y="920" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
+<circle cx="514" cy="950" r="11" fill="#EFEDE6"/><text x="514" y="954" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">8</text>
+<text x="532" y="955" font-size="14" font-weight="600" fill="#2b2b2b">What-if (trial)</text>
+<rect x="812" y="938" width="96" height="22" rx="11" fill="#F1EFE8"/><text x="860" y="953" font-size="11" fill="#5f5e5a" text-anchor="middle">chain x depth</text>
+<rect x="500" y="970" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="500" y="970" width="30" height="30" fill="#FAC775"/><rect x="590" y="1090" width="30" height="30" fill="#F09595"/><rect x="620" y="1090" width="30" height="30" fill="#F09595"/><path d="M500 970V1120M530 970V1120M560 970V1120M590 970V1120M620 970V1120M650 970V1120M500 970H650M500 1000H650M500 1030H650M500 1060H650M500 1090H650M500 1120H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M539 979L551 991M551 979L539 991M569 979L581 991M581 979L569 991M509 1009L521 1021M521 1009L509 1021M509 1039L521 1051M521 1039L509 1051M539 1009L551 1021M551 1009L539 1021M599 1099L611 1111M611 1099L599 1111M629 1099L641 1111M641 1099L629 1111" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><rect x="500" y="970" width="30" height="30" fill="none" stroke="#b07a00" stroke-width="2" stroke-dasharray="3 2"/><use href="#cr" x="503" y="974" fill="#7a5600"/><rect x="500" y="970" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="665" y="1000">Assume a queen and follow it.</text>
+<text x="665" y="1018">If a region ends fully blocked</text>
+<text x="665" y="1036">(red), the guess was impossible.</text>
+<text x="665" y="1054">No pencil -> chain &amp; nesting hurt.</text>
 </g>
 <text x="20" y="1232" font-size="18" font-weight="600" fill="#2b2b2b">Scoring &#8212; higher score = harder</text>
 <rect x="20" y="1248" width="560" height="132" rx="10" fill="#F3F1EA"/>

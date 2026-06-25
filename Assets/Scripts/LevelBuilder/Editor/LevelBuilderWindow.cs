@@ -156,7 +156,8 @@ namespace QueensPuzzle.EditorTools
                     EditorGUILayout.LabelField($"Hardest technique:   {rep.technique}   →   {rep.difficulty}");
                     EditorGUILayout.LabelField($"Score:   {rep.score}");
                     EditorGUILayout.LabelField($"Singles — region:  {rep.regionSingles}     line:  {rep.lineSingles}");
-                    EditorGUILayout.LabelField($"Region-line:  {rep.regionLineUses}     Squeeze:  {rep.squeezeUses}     Subset:  {rep.subsetUses}");
+                    EditorGUILayout.LabelField($"Line→region:  {rep.lineToRegionUses}     Region→line:  {rep.regionToLineUses}");
+                    EditorGUILayout.LabelField($"Squeeze:  {rep.squeezeUses}     Subset:  {rep.subsetUses}");
                     EditorGUILayout.LabelField($"Trials:  {rep.trials}     Max depth:  {rep.maxTrialDepth}");
                     EditorGUILayout.LabelField($"Cycles:  {rep.cycles}     Placed:  {rep.placements}     Eliminated:  {rep.eliminations}");
                     EditorGUILayout.LabelField($"Estimated solve time:   ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
