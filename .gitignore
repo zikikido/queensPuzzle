@@ -1,0 +1,48 @@
+# =============== #
+# Unity generated #
+# =============== #
+[Tt]emp/
+
+/[Bb]uild
+/[Bb]uilds/
+/[Ll]ibrary/
+ 
+# ===================================== #
+# Visual Studio / MonoDevelop generated #
+# ===================================== #
+.vscode/
+.vs/
+/*.csproj
+/*.sln*
+[Oo]bj/
+.vsconfig
+# ============ #
+# Unity #
+# ============ #
+
+Logs/
+UserSettings/*
+ProjectSettings\EditorBuildSettings.asset
+Assets/Samples
+# ============ #
+# Plugins #
+# ============ #
+
+Assets/StreamingAssets/
+Assets/Plugins/Android/FirebaseCrashlytics.androidlib/res/values/crashlytics_build_id.xml
+Assets/Plugins/Android/FirebaseCrashlytics.androidlib/res/values/crashlytics_build_id.xml.meta
+
+remote_config_data
+
+# ============ #
+# My #
+# ============ #
+
+/[Oo]utput/
+/Recordings/
+Assets/HS/tempLBPB/
+Assets/HS/tempLBPB.meta
+Assets/Resources/PerformanceTestRun*.json*
+Assets/HS/tempLBPB/
+/.utmp/*
+/ServerData/
