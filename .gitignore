@@ -46,3 +46,6 @@ Assets/Resources/PerformanceTestRun*.json*
 Assets/HS/tempLBPB/
 /.utmp/*
 /ServerData/
+# QueensPuzzle: transient play-test level (regenerated on every Play)
+Assets/Levels/_Play.asset
+Assets/Levels/_Play.asset.meta
