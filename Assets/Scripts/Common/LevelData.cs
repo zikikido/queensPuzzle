@@ -28,8 +28,8 @@ namespace QueensPuzzle
         [Tooltip("RNG seed that produced this level — lets us reproduce it exactly.")]
         public int seed;
 
-        [Tooltip("The recorded solve path: each queen placement in order, and the technique that forced it.")]
-        public SolveStep[] solveSteps;
+        [Tooltip("Full solve trace (flattened tree): every deduction and placement, plus each trial's branch tree. Rebuild the tree via each node's parent index.")]
+        public TraceNode[] solveTrace;
 
         /// <summary>Region id at the given cell.</summary>
         public int RegionAt(int row, int col) => regions[row * size + col];

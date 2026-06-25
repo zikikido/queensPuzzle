@@ -56,7 +56,6 @@ namespace QueensPuzzle
             public int trials;
             public int maxTrialDepth;
             public float estimatedSeconds;
-            public SolveStep[] solveSteps; // ordered solve path
         }
 
         enum PStatus { Contradiction, Solved, Stuck }
@@ -67,8 +66,7 @@ namespace QueensPuzzle
             var ctx = new Ctx();
             var s = new State(n, region);
 
-            var trace = new Trace();
-            var (solved, hardness) = Solve(s, solution, m, ctx, trace);
+            var (solved, hardness) = Solve(s, solution, m, ctx);
             if (ctx.aborted) { solved = true; hardness = Math.Max(hardness, 48); }
 
             var rep = new Report
@@ -76,7 +74,6 @@ namespace QueensPuzzle
                 solved = solved,
                 size = n,
                 score = hardness,
-                solveSteps = trace.steps.ToArray(),
                 cycles = m.cycles,
                 placements = m.placements,
                 regionSingles = m.regionSingles,
@@ -117,14 +114,14 @@ namespace QueensPuzzle
 
         // ---- negative solver (guided by the known unique solution) -------------------
 
-        static (bool solved, int hardness) Solve(State state, int[] sol, Metrics m, Ctx ctx, Trace trace)
+        static (bool solved, int hardness) Solve(State state, int[] sol, Metrics m, Ctx ctx)
         {
             int hardness = 0;
             while (true)
             {
                 if (ctx.aborted) return (true, hardness);
 
-                var pr = Propagate(state, m, ctx, trace);
+                var pr = Propagate(state, m, ctx);
                 hardness = Math.Max(hardness, pr.w);
                 if (pr.status == PStatus.Solved) return (true, hardness);
                 if (pr.status == PStatus.Contradiction) return (false, hardness); // not expected on real path
@@ -150,7 +147,6 @@ namespace QueensPuzzle
 
                 state.EliminateCell(row * state.n + best, m);
                 m.trials++;
-                trace.Note(SolveTechnique.Trial); // the next placement was unlocked by a what-if
                 hardness = Math.Max(hardness, bestH + breadth);
             }
         }
@@ -186,7 +182,7 @@ namespace QueensPuzzle
             return best == int.MaxValue ? GuessBase + chain : GuessBase + chain + breadth + Mult * best;
         }
 
-        static PResult Propagate(State s, Metrics m, Ctx ctx, Trace trace = null)
+        static PResult Propagate(State s, Metrics m, Ctx ctx)
         {
             int w = 0;
             while (true)
@@ -197,50 +193,24 @@ namespace QueensPuzzle
                 if (s.Solved) return new PResult { status = PStatus.Solved, w = w };
 
                 int rs = s.FindRegionSingle();
-                if (rs >= 0)
-                {
-                    s.PlaceQueen(rs / s.n, rs % s.n, m); m.placements++; m.regionSingles++;
-                    trace?.Place(rs / s.n, rs % s.n, SolveTechnique.RegionSingle);
-                    continue;
-                }
+                if (rs >= 0) { s.PlaceQueen(rs / s.n, rs % s.n, m); m.placements++; m.regionSingles++; continue; }
 
                 int ls = s.FindLineSingle();
-                if (ls >= 0)
-                {
-                    s.PlaceQueen(ls / s.n, ls % s.n, m); m.placements++; m.lineSingles++; w = Math.Max(w, 1);
-                    trace?.Place(ls / s.n, ls % s.n, SolveTechnique.LineSingle);
-                    continue;
-                }
+                if (ls >= 0) { s.PlaceQueen(ls / s.n, ls % s.n, m); m.placements++; m.lineSingles++; w = Math.Max(w, 1); continue; }
 
                 int before = m.eliminations;
                 s.RegionLineEliminations(m);
-                if (m.eliminations > before) { m.regionLineUses++; w = Math.Max(w, 2); trace?.Note(SolveTechnique.RegionLine); continue; }
+                if (m.eliminations > before) { m.regionLineUses++; w = Math.Max(w, 2); continue; }
 
                 before = m.eliminations;
                 s.SqueezeEliminations(m);
-                if (m.eliminations > before) { m.squeezeUses++; w = Math.Max(w, 4); trace?.Note(SolveTechnique.Squeeze); continue; }
+                if (m.eliminations > before) { m.squeezeUses++; w = Math.Max(w, 4); continue; }
 
                 before = m.eliminations;
                 s.SubsetEliminations(m);
-                if (m.eliminations > before) { m.subsetUses++; w = Math.Max(w, 6); trace?.Note(SolveTechnique.Subset); continue; }
+                if (m.eliminations > before) { m.subsetUses++; w = Math.Max(w, 6); continue; }
 
                 return new PResult { status = PStatus.Stuck, w = w };
-            }
-        }
-
-        // Records the real solve path: each queen placement tagged with the hardest technique that
-        // unlocked it (region-line/squeeze/subset/trial since the previous placement).
-        class Trace
-        {
-            public readonly List<SolveStep> steps = new List<SolveStep>();
-            SolveTechnique _pending = SolveTechnique.None;
-
-            public void Note(SolveTechnique t) { if (t > _pending) _pending = t; }
-
-            public void Place(int r, int c, SolveTechnique single)
-            {
-                steps.Add(new SolveStep { row = r, col = c, technique = single > _pending ? single : _pending });
-                _pending = SolveTechnique.None;
             }
         }
 

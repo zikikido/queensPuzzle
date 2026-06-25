@@ -231,7 +231,7 @@ namespace QueensPuzzle.EditorTools
             _report = rep;
             _level.difficulty = rep.difficulty;
             _level.estimatedSolveSeconds = rep.estimatedSeconds;
-            _level.solveSteps = rep.solveSteps;
+            _level.solveTrace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _status = $"Rechecked: {rep.difficulty} ({rep.technique}).";
             Repaint();
