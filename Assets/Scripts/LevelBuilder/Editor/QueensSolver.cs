@@ -1,9 +1,8 @@
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Brute-force constraint solver for a Queens board. Used here to verify uniqueness:
-    /// a good puzzle must have exactly one valid solution. Counts solutions up to a limit
-    /// (we only ever need to know whether the count is 1 or more than 1).
+    /// Brute-force search over Queens placements, used by the generator to test uniqueness:
+    /// it looks for a second valid solution that differs from the intended one.
     ///
     /// A placement is valid when every row, column and region holds exactly one queen and no
     /// two queens touch. Searching row by row with column- and region-usage tracking enforces
@@ -11,46 +10,6 @@ namespace QueensPuzzle
     /// </summary>
     public static class QueensSolver
     {
-        /// <summary>Counts valid solutions for the given region map, stopping at <paramref name="limit"/>.</summary>
-        public static int CountSolutions(int n, int[] region, int limit = 2)
-        {
-            bool[] usedCol = new bool[n];
-            bool[] usedRegion = new bool[n];
-            int[] colOfRow = new int[n];
-            int count = 0;
-
-            void Search(int row)
-            {
-                if (count >= limit) return;
-                if (row == n) { count++; return; }
-
-                for (int c = 0; c < n; c++)
-                {
-                    if (usedCol[c]) continue;
-                    if (row > 0 && System.Math.Abs(c - colOfRow[row - 1]) < 2) continue;
-
-                    int reg = region[row * n + c];
-                    if (usedRegion[reg]) continue;
-
-                    usedCol[c] = true;
-                    usedRegion[reg] = true;
-                    colOfRow[row] = c;
-
-                    Search(row + 1);
-
-                    usedCol[c] = false;
-                    usedRegion[reg] = false;
-                    if (count >= limit) return;
-                }
-            }
-
-            Search(0);
-            return count;
-        }
-
-        /// <summary>Convenience: true when the board has exactly one solution.</summary>
-        public static bool HasUniqueSolution(int n, int[] region) => CountSolutions(n, region, 2) == 1;
-
         /// <summary>
         /// Searches for any valid solution that differs from <paramref name="target"/>.
         /// Returns true (with that solution in <paramref name="alt"/>) when one exists, i.e.

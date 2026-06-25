@@ -8,8 +8,8 @@ namespace QueensPuzzle.EditorTools
     /// Editor hub for levels: Generate a new unique puzzle, Load a saved one, Save the current
     /// one as an asset, and Play it (phase 1: the game just shows the board).
     ///
-    /// NOTE: the difficulty dropdown is a target only — the generator does not enforce it yet
-    /// (difficulty rating is a later step). N is honoured; every level is currently Unrated.
+    /// NOTE: the difficulty dropdown is a target only — generation does not steer toward it yet.
+    /// Levels ARE measured: every generated/loaded level is rated, and Recheck re-rates on demand.
     /// </summary>
     public class LevelBuilderWindow : EditorWindow
     {
@@ -20,14 +20,16 @@ namespace QueensPuzzle.EditorTools
         Difficulty _requestedDifficulty = Difficulty.Medium;
 
         LevelData _level;
+        DifficultyRater.Report? _report;
         string _status = "Pick the parameters and press Generate.";
         Texture2D _queenTex;
+        Vector2 _scroll;
 
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
         {
             var w = GetWindow<LevelBuilderWindow>("Level Builder");
-            w.minSize = new Vector2(420, 540);
+            w.minSize = new Vector2(440, 680);
         }
 
         void OnEnable() => _queenTex = BoardVisuals.CreateQueenTexture(64);
@@ -40,11 +42,13 @@ namespace QueensPuzzle.EditorTools
         void OnGUI()
         {
             HandleObjectPicker();
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
             DrawControls();
             EditorGUILayout.Space(6);
             DrawBoard();
             EditorGUILayout.Space(6);
             DrawFooter();
+            EditorGUILayout.EndScrollView();
         }
 
         // ---- controls ----------------------------------------------------------------
@@ -54,7 +58,7 @@ namespace QueensPuzzle.EditorTools
             EditorGUILayout.LabelField("Generate", EditorStyles.boldLabel);
 
             _requestedDifficulty = (Difficulty)EditorGUILayout.EnumPopup("Difficulty", _requestedDifficulty);
-            EditorGUILayout.LabelField(" ", "target only — not enforced yet", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(" ", "target only — not steered yet (level is measured below)", EditorStyles.miniLabel);
 
             _requestedN = EditorGUILayout.IntSlider("Board size (N)", _requestedN,
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
@@ -70,6 +74,7 @@ namespace QueensPuzzle.EditorTools
                 using (new EditorGUI.DisabledScope(_level == null))
                 {
                     if (GUILayout.Button("Save", GUILayout.Height(24))) SaveAsset();
+                    if (GUILayout.Button("Recheck", GUILayout.Height(24))) Recheck();
                     if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
                 }
             }
@@ -82,8 +87,8 @@ namespace QueensPuzzle.EditorTools
             {
                 if (EditorGUIUtility.GetObjectPickerObject() is LevelData picked)
                 {
-                    _level = picked;
-                    _status = $"Loaded {picked.name} ({picked.size}x{picked.size}).";
+                    SetLevel(picked);
+                    _status = $"Loaded {picked.name} ({picked.size}x{picked.size}) — measured {_report?.difficulty}.";
                 }
                 Repaint();
             }
@@ -93,7 +98,7 @@ namespace QueensPuzzle.EditorTools
 
         void DrawBoard()
         {
-            float avail = Mathf.Clamp(Mathf.Min(position.width - 24f, position.height - 230f), 220f, 600f);
+            float avail = Mathf.Clamp(position.width - 36f, 200f, 440f);
             Rect board = GUILayoutUtility.GetRect(avail, avail, GUILayout.ExpandWidth(false));
             board.x = (position.width - avail) * 0.5f;
 
@@ -138,10 +143,24 @@ namespace QueensPuzzle.EditorTools
         {
             if (_level != null)
             {
+                string scoreText = _report.HasValue ? _report.Value.score.ToString() : "-";
                 EditorGUILayout.HelpBox(
-                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  difficulty {_level.difficulty}  ·  " +
+                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  {_level.difficulty}  ·  score {scoreText}  ·  " +
                     $"~{Mathf.RoundToInt(_level.estimatedSolveSeconds)}s  ·  unique ✓",
                     MessageType.None);
+
+                if (_report.HasValue)
+                {
+                    var rep = _report.Value;
+                    EditorGUILayout.LabelField("Rating breakdown — what decided the tier", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"Hardest technique:   {rep.technique}   →   {rep.difficulty}");
+                    EditorGUILayout.LabelField($"Score:   {rep.score}");
+                    EditorGUILayout.LabelField($"Singles — region:  {rep.regionSingles}     line:  {rep.lineSingles}");
+                    EditorGUILayout.LabelField($"Region-line:  {rep.regionLineUses}     Squeeze:  {rep.squeezeUses}     Subset:  {rep.subsetUses}");
+                    EditorGUILayout.LabelField($"Trials:  {rep.trials}     Max depth:  {rep.maxTrialDepth}");
+                    EditorGUILayout.LabelField($"Cycles:  {rep.cycles}     Placed:  {rep.placements}     Eliminated:  {rep.eliminations}");
+                    EditorGUILayout.LabelField($"Estimated solve time:   ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
+                }
             }
             EditorGUILayout.LabelField(_status, EditorStyles.miniLabel);
         }
@@ -167,8 +186,8 @@ namespace QueensPuzzle.EditorTools
                 _status = $"Generation failed for {_requestedN}x{_requestedN} — press Generate again.";
                 return;
             }
-            _level = lvl;
-            _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}). Unique solution ✓";
+            SetLevel(lvl);
+            _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — {lvl.difficulty}, unique ✓";
             Repaint();
         }
 
@@ -198,6 +217,24 @@ namespace QueensPuzzle.EditorTools
 
             EditorApplication.isPlaying = true;
             _status = $"Playing {asset.name} — press the editor Play button again to stop.";
+        }
+
+        void SetLevel(LevelData lvl)
+        {
+            _level = lvl;
+            _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
+        }
+
+        void Recheck()
+        {
+            var rep = DifficultyRater.Rate(_level.size, _level.regions, _level.solutionColumns);
+            _report = rep;
+            _level.difficulty = rep.difficulty;
+            _level.estimatedSolveSeconds = rep.estimatedSeconds;
+            _level.solveSteps = rep.solveSteps;
+            if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
+            _status = $"Rechecked: {rep.difficulty} ({rep.technique}).";
+            Repaint();
         }
 
         // ---- helpers -----------------------------------------------------------------

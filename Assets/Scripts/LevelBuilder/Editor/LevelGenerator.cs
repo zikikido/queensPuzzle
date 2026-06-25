@@ -40,8 +40,11 @@ namespace QueensPuzzle
                 data.regions = region;
                 data.solutionColumns = cols;
                 data.seed = seed;
-                data.difficulty = Difficulty.Unrated;          // TODO: rate via logical solver
-                data.estimatedSolveSeconds = EstimateSolveSeconds(n);
+
+                var rating = DifficultyRater.Rate(n, region, cols); // auto-rate on generate
+                data.difficulty = rating.difficulty;
+                data.estimatedSolveSeconds = rating.estimatedSeconds;
+                data.solveSteps = rating.solveSteps;
                 return data;
             }
             return null;
@@ -64,11 +67,5 @@ namespace QueensPuzzle
             }
             return false;
         }
-
-        /// <summary>
-        /// Placeholder solve-time estimate based only on board size. Will be replaced by an
-        /// estimate derived from the measured difficulty once rating exists.
-        /// </summary>
-        static float EstimateSolveSeconds(int n) => n * n * 0.6f;
     }
 }
