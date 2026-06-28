@@ -1,0 +1,3 @@
+[submodule "Assets/kidogamesCode"]
+	path = Assets/kidogamesCode
+	url = git@github.com:zikikido/kidogamesCode.git
