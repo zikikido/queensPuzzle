@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -28,6 +29,8 @@ namespace QueensPuzzle.EditorTools
         bool _showImport;
         string _importText = "";
 
+        int _selectedStep = -1; // -1 = show the full solution; otherwise the board state at that step
+
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
         {
@@ -50,6 +53,8 @@ namespace QueensPuzzle.EditorTools
             DrawImport();
             EditorGUILayout.Space(6);
             DrawBoard();
+            DrawLegend();
+            DrawSteps();
             EditorGUILayout.Space(6);
             DrawFooter();
             EditorGUILayout.EndScrollView();
@@ -116,7 +121,10 @@ namespace QueensPuzzle.EditorTools
             if (GUILayout.Button("Import", GUILayout.Height(24))) Import();
         }
 
-        // ---- board (shows the solution) ----------------------------------------------
+        // ---- board ---------------------------------------------------------------------
+        // Shows the full solution by default; when a solve step is selected, shows the board
+        // state up to and including that step (queens placed, X's marked) with the step's own
+        // cells outlined.
 
         void DrawBoard()
         {
@@ -136,15 +144,39 @@ namespace QueensPuzzle.EditorTools
             float cs = avail / n;
             EditorGUI.DrawRect(board, new Color(0.42f, 0.42f, 0.48f)); // grid lines
 
+            var trace = _level.solveTrace;
+            bool stepMode = _selectedStep >= 0 && trace != null && _selectedStep < trace.Length;
+            bool[] queens = null, xMark = null, attacked = null; HashSet<int> highlight = null;
+            if (stepMode) ComputeState(_selectedStep, out queens, out xMark, out attacked, out highlight);
+
+            var letterStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = Mathf.Max(8, Mathf.RoundToInt(cs * 0.24f)),
+                normal = { textColor = new Color(0f, 0f, 0f, 0.5f) }
+            };
+
             for (int r = 0; r < n; r++)
             {
                 for (int c = 0; c < n; c++)
                 {
+                    int i = r * n + c;
                     var cell = new Rect(board.x + c * cs + 1, board.y + r * cs + 1, cs - 2, cs - 2);
                     EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(_level.RegionAt(r, c), n));
+                    GUI.Label(new Rect(cell.x + 2, cell.y + 1, cell.width, cell.height * 0.5f),
+                        ((char)('A' + _level.RegionAt(r, c))).ToString(), letterStyle);
 
-                    if (_level.IsSolutionQueen(r, c))
+                    if (stepMode)
+                    {
+                        if (attacked[i] && !queens[i] && !xMark[i])
+                            EditorGUI.DrawRect(cell, new Color(0f, 0f, 0f, 0.16f)); // dim: ruled out by a queen
+                        if (queens[i]) DrawGlyph(cell, _queenTex, new Color(0.13f, 0.13f, 0.17f), 0.72f);
+                        else if (xMark[i]) DrawX(cell, new Color(0.6f, 0.06f, 0.06f));
+                        if (highlight.Contains(i)) DrawOutline(cell, new Color(1f, 0.85f, 0.1f), 2f);
+                    }
+                    else if (_level.IsSolutionQueen(r, c))
+                    {
                         DrawGlyph(cell, _queenTex, new Color(0.13f, 0.13f, 0.17f), 0.78f);
+                    }
                 }
             }
         }
@@ -157,6 +189,155 @@ namespace QueensPuzzle.EditorTools
             GUI.color = tint;
             GUI.DrawTexture(r, tex, ScaleMode.ScaleToFit, true);
             GUI.color = prev;
+        }
+
+        static void DrawX(Rect cell, Color color)
+        {
+            var st = new GUIStyle { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            st.fontSize = Mathf.RoundToInt(cell.height * 0.55f);
+            st.normal.textColor = color;
+            GUI.Label(cell, "✕", st);
+        }
+
+        static void DrawOutline(Rect cell, Color color, float t)
+        {
+            EditorGUI.DrawRect(new Rect(cell.x, cell.y, cell.width, t), color);
+            EditorGUI.DrawRect(new Rect(cell.x, cell.yMax - t, cell.width, t), color);
+            EditorGUI.DrawRect(new Rect(cell.x, cell.y, t, cell.height), color);
+            EditorGUI.DrawRect(new Rect(cell.xMax - t, cell.y, t, cell.height), color);
+        }
+
+        // Replays the trace from the root down to (and including) the selected step, accumulating
+        // placed queens and X-marks. A placed queen also dims every cell it attacks.
+        void ComputeState(int step, out bool[] queens, out bool[] xMark, out bool[] attacked,
+            out HashSet<int> highlight)
+        {
+            int n = _level.size;
+            queens = new bool[n * n];
+            xMark = new bool[n * n];
+            attacked = new bool[n * n];
+            highlight = new HashSet<int>();
+            var trace = _level.solveTrace;
+
+            var path = new List<int>();
+            for (int cur = step; cur >= 0 && cur < trace.Length; cur = trace[cur].parent) path.Add(cur);
+            path.Reverse();
+
+            foreach (int ni in path)
+            {
+                var marks = trace[ni].marks;
+                if (marks == null) continue;
+                foreach (var m in marks)
+                {
+                    if (m.mark == CellMark.Queen) { queens[m.cell] = true; MarkAttacked(m.cell, attacked); }
+                    else xMark[m.cell] = true;
+                }
+            }
+
+            var sel = trace[step].marks;
+            if (sel != null) foreach (var m in sel) highlight.Add(m.cell);
+        }
+
+        void MarkAttacked(int cell, bool[] attacked)
+        {
+            int n = _level.size, r = cell / n, c = cell % n, g = _level.regions[cell];
+            for (int cc = 0; cc < n; cc++) attacked[r * n + cc] = true;
+            for (int rr = 0; rr < n; rr++) attacked[rr * n + c] = true;
+            for (int i = 0; i < n * n; i++) if (_level.regions[i] == g) attacked[i] = true;
+            for (int dr = -1; dr <= 1; dr++)
+                for (int dc = -1; dc <= 1; dc++)
+                {
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < n && nc >= 0 && nc < n) attacked[nr * n + nc] = true;
+                }
+        }
+
+        // ---- legend & solve steps ----------------------------------------------------
+
+        void DrawLegend()
+        {
+            if (_level == null) return;
+            int n = _level.size;
+            EditorGUILayout.Space(2);
+            EditorGUILayout.LabelField("Colours (letter = region)", EditorStyles.miniBoldLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                for (int g = 0; g < n; g++)
+                {
+                    var rect = GUILayoutUtility.GetRect(30, 16, GUILayout.Width(30), GUILayout.Height(16));
+                    EditorGUI.DrawRect(new Rect(rect.x, rect.y + 1, 13, 13), BoardVisuals.RegionColor(g, n));
+                    GUI.Label(new Rect(rect.x + 15, rect.y, 15, 16), ((char)('A' + g)).ToString(), EditorStyles.miniLabel);
+                }
+            }
+        }
+
+        void DrawSteps()
+        {
+            if (_level == null) return;
+            var trace = _level.solveTrace;
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Solve steps — click to see the board at that point", EditorStyles.boldLabel);
+
+            if (trace == null || trace.Length == 0)
+            {
+                EditorGUILayout.HelpBox("No solve trace on this level. Press Recheck to (re)build it.", MessageType.Info);
+                return;
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(_selectedStep < 0))
+                    if (GUILayout.Button("◀ Prev", GUILayout.Width(70)))
+                        { _selectedStep = Mathf.Max(0, _selectedStep - 1); Repaint(); }
+
+                using (new EditorGUI.DisabledScope(_selectedStep >= trace.Length - 1))
+                    if (GUILayout.Button("Next ▶", GUILayout.Width(70)))
+                        { _selectedStep = _selectedStep < 0 ? 0 : _selectedStep + 1; Repaint(); }
+
+                GUILayout.FlexibleSpace();
+                using (new EditorGUI.DisabledScope(_selectedStep < 0))
+                    if (GUILayout.Button("Show full solution", GUILayout.Width(130)))
+                        { _selectedStep = -1; Repaint(); }
+            }
+
+            var rowStyle = new GUIStyle(EditorStyles.miniButton)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                wordWrap = true,
+                fixedHeight = 0,
+                richText = false
+            };
+
+            for (int i = 0; i < trace.Length; i++)
+            {
+                var nd = trace[i];
+                string prefix = nd.outcome == Outcome.DeadEnd ? "✗ "
+                              : nd.outcome == Outcome.Unresolved ? "… " : "";
+                string label = $"{i}.  [{TechniqueTag(nd.technique)}]  {prefix}{nd.note}";
+
+                Color prevBg = GUI.backgroundColor;
+                if (i == _selectedStep) GUI.backgroundColor = new Color(1f, 0.88f, 0.35f);
+                if (GUILayout.Button(label, rowStyle)) { _selectedStep = i; Repaint(); }
+                GUI.backgroundColor = prevBg;
+            }
+        }
+
+        static string TechniqueTag(SolveTechnique t)
+        {
+            switch (t)
+            {
+                case SolveTechnique.RegionSingle:
+                case SolveTechnique.LineSingle: return "place";
+                case SolveTechnique.LineToRegion: return "line→region";
+                case SolveTechnique.RegionToLine: return "region→line";
+                case SolveTechnique.Squeeze: return "squeeze";
+                case SolveTechnique.SubsetLineToRegion: return "subset L→R";
+                case SolveTechnique.SubsetRegionToLine: return "subset R→L";
+                case SolveTechnique.Fish: return "fish";
+                case SolveTechnique.Trial: return "guess";
+                default: return "step";
+            }
         }
 
         // ---- footer ------------------------------------------------------------------
@@ -180,6 +361,7 @@ namespace QueensPuzzle.EditorTools
                     EditorGUILayout.LabelField($"Singles — region:  {rep.regionSingles}     line:  {rep.lineSingles}");
                     EditorGUILayout.LabelField($"Line→region:  {rep.lineToRegionUses}     Region→line:  {rep.regionToLineUses}");
                     EditorGUILayout.LabelField($"Squeeze:  {rep.squeezeUses}     Subset L→R:  {rep.subsetLineToRegionUses}     Subset R→L:  {rep.subsetRegionToLineUses}");
+                    EditorGUILayout.LabelField($"Positional fish:  {rep.fishUses}");
                     EditorGUILayout.LabelField($"Trials:  {rep.trials}     Max depth:  {rep.maxTrialDepth}");
                     EditorGUILayout.LabelField($"Cycles:  {rep.cycles}     Placed:  {rep.placements}     Eliminated:  {rep.eliminations}");
                     EditorGUILayout.LabelField($"Estimated solve time:   ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
@@ -256,6 +438,7 @@ namespace QueensPuzzle.EditorTools
         {
             _level = lvl;
             _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
+            _selectedStep = -1;
         }
 
         void Recheck()
@@ -266,7 +449,8 @@ namespace QueensPuzzle.EditorTools
             _level.estimatedSolveSeconds = rep.estimatedSeconds;
             _level.solveTrace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
-            _status = $"Rechecked: {rep.difficulty} ({rep.technique}).";
+            _selectedStep = -1;
+            _status = $"Rechecked: {rep.difficulty} ({rep.technique}) — {_level.solveTrace.Length} solve steps.";
             Repaint();
         }
 

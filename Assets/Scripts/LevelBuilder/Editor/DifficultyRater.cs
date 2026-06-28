@@ -12,7 +12,8 @@ namespace QueensPuzzle
     ///   queen-elim      w0  — a placed queen blocks its row/col/region/neighbors (automatic)
     ///   region-line     w2  — a region trapped in one row/col → clear the rest of that line
     ///   squeeze         w4  — eliminate cells that touch ALL of a region's candidates
-    ///   subset          w6  — k regions trapped in k rows/cols → clear those lines elsewhere
+    ///   subset          3+k / 4+k — k lines hold k colours / k regions fill k lines (Hall)
+    ///   positional fish 5+k — k rows confined to k columns (or vice-versa) → clear those lines
     ///
     /// All deduction is "on the board" (visual) so it tops out at Medium. When deduction stalls you
     /// must GUESS, which in this game has no pencil/eraser — the whole what-if lives in your head, so
@@ -55,6 +56,7 @@ namespace QueensPuzzle
             public int squeezeUses;
             public int subsetLineToRegionUses;
             public int subsetRegionToLineUses;
+            public int fishUses;
             public int trials;
             public int maxTrialDepth;
             public float estimatedSeconds;
@@ -86,6 +88,7 @@ namespace QueensPuzzle
                 squeezeUses = m.squeezeUses,
                 subsetLineToRegionUses = m.subsetLineToRegionUses,
                 subsetRegionToLineUses = m.subsetRegionToLineUses,
+                fishUses = m.fishUses,
                 trials = m.trials,
                 maxTrialDepth = m.maxTrialDepth,
             };
@@ -109,6 +112,7 @@ namespace QueensPuzzle
         {
             if (!solved) return "unsolved";
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
+            if (m.fishUses > 0) return "positional fish";
             if (m.subsetRegionToLineUses > 0) return "subset (region→line)";
             if (m.subsetLineToRegionUses > 0) return "subset (line→region)";
             if (m.squeezeUses > 0) return "squeeze";
@@ -168,7 +172,7 @@ namespace QueensPuzzle
             // mental cost of following THIS hypothetical layer: how long the forced chain is,
             // with harder tricks counting more (you have no board to lean on)
             int chain = t.placements + t.lineToRegionUses + 2 * t.regionToLineUses + 4 * t.squeezeUses
-                        + t.subsetWeight; // already weighted as (Base + k) per subset
+                        + t.subsetWeight + t.fishWeight; // subset & fish already weighted as (Base + k)
             if (pr.status != PStatus.Stuck) return GuessBase + chain;       // reached the contradiction
             if (depth >= MaxProbe) return GuessBase + chain + 24;           // needs deeper nesting — cap (Expert)
 
@@ -223,6 +227,9 @@ namespace QueensPuzzle
                 int kR = s.SubsetRegionToLineEliminations(m); // k regions fill k lines — weight 4+k
                 if (kR > 0) { m.subsetRegionToLineUses++; int wt = 4 + kR; m.subsetWeight += wt; w = Math.Max(w, wt); continue; }
 
+                int kF = s.FishEliminations(m); // k rows confined to k columns (positional) — weight 5+k
+                if (kF > 0) { m.fishUses++; int wt = 5 + kF; m.fishWeight += wt; w = Math.Max(w, wt); continue; }
+
                 return new PResult { status = PStatus.Stuck, w = w };
             }
         }
@@ -235,7 +242,7 @@ namespace QueensPuzzle
         {
             public int cycles, placements, regionSingles, lineSingles, eliminations,
                 lineToRegionUses, regionToLineUses, squeezeUses, subsetLineToRegionUses, subsetRegionToLineUses,
-                subsetWeight, trials, maxTrialDepth;
+                subsetWeight, fishUses, fishWeight, trials, maxTrialDepth;
         }
 
         // ---- board state -------------------------------------------------------------
@@ -409,6 +416,14 @@ namespace QueensPuzzle
                 return k > 0 ? k : GeneralLineToRegion(m, false);
             }
 
+            // positional fish (X-Wing/Swordfish): k rows confined to k columns → clear those columns
+            // elsewhere. Colour-agnostic — distinct from the region subsets. Returns the size k.
+            public int FishEliminations(Metrics m)
+            {
+                int k = GeneralFish(m, true);
+                return k > 0 ? k : GeneralFish(m, false);
+            }
+
             // k regions whose candidates span exactly k lines → those lines are theirs → clear other
             // regions from them. Tries k = 2,3,… and returns the first (smallest) size that fires.
             int GeneralRegionToLine(Metrics m, bool rows)
@@ -485,6 +500,52 @@ namespace QueensPuzzle
                             bool inLines = false;
                             for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inLines = true; break; }
                             if (!inLines) Kill(idx, -1, m);
+                        }
+                        if (m.eliminations > before) return k;
+                    } while (NextCombo(sel, k, lc));
+                }
+                return 0;
+            }
+
+            // k rows whose candidate columns span exactly k columns → those rows own those columns →
+            // clear those columns in every other row. rows=false is the column↔row mirror.
+            int GeneralFish(Metrics m, bool rows)
+            {
+                int[] mask = new int[n];
+                var L = new List<int>();
+                for (int line = 0; line < n; line++)
+                {
+                    if (rows ? rowDone[line] : colDone[line]) continue;
+                    int mk = 0;
+                    for (int p = 0; p < n; p++)
+                    {
+                        int idx = rows ? line * n + p : p * n + line;
+                        if (cand[idx] && !queen[idx]) mk |= 1 << p;
+                    }
+                    if (mk != 0) { mask[line] = mk; L.Add(line); }
+                }
+                int lc = L.Count;
+                var sel = new int[lc];
+                for (int k = 2; k < lc; k++)
+                {
+                    for (int i = 0; i < k; i++) sel[i] = i;
+                    do
+                    {
+                        int u = 0;
+                        for (int i = 0; i < k; i++) u |= mask[L[sel[i]]];
+                        if (PopCount(u) != k) continue;
+                        int before = m.eliminations;
+                        for (int line = 0; line < n; line++)
+                        {
+                            bool inSet = false;
+                            for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inSet = true; break; }
+                            if (inSet) continue;
+                            for (int p = 0; p < n; p++)
+                            {
+                                if ((u & (1 << p)) == 0) continue;
+                                int idx = rows ? line * n + p : p * n + line;
+                                if (cand[idx] && !queen[idx]) Kill(idx, -1, m);
+                            }
                         }
                         if (m.eliminations > before) return k;
                     } while (NextCombo(sel, k, lc));

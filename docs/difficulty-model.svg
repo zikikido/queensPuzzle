@@ -1,5 +1,5 @@
 <svg viewBox="0 0 940 1660" xmlns="http://www.w3.org/2000/svg" role="img" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
-<title>Queens difficulty model</title><desc>Nine solving tricks with example boards and weights, plus the no-pencil scoring formula and tier table.</desc>
+<title>Queens difficulty model</title><desc>Ten solving tricks with example boards and weights, plus the no-pencil scoring formula and tier table.</desc>
 <defs><g id="cr"><path d="M3 17L3 8L8 13L12 5L16 13L21 8L21 17Z"/></g></defs>
 <rect x="0" y="0" width="940" height="1660" fill="#FBFAF7"/>
 <rect x="0.5" y="0.5" width="939" height="1659" fill="none" stroke="#E7E5DF"/>
@@ -81,11 +81,20 @@
 <text x="205" y="1278">If a region ends fully blocked</text>
 <text x="205" y="1296">(red), the guess was impossible.</text>
 <text x="205" y="1314">No pencil -> chain &amp; nesting hurt.</text>
+<rect x="480" y="1180" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
+<circle cx="514" cy="1210" r="11" fill="#EFEDE6"/><text x="514" y="1214" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">10</text>
+<text x="532" y="1215" font-size="14" font-weight="600" fill="#2b2b2b">Positional fish (X-Wing)</text>
+<rect x="830" y="1198" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="1213" font-size="11" fill="#5f5e5a" text-anchor="middle">5+k</text>
+<rect x="500" y="1230" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="530" y="1230" width="30" height="150" fill="#CFE2F7"/><rect x="590" y="1230" width="30" height="150" fill="#CFE2F7"/><path d="M500 1230V1380M530 1230V1380M560 1230V1380M590 1230V1380M620 1230V1380M650 1230V1380M500 1230H650M500 1260H650M500 1290H650M500 1320H650M500 1350H650M500 1380H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M539 1239L551 1251M551 1239L539 1251M599 1239L611 1251M611 1239L599 1251M539 1299L551 1311M551 1299L539 1311M599 1299L611 1311M611 1299L599 1311M539 1359L551 1371M551 1359L539 1371M599 1359L611 1371M611 1359L599 1371" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><circle cx="545" cy="1275" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="605" cy="1275" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="545" cy="1335" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="605" cy="1335" r="3.6" fill="#000" fill-opacity="0.32"/><rect x="500" y="1230" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="665" y="1260">k rows confined to the same k</text>
+<text x="665" y="1278">columns -> those columns are</text>
+<text x="665" y="1296">theirs -> clear them elsewhere.</text>
+<text x="665" y="1320" fill="#8a8a86">Pure position - no colour cue.</text>
 </g>
 <text x="20" y="1470" font-size="18" font-weight="600" fill="#2b2b2b">Scoring &#8212; higher score = harder</text>
 <rect x="20" y="1486" width="560" height="132" rx="10" fill="#F3F1EA"/>
 <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12.5" fill="#3c3c3a">
-<text x="36" y="1512">no guessing      -> hardest trick weight (0..6)</text>
+<text x="36" y="1512">no guessing      -> hardest trick weight (w0..5+k)</text>
 <text x="36" y="1534">a guess (what-if) -> followGuess(place wrong queen):</text>
 <text x="52" y="1554">GuessBase + chain + Mult x (cheapest deeper)</text>
 <text x="52" y="1574">chain = forced moves + harder tricks (in your head)</text>
