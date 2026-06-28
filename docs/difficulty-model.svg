@@ -99,7 +99,7 @@
 <text x="52" y="1554">GuessBase + chain + Mult x (cheapest deeper)</text>
 <text x="52" y="1574">chain = forced moves + harder tricks (in your head)</text>
 </g>
-<text x="36" y="1598" font-size="12" fill="#6b6b6b">GuessBase 3 &#183; Mult 10 &#183; best-of branch &#183; deduction is free on the board</text>
+<text x="36" y="1598" font-size="12" fill="#6b6b6b">GuessBase 3 &#183; Mult 10 &#183; then + fatigue round(3&#183;lnN), N = hard moves + guesses</text>
 <rect x="600" y="1486" width="320" height="132" rx="10" fill="#fff" stroke="#E7E5DF"/>
 <text x="618" y="1510" font-size="12" font-weight="600" fill="#2b2b2b">score</text><text x="690" y="1510" font-size="12" font-weight="600" fill="#2b2b2b">tier</text>
 <line x1="618" y1="1519" x2="902" y2="1519" stroke="#E7E5DF"/>

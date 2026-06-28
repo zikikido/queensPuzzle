@@ -17,8 +17,11 @@ namespace QueensPuzzle.EditorTools
         const string LevelsFolder = "Assets/Levels";
         const int LoadPickerId = 9210;
 
+        // What Generate aims for: a tier to steer toward, or Any for an instant random board.
+        enum Target { Any, Kitten, Easy, Medium, Hard, Expert }
+
         int _requestedN = 8;
-        Difficulty _requestedDifficulty = Difficulty.Medium;
+        Target _target = Target.Medium;
 
         LevelData _level;
         DifficultyRater.Report? _report;
@@ -29,7 +32,9 @@ namespace QueensPuzzle.EditorTools
         bool _showImport;
         string _importText = "";
 
-        int _selectedStep = -1; // -1 = show the full solution; otherwise the board state at that step
+        bool _showSolution = true; // collapse the board when you don't want the answer visible
+        bool _showSteps = true;    // collapse the solve-steps list
+        int _selectedStep = -1;    // -1 = show the full solution; otherwise the board state at that step
 
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
@@ -52,8 +57,12 @@ namespace QueensPuzzle.EditorTools
             DrawControls();
             DrawImport();
             EditorGUILayout.Space(6);
-            DrawBoard();
-            DrawLegend();
+            _showSolution = EditorGUILayout.Foldout(_showSolution, "Solution (board)", true);
+            if (_showSolution)
+            {
+                DrawBoard();
+                DrawLegend();
+            }
             DrawSteps();
             EditorGUILayout.Space(6);
             DrawFooter();
@@ -66,14 +75,15 @@ namespace QueensPuzzle.EditorTools
         {
             EditorGUILayout.LabelField("Generate", EditorStyles.boldLabel);
 
-            _requestedDifficulty = (Difficulty)EditorGUILayout.EnumPopup("Difficulty", _requestedDifficulty);
-            EditorGUILayout.LabelField(" ", "target only — not steered yet (level is measured below)", EditorStyles.miniLabel);
+            _target = (Target)EditorGUILayout.EnumPopup("Difficulty", _target);
+            EditorGUILayout.LabelField(" ", "Any = instant random · a tier = steered toward it (~1–3s)", EditorStyles.miniLabel);
 
             _requestedN = EditorGUILayout.IntSlider("Board size (N)", _requestedN,
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
             EditorGUILayout.LabelField(" ", $"= {_requestedN} queens", EditorStyles.miniLabel);
 
-            if (GUILayout.Button("Generate", GUILayout.Height(28))) Generate();
+            string genLabel = _target == Target.Any ? "Generate (random)" : $"Generate ({_target})";
+            if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -274,11 +284,12 @@ namespace QueensPuzzle.EditorTools
         void DrawSteps()
         {
             if (_level == null) return;
-            var trace = _level.solveTrace;
 
             EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Solve steps — click to see the board at that point", EditorStyles.boldLabel);
+            _showSteps = EditorGUILayout.Foldout(_showSteps, "Solve steps — click a step to see the board there", true);
+            if (!_showSteps) return;
 
+            var trace = _level.solveTrace;
             if (trace == null || trace.Length == 0)
             {
                 EditorGUILayout.HelpBox("No solve trace on this level. Press Recheck to (re)build it.", MessageType.Info);
@@ -378,9 +389,14 @@ namespace QueensPuzzle.EditorTools
             LevelData lvl;
             try
             {
-                lvl = LevelGenerator.Generate(_requestedN, seed, 250, p =>
-                    EditorUtility.DisplayProgressBar("Generating level",
-                        $"{_requestedN}x{_requestedN} — finding a unique puzzle…", p));
+                if (_target == Target.Any)
+                    lvl = LevelGenerator.Generate(_requestedN, seed, 250, p =>
+                        EditorUtility.DisplayProgressBar("Generating level",
+                            $"{_requestedN}x{_requestedN} — finding a unique puzzle…", p));
+                else
+                    lvl = LevelSteerer.Generate(ToDifficulty(_target), _requestedN, seed, p =>
+                        EditorUtility.DisplayProgressBar("Generating level",
+                            $"aiming for {_target} — annealing the region map…", p));
             }
             finally
             {
@@ -391,9 +407,29 @@ namespace QueensPuzzle.EditorTools
                 _status = $"Generation failed for {_requestedN}x{_requestedN} — press Generate again.";
                 return;
             }
+
             SetLevel(lvl);
-            _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — {lvl.difficulty}, unique ✓";
+            if (_target == Target.Any)
+                _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — {lvl.difficulty}, unique ✓";
+            else
+            {
+                string hit = lvl.difficulty == ToDifficulty(_target) ? "✓ on target" : "closest reachable";
+                _status = $"Aimed for {_target} → {lvl.difficulty}, score {_report?.score} — {hit}.";
+            }
             Repaint();
+        }
+
+        static Difficulty ToDifficulty(Target t)
+        {
+            switch (t)
+            {
+                case Target.Kitten: return Difficulty.Kitten;
+                case Target.Easy: return Difficulty.Easy;
+                case Target.Medium: return Difficulty.Medium;
+                case Target.Hard: return Difficulty.Hard;
+                case Target.Expert: return Difficulty.Expert;
+                default: return Difficulty.Medium;
+            }
         }
 
         void Import()

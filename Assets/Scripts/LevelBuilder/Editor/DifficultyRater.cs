@@ -15,15 +15,15 @@ namespace QueensPuzzle
     ///   subset          3+k / 4+k — k lines hold k colours / k regions fill k lines (Hall)
     ///   positional fish 5+k — k rows confined to k columns (or vice-versa) → clear those lines
     ///
-    /// All deduction is "on the board" (visual) so it tops out at Medium. When deduction stalls you
-    /// must GUESS, which in this game has no pencil/eraser — the whole what-if lives in your head, so
-    /// it is the real difficulty wall, and NESTED guesses explode exponentially. We model that with a
-    /// MULTIPLICATIVE recursion (cheapest contradiction wins — luck-free):
+    /// All deduction is "on the board" (visual) and cheap; a what-if GUESS is the wall, scored by the
+    /// work it forces (cheapest contradiction wins — luck-free), so a guess that opens an easy board
+    /// stays Medium while a costly or nested one climbs. A FATIGUE term then adds for how many hard
+    /// moves/guesses the solve needs, so a long grind outranks a single "aha":
     ///
-    ///   hardness = max( hardest trick used ,  GuessBase + Mult × (cheapest inner hardness) )
+    ///   hardness = max( hardest trick ,  GuessBase + chain + Mult × inner )  +  fatigue(hard steps)
     ///
-    /// Tiers: region-singles=Kitten, line-single=Easy, deduction or a trivial one-step guess=Medium,
-    /// a real guess (longer chain)=Hard, a long-chain or nested guess=Expert.
+    /// Tiers by score: 0=Kitten, 1=Easy, 2..7=Medium, 8..31=Hard, 32+=Expert. With 3 lives a single
+    /// cheap guess is survivable trial-and-error (Medium); Expert is the long / nested / multi-guess grind.
     ///
     /// We pass in the level's known unique solution so the solver only has to *disprove the wrong
     /// cells* (cheap) instead of *discovering* the right one (expensive search). This is the
@@ -72,6 +72,9 @@ namespace QueensPuzzle
 
             var (solved, hardness) = Solve(s, solution, m, ctx);
             if (ctx.aborted) { solved = true; hardness = Math.Max(hardness, 48); }
+            // fatigue: a solve that needs many hard moves / guesses outranks a single "aha".
+            int hardSteps = m.squeezeUses + m.subsetLineToRegionUses + m.subsetRegionToLineUses + m.fishUses + m.trials;
+            if (hardSteps > 1) hardness += (int)Math.Round(3.0 * Math.Log(hardSteps));
 
             var rep = new Report
             {
@@ -98,13 +101,15 @@ namespace QueensPuzzle
             return rep;
         }
 
+        // Tier by the (fatigue-adjusted) score. A guess is scored by the work it forces, so a cheap
+        // guess that opens an easy board stays Medium; costly / nested / many-guess solves climb.
         static Difficulty Classify(int hardness, bool solved)
         {
             if (!solved) return Difficulty.Unrated;
-            if (hardness >= 32) return Difficulty.Expert; // nested guessing (depth >= 2)
-            if (hardness >= 8) return Difficulty.Hard;    // any guess (depth 1)
-            if (hardness >= 2) return Difficulty.Medium;  // deduction beyond singles
-            if (hardness >= 1) return Difficulty.Easy;    // needs a line single
+            if (hardness >= 32) return Difficulty.Expert; // long chains / nested / many guesses
+            if (hardness >= 8) return Difficulty.Hard;    // hardest deduction, or a costly guess
+            if (hardness >= 2) return Difficulty.Medium;  // mid deduction, or a cheap guess
+            if (hardness >= 1) return Difficulty.Easy;    // a line single
             return Difficulty.Kitten;                     // region singles only
         }
 
