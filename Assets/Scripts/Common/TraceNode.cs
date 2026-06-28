@@ -11,8 +11,9 @@ namespace QueensPuzzle
         LineToRegion = 3,  // a row/column is a single colour → clear that colour elsewhere
         RegionToLine = 4,  // a region is confined to one row/column → clear that line of others
         Squeeze = 5,
-        Subset = 6,
-        Trial = 7,
+        SubsetLineToRegion = 6,  // k rows/columns hold only k colours → clear those colours elsewhere
+        SubsetRegionToLine = 7,  // k regions fill k rows/columns → clear those lines of other regions
+        Trial = 8,
     }
 
     /// <summary>What a trace node represents.</summary>

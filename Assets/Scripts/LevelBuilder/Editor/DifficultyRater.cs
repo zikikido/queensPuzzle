@@ -53,7 +53,8 @@ namespace QueensPuzzle
             public int lineToRegionUses;
             public int regionToLineUses;
             public int squeezeUses;
-            public int subsetUses;
+            public int subsetLineToRegionUses;
+            public int subsetRegionToLineUses;
             public int trials;
             public int maxTrialDepth;
             public float estimatedSeconds;
@@ -83,7 +84,8 @@ namespace QueensPuzzle
                 lineToRegionUses = m.lineToRegionUses,
                 regionToLineUses = m.regionToLineUses,
                 squeezeUses = m.squeezeUses,
-                subsetUses = m.subsetUses,
+                subsetLineToRegionUses = m.subsetLineToRegionUses,
+                subsetRegionToLineUses = m.subsetRegionToLineUses,
                 trials = m.trials,
                 maxTrialDepth = m.maxTrialDepth,
             };
@@ -107,7 +109,8 @@ namespace QueensPuzzle
         {
             if (!solved) return "unsolved";
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
-            if (m.subsetUses > 0) return "subset";
+            if (m.subsetRegionToLineUses > 0) return "subset (region→line)";
+            if (m.subsetLineToRegionUses > 0) return "subset (line→region)";
             if (m.squeezeUses > 0) return "squeeze";
             if (m.regionToLineUses > 0) return "region→line";
             if (m.lineToRegionUses > 0) return "line→region";
@@ -164,7 +167,8 @@ namespace QueensPuzzle
             var pr = Propagate(s, t, ctx);
             // mental cost of following THIS hypothetical layer: how long the forced chain is,
             // with harder tricks counting more (you have no board to lean on)
-            int chain = t.placements + t.lineToRegionUses + 2 * t.regionToLineUses + 4 * t.squeezeUses + 6 * t.subsetUses;
+            int chain = t.placements + t.lineToRegionUses + 2 * t.regionToLineUses + 4 * t.squeezeUses
+                        + t.subsetWeight; // already weighted as (Base + k) per subset
             if (pr.status != PStatus.Stuck) return GuessBase + chain;       // reached the contradiction
             if (depth >= MaxProbe) return GuessBase + chain + 24;           // needs deeper nesting — cap (Expert)
 
@@ -213,9 +217,11 @@ namespace QueensPuzzle
                 s.SqueezeEliminations(m);
                 if (m.eliminations > before) { m.squeezeUses++; w = Math.Max(w, 4); continue; }
 
-                before = m.eliminations;
-                s.SubsetEliminations(m);
-                if (m.eliminations > before) { m.subsetUses++; w = Math.Max(w, 6); continue; }
+                int kL = s.SubsetLineToRegionEliminations(m); // k lines hold only k colours — weight 3+k
+                if (kL > 0) { m.subsetLineToRegionUses++; int wt = 3 + kL; m.subsetWeight += wt; w = Math.Max(w, wt); continue; }
+
+                int kR = s.SubsetRegionToLineEliminations(m); // k regions fill k lines — weight 4+k
+                if (kR > 0) { m.subsetRegionToLineUses++; int wt = 4 + kR; m.subsetWeight += wt; w = Math.Max(w, wt); continue; }
 
                 return new PResult { status = PStatus.Stuck, w = w };
             }
@@ -228,7 +234,8 @@ namespace QueensPuzzle
         class Metrics
         {
             public int cycles, placements, regionSingles, lineSingles, eliminations,
-                lineToRegionUses, regionToLineUses, squeezeUses, subsetUses, trials, maxTrialDepth;
+                lineToRegionUses, regionToLineUses, squeezeUses, subsetLineToRegionUses, subsetRegionToLineUses,
+                subsetWeight, trials, maxTrialDepth;
         }
 
         // ---- board state -------------------------------------------------------------
@@ -389,13 +396,22 @@ namespace QueensPuzzle
                 }
             }
 
-            public void SubsetEliminations(Metrics m)
+            // Each returns the size k of the subset that fired (0 if none) so the weight scales with k.
+            public int SubsetRegionToLineEliminations(Metrics m)
             {
-                SubsetDir(m, true);
-                SubsetDir(m, false);
+                int k = GeneralRegionToLine(m, true);
+                return k > 0 ? k : GeneralRegionToLine(m, false);
             }
 
-            void SubsetDir(Metrics m, bool rows)
+            public int SubsetLineToRegionEliminations(Metrics m)
+            {
+                int k = GeneralLineToRegion(m, true);
+                return k > 0 ? k : GeneralLineToRegion(m, false);
+            }
+
+            // k regions whose candidates span exactly k lines → those lines are theirs → clear other
+            // regions from them. Tries k = 2,3,… and returns the first (smallest) size that fires.
+            int GeneralRegionToLine(Metrics m, bool rows)
             {
                 int[] mask = new int[n];
                 var g = new List<int>();
@@ -404,38 +420,87 @@ namespace QueensPuzzle
                     if (regDone[reg]) continue;
                     int mk = 0;
                     for (int idx = 0; idx < cand.Length; idx++)
-                    {
-                        if (region[idx] != reg || !cand[idx] || queen[idx]) continue;
-                        mk |= 1 << (rows ? idx / n : idx % n);
-                    }
+                        if (region[idx] == reg && cand[idx] && !queen[idx]) mk |= 1 << (rows ? idx / n : idx % n);
                     if (mk != 0) { mask[reg] = mk; g.Add(reg); }
                 }
-
-                for (int a = 0; a < g.Count; a++)
-                    for (int b = a + 1; b < g.Count; b++)
+                int gc = g.Count;
+                var sel = new int[gc];
+                for (int k = 2; k < gc; k++)
+                {
+                    for (int i = 0; i < k; i++) sel[i] = i;
+                    do
                     {
-                        int u = mask[g[a]] | mask[g[b]];
-                        if (PopCount(u) == 2) EliminateOutside(m, rows, u, g[a], g[b], -1);
-                    }
-                for (int a = 0; a < g.Count; a++)
-                    for (int b = a + 1; b < g.Count; b++)
-                        for (int c = b + 1; c < g.Count; c++)
+                        int u = 0;
+                        for (int i = 0; i < k; i++) u |= mask[g[sel[i]]];
+                        if (PopCount(u) != k) continue;
+                        int before = m.eliminations;
+                        for (int idx = 0; idx < cand.Length; idx++)
                         {
-                            int u = mask[g[a]] | mask[g[b]] | mask[g[c]];
-                            if (PopCount(u) == 3) EliminateOutside(m, rows, u, g[a], g[b], g[c]);
+                            if (!cand[idx] || queen[idx]) continue;
+                            if ((u & (1 << (rows ? idx / n : idx % n))) == 0) continue;
+                            bool inSet = false;
+                            for (int i = 0; i < k; i++) if (region[idx] == g[sel[i]]) { inSet = true; break; }
+                            if (!inSet) Kill(idx, -1, m);
                         }
+                        if (m.eliminations > before) return k;
+                    } while (NextCombo(sel, k, gc));
+                }
+                return 0;
             }
 
-            void EliminateOutside(Metrics m, bool rows, int lineMask, int g1, int g2, int g3)
+            // k lines whose candidates use exactly k regions → those regions' queens are in those
+            // lines → clear those regions from every other line.
+            int GeneralLineToRegion(Metrics m, bool rows)
             {
-                for (int idx = 0; idx < cand.Length; idx++)
+                int[] rmask = new int[n];
+                var L = new List<int>();
+                for (int line = 0; line < n; line++)
                 {
-                    if (!cand[idx] || queen[idx]) continue;
-                    int rg = region[idx];
-                    if (rg == g1 || rg == g2 || (g3 >= 0 && rg == g3)) continue;
-                    int line = rows ? idx / n : idx % n;
-                    if ((lineMask & (1 << line)) != 0) Kill(idx, -1, m);
+                    if (rows ? rowDone[line] : colDone[line]) continue;
+                    int mk = 0;
+                    for (int idx = 0; idx < cand.Length; idx++)
+                    {
+                        if (!cand[idx] || queen[idx]) continue;
+                        if ((rows ? idx / n : idx % n) != line) continue;
+                        mk |= 1 << region[idx];
+                    }
+                    if (mk != 0) { rmask[line] = mk; L.Add(line); }
                 }
+                int lc = L.Count;
+                var sel = new int[lc];
+                for (int k = 2; k < lc; k++)
+                {
+                    for (int i = 0; i < k; i++) sel[i] = i;
+                    do
+                    {
+                        int u = 0;
+                        for (int i = 0; i < k; i++) u |= rmask[L[sel[i]]];
+                        if (PopCount(u) != k) continue;
+                        int before = m.eliminations;
+                        for (int idx = 0; idx < cand.Length; idx++)
+                        {
+                            if (!cand[idx] || queen[idx]) continue;
+                            if ((u & (1 << region[idx])) == 0) continue;
+                            int line = rows ? idx / n : idx % n;
+                            bool inLines = false;
+                            for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inLines = true; break; }
+                            if (!inLines) Kill(idx, -1, m);
+                        }
+                        if (m.eliminations > before) return k;
+                    } while (NextCombo(sel, k, lc));
+                }
+                return 0;
+            }
+
+            // advances sel[] to the next k-combination of [0..total); false when exhausted
+            static bool NextCombo(int[] sel, int k, int total)
+            {
+                int p = k - 1;
+                while (p >= 0 && sel[p] == total - k + p) p--;
+                if (p < 0) return false;
+                sel[p]++;
+                for (int i = p + 1; i < k; i++) sel[i] = sel[i - 1] + 1;
+                return true;
             }
 
             bool Touch(int a, int b)

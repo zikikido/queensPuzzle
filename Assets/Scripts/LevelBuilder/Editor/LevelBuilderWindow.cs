@@ -25,6 +25,9 @@ namespace QueensPuzzle.EditorTools
         Texture2D _queenTex;
         Vector2 _scroll;
 
+        bool _showImport;
+        string _importText = "";
+
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
         {
@@ -44,6 +47,7 @@ namespace QueensPuzzle.EditorTools
             HandleObjectPicker();
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
             DrawControls();
+            DrawImport();
             EditorGUILayout.Space(6);
             DrawBoard();
             EditorGUILayout.Space(6);
@@ -92,6 +96,24 @@ namespace QueensPuzzle.EditorTools
                 }
                 Repaint();
             }
+        }
+
+        // ---- import (build a specific board from its colours) -------------------------
+
+        void DrawImport()
+        {
+            EditorGUILayout.Space(4);
+            _showImport = EditorGUILayout.Foldout(_showImport, "Import from region grid", true);
+            if (!_showImport) return;
+
+            EditorGUILayout.LabelField(
+                "One row per line. Cells are space-separated (\"A A B\") or one char each (\"AAB\"). " +
+                "Any labels work — first-seen order assigns the colours. The queens are solved for you.",
+                EditorStyles.wordWrappedMiniLabel);
+
+            _importText = EditorGUILayout.TextArea(_importText, GUILayout.MinHeight(120));
+
+            if (GUILayout.Button("Import", GUILayout.Height(24))) Import();
         }
 
         // ---- board (shows the solution) ----------------------------------------------
@@ -157,7 +179,7 @@ namespace QueensPuzzle.EditorTools
                     EditorGUILayout.LabelField($"Score:   {rep.score}");
                     EditorGUILayout.LabelField($"Singles — region:  {rep.regionSingles}     line:  {rep.lineSingles}");
                     EditorGUILayout.LabelField($"Line→region:  {rep.lineToRegionUses}     Region→line:  {rep.regionToLineUses}");
-                    EditorGUILayout.LabelField($"Squeeze:  {rep.squeezeUses}     Subset:  {rep.subsetUses}");
+                    EditorGUILayout.LabelField($"Squeeze:  {rep.squeezeUses}     Subset L→R:  {rep.subsetLineToRegionUses}     Subset R→L:  {rep.subsetRegionToLineUses}");
                     EditorGUILayout.LabelField($"Trials:  {rep.trials}     Max depth:  {rep.maxTrialDepth}");
                     EditorGUILayout.LabelField($"Cycles:  {rep.cycles}     Placed:  {rep.placements}     Eliminated:  {rep.eliminations}");
                     EditorGUILayout.LabelField($"Estimated solve time:   ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
@@ -189,6 +211,16 @@ namespace QueensPuzzle.EditorTools
             }
             SetLevel(lvl);
             _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — {lvl.difficulty}, unique ✓";
+            Repaint();
+        }
+
+        void Import()
+        {
+            var lvl = LevelImporter.Import(_importText, out string error);
+            if (lvl == null) { _status = "Import failed — " + error; Repaint(); return; }
+
+            SetLevel(lvl);
+            _status = $"Imported {lvl.size}x{lvl.size} — {lvl.difficulty}, unique ✓. Press Save to keep it.";
             Repaint();
         }
 
