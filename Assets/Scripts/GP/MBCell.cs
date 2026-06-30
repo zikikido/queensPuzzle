@@ -23,6 +23,7 @@ namespace qp {
         public bool IsSolutionQueen { get; private set; }   // a queen belongs here in the solution
 
         GameObject _xGo, _queenGo, _wrongQueenGo;
+        SpriteRenderer _cellSprite;
 
         public Vector2 GetSize() {
             return (transform as RectTransform).sizeDelta;
@@ -32,7 +33,8 @@ namespace qp {
             X = xindex;
             Y = yindex;
             IsSolutionQueen = hasQueen;
-            transform.RecursiveFindChild<SpriteRenderer>("$CellSprite").color = SORegionsColors.ColorAt(clrindx);
+            _cellSprite = transform.RecursiveFindChild<SpriteRenderer>("$CellSprite");
+            _cellSprite.color = SORegionsColors.ColorAt(clrindx);
             _xGo = transform.RecursiveFindChild("$X").gameObject;
             _queenGo = transform.RecursiveFindChild("$Queen").gameObject;
             _wrongQueenGo = transform.RecursiveFindChild("$WrongQueen").gameObject;
@@ -44,6 +46,12 @@ namespace qp {
             _xGo.SetActive(type == ECellType.X);
             _queenGo.SetActive(type == ECellType.QUEEN);
             _wrongQueenGo.SetActive(type == ECellType.WRONG_QUEEN);
+        }
+
+        public void SetAlpha(float a) {
+            var c = _cellSprite.color;
+            c.a = a;
+            _cellSprite.color = c;
         }
     }
 }
