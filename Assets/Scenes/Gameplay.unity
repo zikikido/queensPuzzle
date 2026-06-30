@@ -694,6 +694,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _spacing: 0.16
   _margin: 0.35
+  _bloomPop: 0.35
+  _bloomStagger: 0.05
 --- !u!114 &1244334126
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1010,10 +1012,10 @@ MonoBehaviour:
   ListneresMethod: 0
   _minRatioSize:
     screenRatio: 0.45
-    TopNormal: 0.034861535
-    BottomNormal: 0.10314873
-    LeftNormal: 0.2118
-    RightNormal: 0.21513335
+    TopNormal: 0.03486169
+    BottomNormal: 0.103148945
+    LeftNormal: 0.03613637
+    RightNormal: 0.04356837
   _maxRatioSize:
     screenRatio: 0.75
     TopNormal: 0.034861535
