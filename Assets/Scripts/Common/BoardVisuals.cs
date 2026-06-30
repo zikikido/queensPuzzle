@@ -9,10 +9,16 @@ namespace QueensPuzzle
     /// </summary>
     public static class BoardVisuals
     {
-        /// <summary>Distinct pastel color for region <paramref name="i"/> of <paramref name="n"/>.</summary>
+        /// <summary>Colour for region <paramref name="i"/>, from the SORegionsColors palette
+        /// (Resources/SORegionsColors.asset). Falls back to a golden-ratio pastel if that asset is
+        /// missing. <paramref name="n"/> is unused, kept for call-site compatibility.</summary>
         public static Color RegionColor(int i, int n)
         {
-            float h = (i * 0.6180339887f + 0.12f) % 1f; // golden-ratio spacing => distinct hues
+            var palette = qp.SORegionsColors.Instance;
+            if (palette != null && palette.Colors != null && palette.Colors.Length > 0)
+                return qp.SORegionsColors.ColorAt(i);
+
+            float h = (i * 0.6180339887f + 0.12f) % 1f; // fallback: golden-ratio distinct hues
             return Color.HSVToRGB(h, 0.42f, 0.97f);
         }
 
