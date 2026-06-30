@@ -1,22 +1,10 @@
 fileFormatVersion: 2
-guid: fae248d87bb1d4d479816d570d2992b5
+guid: 7d770315d3fc58843ae800548dd1b46e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8141138615567997645
-    second: Paw-mark_0
-  - first:
-      213: 7951193119227383458
-    second: Paw-mark_1
-  - first:
-      213: 5346655261280161999
-    second: Paw-mark_2
-  - first:
-      213: -2529366773886263818
-    second: Paw-mark_3
-  - first:
-      213: 7312603196396180731
-    second: Paw-mark_4
+      213: -6288396786384660386
+    second: DogIcon 1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -58,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -138,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Paw-mark_0
+      name: DogIcon 1_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 31
-        width: 29
-        height: 35
+        x: 2
+        y: 9
+        width: 172
+        height: 185
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -153,96 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dca5520ff622bf070800000000000000
-      internalID: 8141138615567997645
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Paw-mark_1
-      rect:
-        serializedVersion: 2
-        x: 22
-        y: 56
-        width: 30
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 2ae0414c300585e60800000000000000
-      internalID: 7951193119227383458
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Paw-mark_2
-      rect:
-        serializedVersion: 2
-        x: 57
-        y: 56
-        width: 30
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: fc0d311e1a2233a40800000000000000
-      internalID: 5346655261280161999
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Paw-mark_3
-      rect:
-        serializedVersion: 2
-        x: 80
-        y: 31
-        width: 28
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 6fd55dff152e5ecd0800000000000000
-      internalID: -2529366773886263818
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Paw-mark_4
-      rect:
-        serializedVersion: 2
-        x: 19
-        y: 0
-        width: 70
-        height: 55
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: bf494900dd59b7560800000000000000
-      internalID: 7312603196396180731
+      spriteID: e5895dca0702bb8a0800000000000000
+      internalID: -6288396786384660386
       vertices: []
       indices: 
       edges: []
@@ -251,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -261,11 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Paw-mark_0: 8141138615567997645
-      Paw-mark_1: 7951193119227383458
-      Paw-mark_2: 5346655261280161999
-      Paw-mark_3: -2529366773886263818
-      Paw-mark_4: 7312603196396180731
+      DogIcon 1_0: -6288396786384660386
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
