@@ -20,6 +20,7 @@ namespace qp {
         public int X { get; private set; }            // column
         public int Y { get; private set; }            // row
         public ECellType State { get; private set; }
+        public bool IsSolutionQueen { get; private set; }   // a queen belongs here in the solution
 
         GameObject _xGo, _queenGo, _wrongQueenGo;
 
@@ -30,6 +31,7 @@ namespace qp {
         public void Init(int clrindx, int xindex, int yindex, bool hasQueen) {
             X = xindex;
             Y = yindex;
+            IsSolutionQueen = hasQueen;
             transform.RecursiveFindChild<SpriteRenderer>("$CellSprite").color = SORegionsColors.ColorAt(clrindx);
             _xGo = transform.RecursiveFindChild("$X").gameObject;
             _queenGo = transform.RecursiveFindChild("$Queen").gameObject;

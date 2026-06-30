@@ -138,7 +138,8 @@ namespace qp {
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
             if (doubleClick) {
                 var cell = HitTest(touch.WorldPoint);
-                if (cell != null) cell.MarkCell(MBCell.ECellType.QUEEN);
+                if (cell != null)
+                    cell.MarkCell(cell.IsSolutionQueen ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
             }
             _drag = DragMode.None;
         }
