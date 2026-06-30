@@ -3,6 +3,7 @@ using Core;
 using QueensPuzzle;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace qp {
     public class MBGameplay : MonoBehaviour, IMBTouchesListener {
@@ -30,7 +31,38 @@ namespace qp {
         bool _ready;                 // input gated until the bloom reveal finishes
 
         IEnumerator Start() {
+            WireBoostButtons();
             yield return BuildBoard();
+        }
+
+        // Collect every boost button under us and route its click to the boost for its type.
+        void WireBoostButtons() {
+            foreach (var boost in GetComponentsInChildren<MBBoostButton>(true)) {
+                var btn = boost.GetComponent<Button>();
+                if (btn == null) continue;
+                var type = boost.BoostType;
+                btn.onClick.AddListener(() => RunBoost(type));
+            }
+        }
+
+        void RunBoost(EBoostType type) {
+            switch (type) {
+                case EBoostType.QUEEN: OpenQueen(); break;
+                case EBoostType.X:     OpenX();     break;
+                case EBoostType.UNDO:  Undo();      break;
+            }
+        }
+
+        void OpenQueen() {
+            Debug.Log("[MBGameplay] Boost: OpenQueen (TODO)");
+        }
+
+        void OpenX() {
+            Debug.Log("[MBGameplay] Boost: OpenX (TODO)");
+        }
+
+        void Undo() {
+            Debug.Log("[MBGameplay] Boost: Undo (TODO)");
         }
 
         // Re-run while already in play mode (called by the Level Builder): clears the current
