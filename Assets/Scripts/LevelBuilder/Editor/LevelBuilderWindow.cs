@@ -94,8 +94,9 @@ namespace QueensPuzzle.EditorTools
                 {
                     if (GUILayout.Button("Save", GUILayout.Height(24))) SaveAsset();
                     if (GUILayout.Button("Recheck", GUILayout.Height(24))) Recheck();
-                    if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
                 }
+
+                if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
         }
 
@@ -456,18 +457,15 @@ namespace QueensPuzzle.EditorTools
 
         void Play()
         {
-            LevelData asset = EnsurePlayableAsset(_level);
-            if (asset == null) { _status = "Couldn't prepare a level asset to play."; return; }
+            const string scenePath = "Assets/Scenes/Gameplay.unity";
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
+            { _status = $"Scene not found: {scenePath}"; return; }
 
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
-            // Phase 1: spin up a fresh throwaway scene containing just the game — no scene file
-            // to locate or modify. It is discarded automatically when you stop playing.
-            EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-            new GameObject("QueensGame").AddComponent<QueensGame>().level = asset;
-
+            EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
             EditorApplication.isPlaying = true;
-            _status = $"Playing {asset.name} — press the editor Play button again to stop.";
+            _status = "Playing Gameplay scene.";
         }
 
         void SetLevel(LevelData lvl)
@@ -491,29 +489,6 @@ namespace QueensPuzzle.EditorTools
         }
 
         // ---- helpers -----------------------------------------------------------------
-
-        /// <summary>Returns a persisted asset for the level (so the running game can reference it).
-        /// Saved levels are used as-is; an unsaved working level is written to a temp asset.</summary>
-        LevelData EnsurePlayableAsset(LevelData lvl)
-        {
-            if (lvl == null) return null;
-            if (AssetDatabase.Contains(lvl)) return lvl;
-
-            EnsureLevelsFolder();
-            string tempPath = $"{LevelsFolder}/_Play.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<LevelData>(tempPath);
-            if (existing != null)
-            {
-                EditorUtility.CopySerialized(lvl, existing);
-                EditorUtility.SetDirty(existing);
-                AssetDatabase.SaveAssets();
-                return existing;
-            }
-            var copy = Instantiate(lvl);
-            AssetDatabase.CreateAsset(copy, tempPath);
-            AssetDatabase.SaveAssets();
-            return copy;
-        }
 
         static void EnsureLevelsFolder()
         {
