@@ -1,4 +1,5 @@
 using Common;
+using System.Collections;
 using UnityEngine;
 
 namespace qp {
@@ -24,6 +25,10 @@ namespace qp {
 
         GameObject _xGo, _queenGo, _wrongQueenGo;
         SpriteRenderer _cellSprite;
+        Coroutine _markAnim;
+
+        const float PopDur = 0.15f;     // mark "stamp" in
+        const float ShrinkDur = 0.1f;   // mark shrink out (erase)
 
         public Vector2 GetSize() {
             return (transform as RectTransform).sizeDelta;
@@ -38,14 +43,70 @@ namespace qp {
             _xGo = transform.RecursiveFindChild("$X").gameObject;
             _queenGo = transform.RecursiveFindChild("$Queen").gameObject;
             _wrongQueenGo = transform.RecursiveFindChild("$WrongQueen").gameObject;
-            MarkCell(ECellType.EMPTY);
+
+            _xGo.SetActive(false);
+            _queenGo.SetActive(false);
+            _wrongQueenGo.SetActive(false);
+            State = ECellType.EMPTY;
         }
 
         public void MarkCell(ECellType type) {
+            var prev = State;
             State = type;
-            _xGo.SetActive(type == ECellType.X);
-            _queenGo.SetActive(type == ECellType.QUEEN);
-            _wrongQueenGo.SetActive(type == ECellType.WRONG_QUEEN);
+
+            if (_markAnim != null) { StopCoroutine(_markAnim); _markAnim = null; }
+
+            var target = OverlayFor(type);
+            if (target == null) {
+                // -> EMPTY: shrink out whatever mark is showing
+                var showing = OverlayFor(prev);
+                if (showing != null) _markAnim = StartCoroutine(ShrinkOut(showing));
+            } else {
+                // show the new mark (hide the others) and stamp it in
+                _xGo.SetActive(target == _xGo);
+                _queenGo.SetActive(target == _queenGo);
+                _wrongQueenGo.SetActive(target == _wrongQueenGo);
+                _markAnim = StartCoroutine(PopIn(target.transform));
+            }
+        }
+
+        GameObject OverlayFor(ECellType type) {
+            switch (type) {
+                case ECellType.X:           return _xGo;
+                case ECellType.QUEEN:       return _queenGo;
+                case ECellType.WRONG_QUEEN: return _wrongQueenGo;
+                default:                    return null;   // EMPTY
+            }
+        }
+
+        IEnumerator PopIn(Transform t) {
+            t.localScale = Vector3.zero;
+            for (float e = 0f; e < PopDur; e += Time.unscaledDeltaTime) {
+                t.localScale = Vector3.one * EaseOutBack(e / PopDur);
+                yield return null;
+            }
+            t.localScale = Vector3.one;
+            _markAnim = null;
+        }
+
+        IEnumerator ShrinkOut(GameObject go) {
+            var t = go.transform;
+            float start = Mathf.Max(t.localScale.x, 0.0001f);
+            for (float e = 0f; e < ShrinkDur; e += Time.unscaledDeltaTime) {
+                t.localScale = Vector3.one * Mathf.Lerp(start, 0f, e / ShrinkDur);
+                yield return null;
+            }
+            go.SetActive(false);
+            t.localScale = Vector3.one;   // reset for the next time it's shown
+            _markAnim = null;
+        }
+
+        // overshoot ease (matches the board bloom): 0 -> past 1 -> settles to 1
+        static float EaseOutBack(float x) {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float p = x - 1f;
+            return 1f + c3 * p * p * p + c1 * p * p;
         }
 
         public void SetAlpha(float a) {

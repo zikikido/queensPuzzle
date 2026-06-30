@@ -98,7 +98,10 @@ namespace qp {
             transform.GetComponent<RTResizeInvoker>().ReporteSize();
 
             // start listening for touches (needs an MBTouches on a scene root)
-            if (_touches == null) _touches = this.RegisterToRoot();
+            if (_touches == null) {
+                _touches = this.RegisterToRoot();
+                if (_touches != null) _touches.DoubleClickDelteTime = 0.3f;   // default 1.5s is far too long
+            }
 
             // wait for UI to refresh our layout
             yield return new WaitForEndOfFrame();
