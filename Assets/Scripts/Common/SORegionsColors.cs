@@ -11,7 +11,7 @@ namespace qp
     {
         public Color[] Colors;
 
-        const string ResourcePath = "SORegionsColors"; // Assets/Resources/SORegionsColors.asset
+        const string ResourcePath = "Reskin/SORegionsColors";
 
         static SORegionsColors _instance;
 

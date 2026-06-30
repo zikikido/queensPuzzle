@@ -1,5 +1,6 @@
 using Common;
 using Core;
+using QueensPuzzle;
 using System.Collections;
 using UnityEngine;
 
@@ -10,10 +11,18 @@ namespace qp {
         }
 
         IEnumerator Start() {
-            // load the level 
+            // load the board 
+            ////////////////
 
-            // load the board into $Board
+            // load the level
+            LevelData level;
+
             var board = transform.RecursiveFindChild("$Board");
+            var cell = MBCell.LoadFromResource();
+
+            // load the cells into $Board
+
+
 
             // update the borad size accroding to board
 

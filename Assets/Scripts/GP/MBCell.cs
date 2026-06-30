@@ -3,12 +3,16 @@ using UnityEngine;
 
 namespace qp {
     public class MBCell : MonoBehaviour {
-        
-        public void Init(int clrindx, int xindex, int yindex) {
 
+        const string ResourcePath = "Reskin/GP/Cell";
 
+        public static MBCell LoadFromResource() {
+            return Resources.Load<MBCell>(ResourcePath);
+        }
 
-            //transform.RecursiveFindChild<SpriteRenderer>("$CellSprite").color = clr;
+        public void Init(int clrindx, int xindex, int yindex, bool hasQueen) {
+
+            transform.RecursiveFindChild<SpriteRenderer>("$CellSprite").color = SORegionsColors.ColorAt(clrindx);
         }
     }
 }
