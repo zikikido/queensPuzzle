@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 279135980143855120, guid: d437f9090b5644442af654f571300695, type: 3}
+      propertyPath: BoostType
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5578795322279050859, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Name
       value: BoostUndo
@@ -74,7 +78,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -250
+      value: 250
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_AnchoredPosition.y

@@ -1539,25 +1539,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 948147880}
     m_Modifications:
-    - target: {fileID: 2781025139628663211, guid: d437f9090b5644442af654f571300695, type: 3}
-      propertyPath: m_Name
-      value: BG
-      objectReference: {fileID: 0}
-    - target: {fileID: 2784715498137018645, guid: d437f9090b5644442af654f571300695, type: 3}
-      propertyPath: m_Name
-      value: Icon
-      objectReference: {fileID: 0}
     - target: {fileID: 5578795322279050859, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Name
       value: BoostQueen
-      objectReference: {fileID: 0}
-    - target: {fileID: 5626381948796087801, guid: d437f9090b5644442af654f571300695, type: 3}
-      propertyPath: m_Name
-      value: Text
-      objectReference: {fileID: 0}
-    - target: {fileID: 5924976216851984565, guid: d437f9090b5644442af654f571300695, type: 3}
-      propertyPath: m_Name
-      value: Amount
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Pivot.x
