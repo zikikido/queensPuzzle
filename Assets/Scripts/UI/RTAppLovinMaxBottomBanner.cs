@@ -3,13 +3,13 @@ using UnityEngine;
 namespace Common
 {
     /// <summary>
-    /// Drives the HEIGHT of a bottom banner placeholder to match an AppLovin MAX banner. Like every
-    /// other LayoutsPlus component it only sets size — you anchor the RectTransform to the bottom of
-    /// the safe area in the scene (stretch width, anchored bottom). Setting anchors/position in code
-    /// is what flipped it in the Device Simulator; letting the scene anchor it does not.
+    /// A bottom-banner placeholder: full width (p_w) × banner height, pinned to the bottom of the safe
+    /// area in world space — the same technique RTSafeArea uses, so its X / Y / size all track the
+    /// parent and re-fit whenever the screen changes. Drop a placeholder Image on it to preview where
+    /// the real banner will sit.
     ///
-    /// Setup: child of the safe-area invoker (RTAutoSafeArea / RTSafeArea), anchors = bottom-stretch
-    /// (anchorMin (0,0), anchorMax (1,0), pivot (0.5,0)). Drop a placeholder Image on it to preview.
+    /// Setup: just make it a child of the safe-area invoker (RTAutoSafeArea / RTSafeArea). It positions
+    /// itself — no scene anchoring needed.
     ///
     /// Decoupled from the MAX SDK on purpose: the ads/MAX manager pushes the real banner height via
     /// <see cref="SetBannerHeightPixels"/> (e.g. from the OnAdLoaded callback) and calls
@@ -33,11 +33,12 @@ namespace Common
             base.Awake();
             if (RT == null) RT = GetComponent<RectTransform>(); // safety if not serialized yet
 
-            // We ONLY drive the height — anchoring/position is set in the scene (like every other
-            // LayoutsPlus component), which is why those never flip in the Device Simulator.
+            RT.localScale = Vector3.one;
+            RT.pivot = Vector3.zero; // bottom-left, like RTSafeArea — we set position in world space
+
             var dt = new DrivenRectTransformTracker();
             dt.Clear();
-            dt.Add(this, RT, DrivenTransformProperties.SizeDeltaY);
+            dt.Add(this, RT, DrivenTransformProperties.All);
         }
 
         /// <summary>Push the loaded banner's height (in screen pixels) from your ads/MAX manager —
@@ -51,21 +52,28 @@ namespace Common
         /// <summary>Banner removed (no fill / interstitial showing) — release the reserved strip.</summary>
         public void HideBanner() => SetBannerHeightPixels(0f);
 
-        // Drives ONLY the height: convert the banner pixels to world units (camera, no SafeArea) and
-        // set sizeDelta.y. Position is up to the scene — anchor this RectTransform to the bottom of the
-        // safe area (stretch width, anchored bottom) the same way you anchor any LayoutsPlus element.
+        // Full width (p_w) × banner height, pinned to the parent's bottom-left in world space — the
+        // same technique RTSafeArea uses, so X, Y, width and on-resize all track the parent. Recomputed
+        // from the parent's real corners each report. No SafeArea here.
         protected override void Resize(float p_w, float p_h)
         {
             if (RT == null) RT = GetComponent<RectTransform>();
             var cam = Camera.main;
-            if (cam == null) return;
+            var parent = transform.parent as RectTransform;
+            if (cam == null || parent == null) return;
 
             float bannerPx = _hasRuntimeHeight ? _bannerPx : EstimatedBannerPixels();
             float z = transform.position.z + -(cam.transform.position.z);
             float bannerH = Mathf.Abs(cam.ScreenToWorldPoint(new Vector3(0f, bannerPx, z)).y
                                     - cam.ScreenToWorldPoint(new Vector3(0f, 0f, z)).y);
 
+            var c = new Vector3[4];
+            parent.GetWorldCorners(c); // [0] = world bottom-left of the safe-area parent
+
+            RT.anchorMin = new Vector2(0.5f, 0.5f);
+            RT.anchorMax = new Vector2(0.5f, 0.5f);
             RT.sizeDelta = new Vector2(p_w, bannerH);
+            RT.position = c[0]; // pivot (0,0) → banner bottom-left at the parent's bottom-left
 
             ReporteSize();
         }
