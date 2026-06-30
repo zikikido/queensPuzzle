@@ -10,6 +10,10 @@ namespace qp {
             return Resources.Load<MBCell>(ResourcePath);
         }
 
+        public Vector2 GetSize() {
+            return (transform as RectTransform).sizeDelta;
+        }
+
         public void Init(int clrindx, int xindex, int yindex, bool hasQueen) {
 
             transform.RecursiveFindChild<SpriteRenderer>("$CellSprite").color = SORegionsColors.ColorAt(clrindx);

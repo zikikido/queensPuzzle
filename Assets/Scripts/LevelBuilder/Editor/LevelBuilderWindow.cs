@@ -23,7 +23,7 @@ namespace QueensPuzzle.EditorTools
         int _requestedN = 8;
         Target _target = Target.Medium;
 
-        LevelData _level;
+        [SerializeField] LevelData _level;
         DifficultyRater.Report? _report;
         string _status = "Pick the parameters and press Generate.";
         Texture2D _queenTex;
@@ -43,7 +43,20 @@ namespace QueensPuzzle.EditorTools
             w.minSize = new Vector2(440, 680);
         }
 
-        void OnEnable() => _queenTex = BoardVisuals.CreateQueenTexture(64);
+        void OnEnable()
+        {
+            _queenTex = BoardVisuals.CreateQueenTexture(64);
+
+            // a domain reload (entering/leaving play) clears _level — restore the level we last
+            // played from its persisted asset so it doesn't vanish from the builder
+            if (_level == null)
+            {
+                string guid = SessionState.GetString(qp.MBGameplay.PlayLevelGuidKey, "");
+                string path = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
+                var lvl = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<LevelData>(path);
+                if (lvl != null) SetLevel(lvl);
+            }
+        }
 
         void OnDisable()
         {
@@ -461,11 +474,52 @@ namespace QueensPuzzle.EditorTools
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
             { _status = $"Scene not found: {scenePath}"; return; }
 
+            if (_level == null) { _status = "Generate or load a level first."; return; }
+
+            // hand the working level to MBGameplay across the play-mode reload (via a stable asset GUID)
+            SessionState.SetString(qp.MBGameplay.PlayLevelGuidKey, PersistPlayLevel());
+
+            // already running? just rebuild the live board with the new level — no scene reload
+            if (EditorApplication.isPlaying)
+            {
+                var gp = Object.FindAnyObjectByType<qp.MBGameplay>();
+                if (gp != null) { gp.Replay(); _status = "Replayed with current level."; }
+                else _status = "No MBGameplay in the running scene.";
+                return;
+            }
+
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
             EditorApplication.isPlaying = true;
             _status = "Playing Gameplay scene.";
+        }
+
+        // Already a saved asset? use it. Otherwise write the working level to a throwaway asset
+        // (overwritten in place each play, so its GUID stays stable). Returns the asset GUID.
+        string PersistPlayLevel()
+        {
+            if (AssetDatabase.Contains(_level))
+                return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(_level));
+
+            EnsureLevelsFolder();
+            const string playName = "__Play";
+            const string playPath = LevelsFolder + "/" + playName + ".asset";
+            var existing = AssetDatabase.LoadAssetAtPath<LevelData>(playPath);
+            if (existing == null)
+            {
+                var copy = Instantiate(_level);
+                copy.name = playName; // match the filename, else Unity warns on CreateAsset
+                AssetDatabase.CreateAsset(copy, playPath);
+            }
+            else
+            {
+                EditorUtility.CopySerialized(_level, existing); // overwrite in place, keep the GUID
+                existing.name = playName; // CopySerialized also copies m_Name — restore the filename
+                EditorUtility.SetDirty(existing);
+            }
+            AssetDatabase.SaveAssets();
+            return AssetDatabase.AssetPathToGUID(playPath);
         }
 
         void SetLevel(LevelData lvl)
