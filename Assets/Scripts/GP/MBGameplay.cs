@@ -32,6 +32,7 @@ namespace qp {
         Coroutine _shake;            // board shake on a wrong queen
         float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
         const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
+        MBCell _lastTapCell, _prevTapCell;  // last two tapped cells — a double-click must be the same cell
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -188,6 +189,8 @@ namespace qp {
         public void TouchDown(MBTouches.TouchData touch, bool firstTime) {
             if (!_ready || !firstTime) return;
             var cell = HitTest(touch.WorldPoint);
+            _prevTapCell = _lastTapCell;   // remember the last two taps so we can require same-cell double-clicks
+            _lastTapCell = cell;
             if (cell == null) { _drag = DragMode.None; return; }
 
             switch (cell.State) {
@@ -224,19 +227,19 @@ namespace qp {
 
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
             if (!_ready) return;
-            if (doubleClick) {
-                var cell = HitTest(touch.WorldPoint);
-                if (cell != null) {
-                    bool correct = cell.IsSolutionQueen;
-                    cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
-                    if (correct) {
-                        if (IsSolved()) Win();
-                        else Haptics.Light();
-                    } else {
-                        Haptics.Wrong();
-                        if (_shake != null) StopCoroutine(_shake);
-                        _shake = StartCoroutine(ShakeBoard());
-                    }
+            // a real double-click means both taps landed on the SAME cell — otherwise it's just two quick taps
+            if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell) {
+                _prevTapCell = null;   // consume it so a third quick tap can't re-trigger
+                var cell = _lastTapCell;
+                bool correct = cell.IsSolutionQueen;
+                cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+                if (correct) {
+                    if (IsSolved()) Win();
+                    else Haptics.Light();
+                } else {
+                    Haptics.Wrong();
+                    if (_shake != null) StopCoroutine(_shake);
+                    _shake = StartCoroutine(ShakeBoard());
                 }
             }
             _drag = DragMode.None;
