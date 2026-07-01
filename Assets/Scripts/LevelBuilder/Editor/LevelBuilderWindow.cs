@@ -56,7 +56,7 @@ namespace QueensPuzzle.EditorTools
             // played from its persisted asset so it doesn't vanish from the builder
             if (_level == null)
             {
-                string guid = SessionState.GetString(qp.MBGameplay.PlayLevelGuidKey, "");
+                string guid = SessionState.GetString(qp.LevelLoader.PlayLevelGuidKey, "");
                 string path = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
                 var lvl = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<LevelData>(path);
                 if (lvl != null) SetLevel(lvl);
@@ -148,6 +148,9 @@ namespace QueensPuzzle.EditorTools
 
                 if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
+
+            if (GUILayout.Button("Export levels → Resources", GUILayout.Height(22)))
+                LevelResourcesExporter.Export();
         }
 
         void HandleObjectPicker()
@@ -587,7 +590,7 @@ namespace QueensPuzzle.EditorTools
             if (_level == null) { _status = "Generate or load a level first."; return; }
 
             // hand the working level to MBGameplay across the play-mode reload (via a stable asset GUID)
-            SessionState.SetString(qp.MBGameplay.PlayLevelGuidKey, PersistPlayLevel());
+            SessionState.SetString(qp.LevelLoader.PlayLevelGuidKey, PersistPlayLevel());
 
             // already running? just rebuild the live board with the new level — no scene reload
             if (EditorApplication.isPlaying)

@@ -767,7 +767,7 @@ GameObject:
   - component: {fileID: 1664969131}
   - component: {fileID: 1664969130}
   m_Layer: 0
-  m_Name: Text (TMP)
+  m_Name: $Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -901,6 +901,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1728165583}
+  - component: {fileID: 1728165587}
   - component: {fileID: 1728165584}
   - component: {fileID: 1728165586}
   - component: {fileID: 1728165585}
@@ -989,6 +990,18 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!114 &1728165587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1728165582}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22efe00e41b0b3f4493ee565308a1d5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1916992850
 GameObject:
   m_ObjectHideFlags: 0
@@ -1093,6 +1106,7 @@ GameObject:
   - component: {fileID: 2116900489}
   - component: {fileID: 2116900488}
   - component: {fileID: 2116900487}
+  - component: {fileID: 2116900490}
   m_Layer: 0
   m_Name: $LvlButton
   m_TagString: Untagged
@@ -1202,6 +1216,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2116900485}
   m_CullTransparentMesh: 1
+--- !u!114 &2116900490
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2116900485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6587d32789c279c4ca0efc53cc9246e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
