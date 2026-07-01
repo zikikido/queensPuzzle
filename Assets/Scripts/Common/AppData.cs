@@ -17,6 +17,9 @@ namespace qp {
                 { EBoostType.QUEEN, new PlayerPrefsHelper.IntHolder("qp_boost_QUEEN", 3) },
             };
 
+        // Current level index (0-based) for the lobby / progression.
+        public static readonly PlayerPrefsHelper.IntHolder LevelIdx = new PlayerPrefsHelper.IntHolder("qp_level_idx", 0);
+
 #if UNITY_EDITOR
         // Editor-only guard: catch an enum value that was added but not given a Boosts entry.
         [UnityEditor.InitializeOnLoadMethod]

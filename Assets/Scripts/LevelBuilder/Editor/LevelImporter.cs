@@ -68,22 +68,31 @@ namespace QueensPuzzle.EditorTools
                 return null;
             }
 
+            return BuildFromRegions(n, region, out error);
+        }
+
+        /// <summary>Solves and rates a region grid (region ids 0..n-1). Returns null with a reason
+        /// if it isn't a valid, unique puzzle. Shared by text-import and the board painter.</summary>
+        public static LevelData BuildFromRegions(int n, int[] region, out string error)
+        {
+            error = null;
+            if (n < LevelGenerator.MinSize || n > LevelGenerator.MaxSize)
+            { error = $"Board size must be {LevelGenerator.MinSize}..{LevelGenerator.MaxSize}."; return null; }
+
+            var used = new HashSet<int>(region);
+            if (used.Count != n)
+            { error = $"Uses {used.Count} colours — an {n}x{n} board needs exactly {n}."; return null; }
+
             if (!QueensSolver.TrySolve(n, region, out int[] cols, out bool unique))
-            {
-                error = "No valid solution — this colour layout can't be solved.";
-                return null;
-            }
+            { error = "No valid solution — this colour layout can't be solved."; return null; }
             if (!unique)
-            {
-                error = "Not a unique puzzle — this layout has more than one solution.";
-                return null;
-            }
+            { error = "Not a unique puzzle — this layout has more than one solution."; return null; }
 
             var data = ScriptableObject.CreateInstance<LevelData>();
             data.size = n;
             data.regions = region;
             data.solutionColumns = cols;
-            data.seed = 0; // imported, not generated from a seed
+            data.seed = 0; // authored, not generated from a seed
 
             var rating = DifficultyRater.Rate(n, region, cols);
             data.difficulty = rating.difficulty;

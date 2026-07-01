@@ -40,6 +40,12 @@ namespace QueensPuzzle.EditorTools
         bool _showSteps = true;    // collapse the solve-steps list
         int _selectedStep = -1;    // -1 = show the full solution; otherwise the board state at that step
 
+        // paint-regions editor: draw a colour layout on the board, then Build solves it into a level
+        bool _paintMode;
+        int[] _paintRegions;
+        int _paintN;
+        int _paintColor;
+
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
         {
@@ -56,7 +62,7 @@ namespace QueensPuzzle.EditorTools
             // played from its persisted asset so it doesn't vanish from the builder
             if (_level == null)
             {
-                string guid = SessionState.GetString(qp.MBGameplay.PlayLevelGuidKey, "");
+                string guid = SessionState.GetString(qp.LevelLoader.PlayLevelGuidKey, "");
                 string path = string.IsNullOrEmpty(guid) ? null : AssetDatabase.GUIDToAssetPath(guid);
                 var lvl = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<LevelData>(path);
                 if (lvl != null) SetLevel(lvl);
@@ -95,8 +101,10 @@ namespace QueensPuzzle.EditorTools
             _showSolution = EditorGUILayout.Foldout(_showSolution, "Solution (board)", true);
             if (_showSolution)
             {
+                _paintMode = EditorGUILayout.ToggleLeft("Paint regions (pick a colour, drag on the board)", _paintMode);
                 DrawBoard();
-                DrawLegend();
+                if (_paintMode) DrawPaintTools();
+                else DrawLegend();
             }
             DrawSteps();
             EditorGUILayout.Space(6);
@@ -148,6 +156,9 @@ namespace QueensPuzzle.EditorTools
 
                 if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
+
+            if (GUILayout.Button("Export levels → Resources", GUILayout.Height(22)))
+                LevelResourcesExporter.Export();
         }
 
         void HandleObjectPicker()
@@ -182,6 +193,92 @@ namespace QueensPuzzle.EditorTools
             if (GUILayout.Button("Import", GUILayout.Height(24))) Import();
         }
 
+        // ---- paint regions (draw a colour layout on the board, then Build solves it) ----------
+
+        void EnsurePaintGrid()
+        {
+            if (_paintRegions != null) return;
+            if (_level != null) SeedPaintFromLevel();
+            else NewPaintGrid(_requestedN);
+        }
+
+        void SeedPaintFromLevel()
+        {
+            _paintN = _level.size;
+            _paintRegions = (int[])_level.regions.Clone();
+            _paintColor = Mathf.Clamp(_paintColor, 0, _paintN - 1);
+        }
+
+        void NewPaintGrid(int n)
+        {
+            _paintN = Mathf.Clamp(n, LevelGenerator.MinSize, LevelGenerator.MaxSize);
+            _paintRegions = new int[_paintN * _paintN];   // all one colour to start
+            _paintColor = 0;
+        }
+
+        void DrawPaintBoard(Rect board, float avail)
+        {
+            EnsurePaintGrid();
+            int n = _paintN;
+            float cs = avail / n;
+            EditorGUI.DrawRect(board, new Color(0.42f, 0.42f, 0.48f)); // grid lines
+
+            for (int r = 0; r < n; r++)
+                for (int c = 0; c < n; c++)
+                {
+                    var cell = new Rect(board.x + c * cs + 1, board.y + r * cs + 1, cs - 2, cs - 2);
+                    EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(_paintRegions[r * n + c], n));
+                }
+
+            var e = Event.current;
+            if ((e.type == EventType.MouseDown || e.type == EventType.MouseDrag) && e.button == 0 && board.Contains(e.mousePosition))
+            {
+                int c = Mathf.Clamp((int)((e.mousePosition.x - board.x) / cs), 0, n - 1);
+                int r = Mathf.Clamp((int)((e.mousePosition.y - board.y) / cs), 0, n - 1);
+                _paintRegions[r * n + c] = _paintColor;
+                e.Use();
+                Repaint();
+            }
+        }
+
+        void DrawPaintTools()
+        {
+            EnsurePaintGrid();
+            int n = _paintN;
+
+            // colour palette — click to pick the active region
+            var pr = GUILayoutUtility.GetRect(0, 28, GUILayout.ExpandWidth(true));
+            float sw = Mathf.Min(30f, pr.width / n);
+            for (int i = 0; i < n; i++)
+            {
+                var cell = new Rect(pr.x + i * sw, pr.y, sw - 2, 26);
+                EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(i, n));
+                if (i == _paintColor) DrawOutline(cell, Color.black, 2);
+                if (Event.current.type == EventType.MouseDown && cell.Contains(Event.current.mousePosition))
+                { _paintColor = i; Event.current.Use(); Repaint(); }
+            }
+
+            EditorGUILayout.LabelField($"{n}x{n} — use exactly {n} colours, then Build.", EditorStyles.miniLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button($"Blank {_requestedN}x{_requestedN}", GUILayout.Height(22))) NewPaintGrid(_requestedN);
+                using (new EditorGUI.DisabledScope(_level == null))
+                    if (GUILayout.Button("From current", GUILayout.Height(22))) SeedPaintFromLevel();
+                if (GUILayout.Button("Build", GUILayout.Height(24))) BuildFromPaint();
+            }
+        }
+
+        void BuildFromPaint()
+        {
+            var data = LevelImporter.BuildFromRegions(_paintN, (int[])_paintRegions.Clone(), out string error);
+            if (data == null) { _status = "Build failed — " + error; Repaint(); return; }
+            SetLevel(data);       // SetLevel clears _paintRegions so it re-seeds from the built level next time
+            _paintMode = false;   // show the solved board
+            _status = $"Built {data.size}x{data.size} — {data.difficulty}, unique ✓. Press Save to keep it.";
+            Repaint();
+        }
+
         // ---- board ---------------------------------------------------------------------
         // Shows the full solution by default; when a solve step is selected, shows the board
         // state up to and including that step (queens placed, X's marked) with the step's own
@@ -192,6 +289,8 @@ namespace QueensPuzzle.EditorTools
             float avail = Mathf.Clamp(position.width - 36f, 200f, 440f);
             Rect board = GUILayoutUtility.GetRect(avail, avail, GUILayout.ExpandWidth(false));
             board.x = (position.width - avail) * 0.5f;
+
+            if (_paintMode) { DrawPaintBoard(board, avail); return; }
 
             if (_level == null)
             {
@@ -509,6 +608,9 @@ namespace QueensPuzzle.EditorTools
                 return;
             }
             SetLevel(lvl);
+            // mirror the generate controls to the loaded level, so a following Generate matches it
+            _requestedN = Mathf.Clamp(lvl.size, LevelGenerator.MinSize, LevelGenerator.MaxSize);
+            _target = System.Enum.TryParse(lvl.difficulty.ToString(), out Target t) ? t : Target.Any;
             EditorGUIUtility.PingObject(lvl);
             _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — measured {_report?.difficulty}.";
             Repaint();
@@ -584,7 +686,7 @@ namespace QueensPuzzle.EditorTools
             if (_level == null) { _status = "Generate or load a level first."; return; }
 
             // hand the working level to MBGameplay across the play-mode reload (via a stable asset GUID)
-            SessionState.SetString(qp.MBGameplay.PlayLevelGuidKey, PersistPlayLevel());
+            SessionState.SetString(qp.LevelLoader.PlayLevelGuidKey, PersistPlayLevel());
 
             // already running? just rebuild the live board with the new level — no scene reload
             if (EditorApplication.isPlaying)
@@ -635,6 +737,7 @@ namespace QueensPuzzle.EditorTools
             _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
             _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
             _importText = lvl != null ? LevelToGridText(lvl) : "";
+            _paintRegions = null;   // re-seed the paint grid from the new level on next use
             _selectedStep = -1;
         }
 

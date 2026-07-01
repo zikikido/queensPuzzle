@@ -9,10 +9,6 @@ using UnityEngine.UI;
 namespace qp {
     public class MBGameplay : MonoBehaviour, IMBTouchesListener {
 
-
-        // SessionState key the Level Builder writes so it can hand its level to play mode (editor only).
-        public const string PlayLevelGuidKey = "qp.playLevelGuid";
-
         [Header("Board layout (fractions of a cell)")]
         [SerializeField] float _spacing = 0.08f;   // gap between cells
         [SerializeField] float _margin = 0.25f;    // border between the grid and the board edge
@@ -117,19 +113,9 @@ namespace qp {
 
         IEnumerator BuildBoard() {
 
-            LevelData level = null;
-#if UNITY_EDITOR
+            LevelData level = LevelLoader.LoadLevel();
             if (level == null) {
-                string guid = UnityEditor.SessionState.GetString(PlayLevelGuidKey, "");
-                if (!string.IsNullOrEmpty(guid)) {
-                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-                    if (!string.IsNullOrEmpty(path))
-                        level = UnityEditor.AssetDatabase.LoadAssetAtPath<LevelData>(path);
-                }
-            }
-#endif
-            if (level == null) {
-                Debug.LogError("[MBGameplay] No level assigned — drag a LevelData onto MBGameplay.");
+                Debug.LogError("[MBGameplay] No level to load.");
                 yield break;
             }
 
