@@ -245,13 +245,50 @@ namespace QueensPuzzle
                     return true;
                 }
 
-                // No forced move — one best guess: the solution's queen in the most-constrained row
-                // (fewest options). Shown as a single cell, flagged as a guess.
+                // No forced move — guess in the most-constrained row: rule out an option that
+                // leads to a contradiction (X it). The last one left then falls out as a single.
+                if (TryTrialElim(out int cell, out int options))
+                {
+                    hint = new Hint { kind = HintKind.Guess, cells = new[] { cell },
+                        note = $"guessing among the {options} options here — a queen on this one leads to a contradiction, so X it" };
+                    return true;
+                }
+
+                // the contradiction needs deeper look-ahead than one step — fall back to the queen
                 int row = MostConstrainedRow();
                 if (row < 0 || sol == null) return false;
                 hint = new Hint { kind = HintKind.Guess, cells = new[] { row * n + sol[row] },
-                    note = $"no certain move — best guess ({RowCands(row).Count} options in this row)" };
+                    note = "no certain move — best guess: a queen here" };
                 return true;
+            }
+
+            // No basic deduction — in the most-constrained row, find an option that can be ruled out:
+            // assume a queen there; if it propagates to a contradiction it must be an X.
+            bool TryTrialElim(out int cell, out int options)
+            {
+                cell = -1; options = 0;
+                int row = MostConstrainedRow();
+                if (row < 0) return false;
+                var cols = RowCands(row);
+                options = cols.Count;
+                foreach (int col in cols)
+                {
+                    var clone = Clone();
+                    clone.Place(row, col);
+                    if (clone.RunsToContradiction()) { cell = row * n + col; return true; }
+                }
+                return false;
+            }
+
+            // Propagate deductions until solved / stuck / contradiction. True = hit an empty unit.
+            bool RunsToContradiction()
+            {
+                while (true)
+                {
+                    if (HasEmptyUnit()) return true;
+                    if (placed == n) return false;
+                    if (!NextStep(out _)) return false;   // stuck at this depth — don't nest here
+                }
             }
 
             TraceMark[] XMarks(int[] cells)
