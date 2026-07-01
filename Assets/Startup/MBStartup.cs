@@ -8,6 +8,7 @@ namespace qp {
         static void Boot() {
             QualitySettings.vSyncCount = 0;      // so vSync doesn't override the target
             Application.targetFrameRate = 60;    // run at 60 FPS
+            Puzzby.Haptics.Enabled = AppData.Haptics.Value;   // sync the haptics toggle
         }
     }
 }

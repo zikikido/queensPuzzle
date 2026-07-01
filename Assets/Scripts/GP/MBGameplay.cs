@@ -1,5 +1,6 @@
 using Common;
 using Core;
+using Puzzby;
 using QueensPuzzle;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,6 +30,8 @@ namespace qp {
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
         Coroutine _shake;            // board shake on a wrong queen
+        float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
+        const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -191,10 +194,12 @@ namespace qp {
                 case MBCell.ECellType.EMPTY:
                     _drag = DragMode.PaintX;
                     cell.MarkCell(MBCell.ECellType.X);
+                    Tick();
                     break;
                 case MBCell.ECellType.X:
                     _drag = DragMode.Erase;
                     cell.MarkCell(MBCell.ECellType.EMPTY);
+                    Tick();
                     break;
                 default:
                     _drag = DragMode.None;   // don't paint over queens
@@ -207,10 +212,14 @@ namespace qp {
             var cell = HitTest(touch.WorldPoint);
             if (cell == null) return;
 
-            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY)
+            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY) {
                 cell.MarkCell(MBCell.ECellType.X);
-            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X)
+                DragTick();
+            }
+            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X) {
                 cell.MarkCell(MBCell.ECellType.EMPTY);
+                DragTick();
+            }
         }
 
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
@@ -220,8 +229,14 @@ namespace qp {
                 if (cell != null) {
                     bool correct = cell.IsSolutionQueen;
                     cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
-                    if (correct) { if (IsSolved()) Win(); }
-                    else { if (_shake != null) StopCoroutine(_shake); _shake = StartCoroutine(ShakeBoard()); }
+                    if (correct) {
+                        if (IsSolved()) Win();
+                        else Haptics.Light();
+                    } else {
+                        Haptics.Wrong();
+                        if (_shake != null) StopCoroutine(_shake);
+                        _shake = StartCoroutine(ShakeBoard());
+                    }
                 }
             }
             _drag = DragMode.None;
@@ -241,6 +256,7 @@ namespace qp {
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             if (_winPopup != null) _winPopup.gameObject.SetActive(true);
+            Haptics.Win();               // last, so nothing here can block the popup
         }
 
         // Quick decaying horizontal shake of the board — feedback for a wrong queen.
@@ -255,6 +271,9 @@ namespace qp {
             }
             _board.localPosition = Vector3.zero;
         }
+
+        void Tick() { _lastTick = Time.unscaledTime; Haptics.Selection(); }
+        void DragTick() { if (Time.unscaledTime - _lastTick >= TickInterval) Tick(); }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.
         // Returns null for taps that land in the gaps/margin or off the board.

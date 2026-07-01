@@ -1,0 +1,7 @@
+{
+  "name": "com.puzzby.haptics",
+  "version": "1.0.0",
+  "displayName": "Haptics",
+  "description": "Lightweight cross-platform haptics — iOS UIFeedbackGenerator, Android VibrationEffect. No-op in the editor.",
+  "unity": "2021.3"
+}
