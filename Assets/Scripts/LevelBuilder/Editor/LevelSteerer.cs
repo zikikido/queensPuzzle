@@ -33,7 +33,6 @@ namespace QueensPuzzle
             var rating = DifficultyRater.Rate(n, region, sol);
             data.difficulty = rating.difficulty;
             data.estimatedSolveSeconds = rating.estimatedSeconds;
-            data.solveTrace = SolveTracer.Build(n, region, sol);
             return data;
         }
     }

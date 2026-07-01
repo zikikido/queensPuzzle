@@ -25,6 +25,7 @@ namespace QueensPuzzle.EditorTools
 
         [SerializeField] LevelData _level;
         DifficultyRater.Report? _report;
+        TraceNode[] _trace;   // built on Generate / Load / Recheck for display — not stored on the asset
         string _status = "Pick the parameters and press Generate.";
         Texture2D _queenTex;
         Vector2 _scroll;
@@ -168,7 +169,7 @@ namespace QueensPuzzle.EditorTools
             float cs = avail / n;
             EditorGUI.DrawRect(board, new Color(0.42f, 0.42f, 0.48f)); // grid lines
 
-            var trace = _level.solveTrace;
+            var trace = _trace;
             bool stepMode = _selectedStep >= 0 && trace != null && _selectedStep < trace.Length;
             bool[] queens = null, xMark = null, attacked = null; HashSet<int> highlight = null;
             if (stepMode) ComputeState(_selectedStep, out queens, out xMark, out attacked, out highlight);
@@ -241,7 +242,7 @@ namespace QueensPuzzle.EditorTools
             xMark = new bool[n * n];
             attacked = new bool[n * n];
             highlight = new HashSet<int>();
-            var trace = _level.solveTrace;
+            var trace = _trace;
 
             var path = new List<int>();
             for (int cur = step; cur >= 0 && cur < trace.Length; cur = trace[cur].parent) path.Add(cur);
@@ -303,7 +304,7 @@ namespace QueensPuzzle.EditorTools
             _showSteps = EditorGUILayout.Foldout(_showSteps, "Solve steps — click a step to see the board there", true);
             if (!_showSteps) return;
 
-            var trace = _level.solveTrace;
+            var trace = _trace;
             if (trace == null || trace.Length == 0)
             {
                 EditorGUILayout.HelpBox("No solve trace on this level. Press Recheck to (re)build it.", MessageType.Info);
@@ -527,6 +528,7 @@ namespace QueensPuzzle.EditorTools
         {
             _level = lvl;
             _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
+            _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
             _selectedStep = -1;
         }
 
@@ -536,10 +538,10 @@ namespace QueensPuzzle.EditorTools
             _report = rep;
             _level.difficulty = rep.difficulty;
             _level.estimatedSolveSeconds = rep.estimatedSeconds;
-            _level.solveTrace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
+            _trace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _selectedStep = -1;
-            _status = $"Rechecked: {rep.difficulty} ({rep.technique}) — {_level.solveTrace.Length} solve steps.";
+            _status = $"Rechecked: {rep.difficulty} ({rep.technique}) — {_trace.Length} solve steps.";
             Repaint();
         }
 

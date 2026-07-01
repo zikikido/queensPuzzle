@@ -44,7 +44,6 @@ namespace QueensPuzzle
                 var rating = DifficultyRater.Rate(n, region, cols); // auto-rate on generate
                 data.difficulty = rating.difficulty;
                 data.estimatedSolveSeconds = rating.estimatedSeconds;
-                data.solveTrace = SolveTracer.Build(n, region, cols);
                 return data;
             }
             return null;
