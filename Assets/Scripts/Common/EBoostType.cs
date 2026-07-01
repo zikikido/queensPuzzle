@@ -2,7 +2,7 @@ namespace qp {
 
     public enum EBoostType {
         UNDO,
-        X,
+        HINT,
         QUEEN
     }
 }

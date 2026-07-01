@@ -48,7 +48,7 @@ namespace qp {
         void RunBoost(EBoostType type) {
             switch (type) {
                 case EBoostType.QUEEN: OpenQueen(); break;
-                case EBoostType.X:     OpenX();     break;
+                case EBoostType.HINT:     OpenX();     break;
                 case EBoostType.UNDO:  Undo();      break;
             }
         }
