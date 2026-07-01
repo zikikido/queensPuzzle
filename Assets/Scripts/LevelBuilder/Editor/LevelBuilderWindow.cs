@@ -509,6 +509,9 @@ namespace QueensPuzzle.EditorTools
                 return;
             }
             SetLevel(lvl);
+            // mirror the generate controls to the loaded level, so a following Generate matches it
+            _requestedN = Mathf.Clamp(lvl.size, LevelGenerator.MinSize, LevelGenerator.MaxSize);
+            _target = System.Enum.TryParse(lvl.difficulty.ToString(), out Target t) ? t : Target.Any;
             EditorGUIUtility.PingObject(lvl);
             _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — measured {_report?.difficulty}.";
             Repaint();
