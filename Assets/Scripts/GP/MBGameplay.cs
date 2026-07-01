@@ -27,6 +27,7 @@ namespace qp {
         DragMode _drag;
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
+        MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -215,10 +216,29 @@ namespace qp {
             if (!_ready) return;
             if (doubleClick) {
                 var cell = HitTest(touch.WorldPoint);
-                if (cell != null)
-                    cell.MarkCell(cell.IsSolutionQueen ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+                if (cell != null) {
+                    bool correct = cell.IsSolutionQueen;
+                    cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+                    if (correct && IsSolved()) Win();
+                }
             }
             _drag = DragMode.None;
+        }
+
+        // Solved when every solution queen is on the board (queens only land on solution cells).
+        bool IsSolved() {
+            int placed = 0;
+            foreach (var cell in _cells)
+                if (cell.State == MBCell.ECellType.QUEEN) placed++;
+            return placed == _n;
+        }
+
+        void Win() {
+            _ready = false;              // stop input
+            AppData.LevelIdx.Value++;    // advance progress (persisted)
+            if (_winPopup == null)
+                _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
+            if (_winPopup != null) _winPopup.gameObject.SetActive(true);
         }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.
