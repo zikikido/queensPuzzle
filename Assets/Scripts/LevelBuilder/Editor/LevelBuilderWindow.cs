@@ -22,6 +22,9 @@ namespace QueensPuzzle.EditorTools
 
         int _requestedN = 8;
         Target _target = Target.Medium;
+        int _levelNumber = 1;   // slot for numbered Load / Save (Assets/Levels/{n}.asset)
+        int _levelCount;        // consecutive saved levels from 1 (cached; refreshed on focus / save)
+        bool _levelGap;         // a numbered level exists past that run → a hole in the sequence (error)
 
         [SerializeField] LevelData _level;
         DifficultyRater.Report? _report;
@@ -47,6 +50,7 @@ namespace QueensPuzzle.EditorTools
         void OnEnable()
         {
             _queenTex = BoardVisuals.CreateQueenTexture(64);
+            RefreshMaxLevel();
 
             // a domain reload (entering/leaving play) clears _level — restore the level we last
             // played from its persisted asset so it doesn't vanish from the builder
@@ -57,6 +61,23 @@ namespace QueensPuzzle.EditorTools
                 var lvl = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<LevelData>(path);
                 if (lvl != null) SetLevel(lvl);
             }
+        }
+
+        void OnFocus() { RefreshMaxLevel(); Repaint(); }   // catches deletes/renames done outside Unity
+
+        void RefreshMaxLevel()
+        {
+            var present = new HashSet<int>();
+            int max = 0;
+            if (System.IO.Directory.Exists(LevelsFolder))
+                foreach (var f in System.IO.Directory.GetFiles(LevelsFolder, "*.asset"))
+                    if (int.TryParse(System.IO.Path.GetFileNameWithoutExtension(f), out int k))
+                    { present.Add(k); if (k > max) max = k; }
+
+            int count = 0;
+            while (present.Contains(count + 1)) count++;   // consecutive run from 1
+            _levelCount = count;
+            _levelGap = max > count;                       // a level sits past the gap → broken sequence
         }
 
         void OnDisable()
@@ -101,12 +122,27 @@ namespace QueensPuzzle.EditorTools
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Load", GUILayout.Height(24)))
-                    EditorGUIUtility.ShowObjectPicker<LevelData>(_level, false, "", LoadPickerId);
+                _levelNumber = Mathf.Max(1, EditorGUILayout.IntField("Level number", _levelNumber));
+                GUILayout.Label($"of {_levelCount} saved", EditorStyles.miniLabel, GUILayout.Width(90));
+                if (_levelGap)
+                {
+                    var prev = GUI.color; GUI.color = new Color(1f, 0.5f, 0.4f);
+                    GUILayout.Label($"⚠ level {_levelCount + 1} missing", EditorStyles.miniBoldLabel);
+                    GUI.color = prev;
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("<", GUILayout.Height(24), GUILayout.Width(30)))
+                { _levelNumber = Mathf.Max(1, _levelNumber - 1); LoadNumber(); }
+                if (GUILayout.Button("Load", GUILayout.Height(24))) LoadNumber();
+                if (GUILayout.Button(">", GUILayout.Height(24), GUILayout.Width(30)))
+                { _levelNumber++; LoadNumber(); }
 
                 using (new EditorGUI.DisabledScope(_level == null))
                 {
-                    if (GUILayout.Button("Save", GUILayout.Height(24))) SaveAsset();
+                    if (GUILayout.Button("Save", GUILayout.Height(24))) SaveNumber();
                     if (GUILayout.Button("Recheck", GUILayout.Height(24))) Recheck();
                 }
 
@@ -458,16 +494,85 @@ namespace QueensPuzzle.EditorTools
             Repaint();
         }
 
-        void SaveAsset()
+        // ---- numbered load / save (Assets/Levels/{n}.asset) --------------------------
+
+        string LevelPath(int n) => $"{LevelsFolder}/{n}.asset";
+
+        void LoadNumber()
         {
+            var lvl = AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(_levelNumber));
+            if (lvl == null)
+            {
+                _status = $"No level {_levelNumber} in {LevelsFolder}.";
+                EditorUtility.DisplayDialog("Load failed", $"There's no level {_levelNumber} in {LevelsFolder}.", "OK");
+                Repaint();
+                return;
+            }
+            SetLevel(lvl);
+            EditorGUIUtility.PingObject(lvl);
+            _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — measured {_report?.difficulty}.";
+            Repaint();
+        }
+
+        void SaveNumber()
+        {
+            if (_level == null) return;
             EnsureLevelsFolder();
-            var copy = Instantiate(_level); // keep the working level independent of the asset
-            string path = AssetDatabase.GenerateUniqueAssetPath(
-                $"{LevelsFolder}/Level_{_level.size}x{_level.size}.asset");
-            AssetDatabase.CreateAsset(copy, path);
+            int n = _levelNumber;
+
+            if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(n)) != null)
+            {
+                // returns 0 = Override, 1 = Cancel, 2 = Push
+                int choice = EditorUtility.DisplayDialogComplex(
+                    $"Level {n} already exists",
+                    $"Save to slot {n}?\n\n• Override replaces it.\n• Push inserts here and shifts {n} and up one slot higher.",
+                    "Override", "Cancel", "Push");
+                if (choice == 1) { _status = "Save cancelled."; return; }
+                if (choice == 2) PushFrom(n);
+            }
+
+            WriteLevel(LevelPath(n), n);
+            RefreshMaxLevel();
+            _status = $"Saved level {n}.";
+        }
+
+        // Free slot {from}: rename every existing level {k} >= from up to {k+1}, top-down so nothing collides.
+        void PushFrom(int from)
+        {
+            for (int k = HighestLevelNumber(); k >= from; k--)
+            {
+                if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(k)) == null) continue;
+                AssetDatabase.RenameAsset(LevelPath(k), (k + 1).ToString());
+            }
+        }
+
+        int HighestLevelNumber()
+        {
+            if (!System.IO.Directory.Exists(LevelsFolder)) return 0;
+            int max = 0;
+            foreach (var f in System.IO.Directory.GetFiles(LevelsFolder, "*.asset"))
+                if (int.TryParse(System.IO.Path.GetFileNameWithoutExtension(f), out int k) && k > max) max = k;
+            return max;
+        }
+
+        // Create at path, or overwrite in place; keep the asset's name matched to its number.
+        void WriteLevel(string path, int n)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<LevelData>(path);
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(_level, existing);
+                existing.name = n.ToString();
+                EditorUtility.SetDirty(existing);
+            }
+            else
+            {
+                var copy = Instantiate(_level);
+                copy.name = n.ToString();
+                AssetDatabase.CreateAsset(copy, path);
+            }
             AssetDatabase.SaveAssets();
-            EditorGUIUtility.PingObject(copy);
-            _status = $"Saved {path}";
+            EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<LevelData>(path));
         }
 
         void Play()
@@ -529,7 +634,22 @@ namespace QueensPuzzle.EditorTools
             _level = lvl;
             _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
             _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
+            _importText = lvl != null ? LevelToGridText(lvl) : "";
             _selectedStep = -1;
+        }
+
+        // The level's regions as a grid of letters (A, B, …), one row per line — the Import format.
+        static string LevelToGridText(LevelData lvl)
+        {
+            int n = lvl.size;
+            var rows = new string[n];
+            for (int r = 0; r < n; r++)
+            {
+                var cells = new string[n];
+                for (int c = 0; c < n; c++) cells[c] = ((char)('A' + lvl.RegionAt(r, c))).ToString();
+                rows[r] = string.Join(" ", cells);   // space-separated: "A A B"
+            }
+            return string.Join("\n", rows);
         }
 
         void Recheck()
