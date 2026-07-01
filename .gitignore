@@ -51,5 +51,4 @@ Assets/Levels/_Play.asset
 Assets/Levels/_Play.asset.meta
 
 # QueensPuzzle: generated level assets (reproducible from their stored seed)
-Assets/Levels/*.asset
-Assets/Levels/*.asset.meta
+Assets/Levels/__Play*

@@ -24,14 +24,35 @@ namespace QueensPuzzle
             return board.Nodes.ToArray();
         }
 
-        class Board
+        /// <summary>
+        /// The single cheapest next deduction from the player's current, mistake-free board — the
+        /// same tricks the trace uses, tried cheapest-first, but just one step (no trials, no nodes).
+        /// Seed the player's placed queens and X'd cells (both must be solution-consistent).
+        /// Returns false when the next step would need a guess or a harder technique.
+        /// </summary>
+        public static bool TryHint(int n, int[] region, int[] solution,
+                                   IReadOnlyList<int> queenCells, IReadOnlyList<int> xCells, out Hint hint)
+        {
+            var board = new Board(n, region, solution, new List<TraceNode>());
+            if (queenCells != null) foreach (int idx in queenCells) board.SeedQueen(idx);
+            if (xCells != null) foreach (int idx in xCells) board.KnownX(idx);
+            return board.TryHint(out hint);
+        }
+
+        public class Board
         {
             readonly int n;
             readonly int[] region, sol;
             bool[] cand, queen, rowDone, colDone, regDone;
             int placed;
+            int _k;                     // size of the last subset/fish that fired (for weighting)
             public readonly List<TraceNode> Nodes;
             readonly List<int> _elim = new List<int>();
+
+            public int N => n;
+            public bool Solved => placed == n;
+
+            public Board(int n, int[] region) : this(n, region, null, null) { }
 
             public Board(int n, int[] region, int[] sol, List<TraceNode> nodes)
             {
@@ -41,7 +62,7 @@ namespace QueensPuzzle
                 queen = new bool[n * n]; rowDone = new bool[n]; colDone = new bool[n]; regDone = new bool[n];
             }
 
-            Board Clone()
+            public Board Clone()
             {
                 var b = new Board(n, region, sol, Nodes);
                 b.cand = (bool[])cand.Clone(); b.queen = (bool[])queen.Clone();
@@ -78,34 +99,12 @@ namespace QueensPuzzle
                     if (HasEmptyUnit()) return Outcome.DeadEnd;
                     if (placed == n) return Outcome.Solved;
 
-                    int idx = RegionSingle();
-                    if (idx >= 0)
+                    if (NextStep(out var step))
                     {
-                        int r = idx / n, c = idx % n;
-                        cur = Add(cur, NodeKind.Placement, SolveTechnique.RegionSingle, Outcome.Continues,
-                            QueenAt(idx), $"region {Lr(region[idx])} is down to one cell → place its queen");
-                        Place(r, c); continue;
+                        var marks = step.kind == NodeKind.Placement ? QueenAt(step.cells[0]) : XMarks(step.cells);
+                        cur = Add(cur, step.kind, step.tech, Outcome.Continues, marks, step.note);
+                        continue;
                     }
-                    idx = LineSingle(out bool isRow, out int line);
-                    if (idx >= 0)
-                    {
-                        int r = idx / n, c = idx % n;
-                        cur = Add(cur, NodeKind.Placement, SolveTechnique.LineSingle, Outcome.Continues,
-                            QueenAt(idx), $"{(isRow ? "row" : "column")} {line} is down to one cell → place its queen");
-                        Place(r, c); continue;
-                    }
-                    if (TryLineToRegion(out string note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.LineToRegion, Outcome.Continues, ElimMarks(), note); continue; }
-                    if (TryRegionToLine(out note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.RegionToLine, Outcome.Continues, ElimMarks(), note); continue; }
-                    if (TrySqueeze(out note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.Squeeze, Outcome.Continues, ElimMarks(), note); continue; }
-                    if (TrySubsetLineToRegion(out note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.SubsetLineToRegion, Outcome.Continues, ElimMarks(), note); continue; }
-                    if (TrySubsetRegionToLine(out note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.SubsetRegionToLine, Outcome.Continues, ElimMarks(), note); continue; }
-                    if (TryFish(out note))
-                    { cur = Add(cur, NodeKind.Elimination, SolveTechnique.Fish, Outcome.Continues, ElimMarks(), note); continue; }
 
                     // stuck → trial
                     if (depth >= MaxDepth)
@@ -137,30 +136,146 @@ namespace QueensPuzzle
                 }
             }
 
+            // ---- one shared deduction step: the trace, the score and the hint all go through here ----
+
+            public struct DeductionStep { public NodeKind kind; public SolveTechnique tech; public int k; public int[] cells; public string note; }
+
+            public void SeedQueen(int idx) { Place(idx / n, idx % n); }
+            public void KnownX(int idx) { if (!queen[idx]) cand[idx] = false; }
+
+            // The cheapest applicable deduction, applied to the board. False = stuck (would need a guess).
+            public bool NextStep(out DeductionStep step)
+            {
+                step = default;
+
+                if (TryQueenElim(out string qnote))
+                {
+                    step = new DeductionStep { kind = NodeKind.Elimination, tech = SolveTechnique.QueenScope, cells = _elim.ToArray(), note = qnote };
+                    return true;
+                }
+
+                int idx = RegionSingle();
+                if (idx >= 0)
+                {
+                    Place(idx / n, idx % n);
+                    step = new DeductionStep { kind = NodeKind.Placement, tech = SolveTechnique.RegionSingle, cells = new[] { idx },
+                        note = $"region {Lr(region[idx])} is down to one cell → place its queen" };
+                    return true;
+                }
+
+                idx = LineSingle(out bool isRow, out int line);
+                if (idx >= 0)
+                {
+                    Place(idx / n, idx % n);
+                    step = new DeductionStep { kind = NodeKind.Placement, tech = SolveTechnique.LineSingle, cells = new[] { idx },
+                        note = $"{(isRow ? "row" : "column")} {line} is down to one cell → place its queen" };
+                    return true;
+                }
+
+                string note;
+                if (TryLineToRegion(out note)) return Elimed(SolveTechnique.LineToRegion, 0, note, out step);
+                if (TryRegionToLine(out note)) return Elimed(SolveTechnique.RegionToLine, 0, note, out step);
+                if (TrySqueeze(out note)) return Elimed(SolveTechnique.Squeeze, 0, note, out step);
+                if (TrySubsetLineToRegion(out note)) return Elimed(SolveTechnique.SubsetLineToRegion, _k, note, out step);
+                if (TrySubsetRegionToLine(out note)) return Elimed(SolveTechnique.SubsetRegionToLine, _k, note, out step);
+                if (TryFish(out note)) return Elimed(SolveTechnique.Fish, _k, note, out step);
+
+                return false;
+            }
+
+            bool Elimed(SolveTechnique tech, int k, string note, out DeductionStep step)
+            { step = new DeductionStep { kind = NodeKind.Elimination, tech = tech, k = k, cells = _elim.ToArray(), note = note }; return true; }
+
+            // A placed queen's eliminations, split into three separate hints: its row/column,
+            // then its region, then the 8 cells it touches.
+            bool TryQueenElim(out string note)
+            {
+                _elim.Clear();
+                for (int idx = 0; idx < cand.Length; idx++)
+                {
+                    if (!C(idx)) continue;
+                    if (rowDone[idx / n] || colDone[idx % n]) Elim(idx);
+                }
+                if (_elim.Count > 0) { note = "a queen rules out the rest of its row and column"; return true; }
+
+                _elim.Clear();
+                for (int idx = 0; idx < cand.Length; idx++)
+                {
+                    if (!C(idx)) continue;
+                    if (regDone[region[idx]]) Elim(idx);
+                }
+                if (_elim.Count > 0) { note = "a queen rules out the rest of its region"; return true; }
+
+                _elim.Clear();
+                for (int idx = 0; idx < cand.Length; idx++)
+                {
+                    if (!C(idx)) continue;
+                    if (AdjacentToQueen(idx / n, idx % n)) Elim(idx);
+                }
+                if (_elim.Count > 0) { note = "a queen rules out the cells touching it"; return true; }
+
+                note = null; return false;
+            }
+
+            bool AdjacentToQueen(int r, int c)
+            {
+                for (int dr = -1; dr <= 1; dr++)
+                    for (int dc = -1; dc <= 1; dc++)
+                    {
+                        if (dr == 0 && dc == 0) continue;
+                        int nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < n && nc >= 0 && nc < n && queen[nr * n + nc]) return true;
+                    }
+                return false;
+            }
+
+            // Hint = one shared NextStep from the seeded, mistake-free board.
+            public bool TryHint(out Hint hint)
+            {
+                hint = default;
+                if (placed == n || HasEmptyUnit()) return false;
+
+                if (NextStep(out var step))
+                {
+                    hint = new Hint {
+                        kind = step.kind == NodeKind.Placement ? HintKind.PlaceQueen : HintKind.Eliminate,
+                        cells = step.cells,   // one deduction step (may touch several cells)
+                        note = step.note
+                    };
+                    return true;
+                }
+
+                // No forced move — one best guess: the solution's queen in the most-constrained row
+                // (fewest options). Shown as a single cell, flagged as a guess.
+                int row = MostConstrainedRow();
+                if (row < 0 || sol == null) return false;
+                hint = new Hint { kind = HintKind.Guess, cells = new[] { row * n + sol[row] },
+                    note = $"no certain move — best guess ({RowCands(row).Count} options in this row)" };
+                return true;
+            }
+
+            TraceMark[] XMarks(int[] cells)
+            {
+                var a = new TraceMark[cells.Length];
+                for (int i = 0; i < cells.Length; i++) a[i] = new TraceMark { cell = cells[i], mark = CellMark.X };
+                return a;
+            }
+
             // ---- placement & rules ----
 
-            void Place(int r, int c)
+            public void Place(int r, int c)
             {
                 int i = r * n + c;
                 if (queen[i]) return;
                 queen[i] = true; cand[i] = true; placed++;
-                int g = region[i];
-                rowDone[r] = true; colDone[c] = true; regDone[g] = true;
-                for (int cc = 0; cc < n; cc++) Kill(r * n + cc, i);
-                for (int rr = 0; rr < n; rr++) Kill(rr * n + c, i);
-                for (int k = 0; k < cand.Length; k++) if (region[k] == g) Kill(k, i);
-                for (int dr = -1; dr <= 1; dr++)
-                    for (int dc = -1; dc <= 1; dc++)
-                    {
-                        int nr = r + dr, nc = c + dc;
-                        if (nr >= 0 && nr < n && nc >= 0 && nc < n) Kill(nr * n + nc, i);
-                    }
+                rowDone[r] = true; colDone[c] = true; regDone[region[i]] = true;
+                // the queen's eliminations (row/column/region/neighbours) are surfaced as an explicit
+                // step by NextStep (SolveTechnique.QueenScope), not applied silently here.
             }
 
-            void Kill(int idx, int keep) { if (idx != keep && cand[idx] && !queen[idx]) cand[idx] = false; }
             void Elim(int idx) { if (cand[idx] && !queen[idx]) { cand[idx] = false; _elim.Add(idx); } }
 
-            bool HasEmptyUnit()
+            public bool HasEmptyUnit()
             {
                 for (int r = 0; r < n; r++) if (!rowDone[r] && RowCount(r) == 0) return true;
                 for (int c = 0; c < n; c++) if (!colDone[c] && ColCount(c) == 0) return true;
@@ -299,6 +414,7 @@ namespace QueensPuzzle
                         if (_elim.Count > 0)
                         {
                             var regs = new List<int>(); for (int i = 0; i < k; i++) regs.Add(g[sel[i]]);
+                            _k = k;
                             note = $"colours {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other colour fits there, clear them out";
                             return true;
                         }
@@ -341,6 +457,7 @@ namespace QueensPuzzle
                         if (_elim.Count > 0)
                         {
                             var lines = new List<int>(); for (int i = 0; i < k; i++) lines.Add(L[sel[i]]);
+                            _k = k;
                             note = $"{what} {Lines(lines)} hold only colours {Letters(u)} → those colours are confined here, clear them everywhere else";
                             return true;
                         }
@@ -394,6 +511,7 @@ namespace QueensPuzzle
                         if (_elim.Count > 0)
                         {
                             var set = new List<int>(); for (int i = 0; i < k; i++) set.Add(L[sel[i]]);
+                            _k = k;
                             string lw = rows ? "rows" : "columns", pw = rows ? "columns" : "rows";
                             note = $"{lw} {Lines(set)} are confined to {pw} {Lines(u)} → those {pw} are theirs, clear them everywhere else";
                             return true;
@@ -423,7 +541,7 @@ namespace QueensPuzzle
             List<int> RowCells(int r) { var l = new List<int>(); for (int c = 0; c < n; c++) if (C(r * n + c)) l.Add(r * n + c); return l; }
             List<int> ColCells(int c) { var l = new List<int>(); for (int r = 0; r < n; r++) if (C(r * n + c)) l.Add(r * n + c); return l; }
             public List<int> RowCands(int r) { var l = new List<int>(); for (int c = 0; c < n; c++) if (C(r * n + c)) l.Add(c); return l; } // columns, not indices
-            int MostConstrainedRow() { int best = -1, bk = int.MaxValue; for (int r = 0; r < n; r++) { if (rowDone[r]) continue; int k = RowCount(r); if (k > 1 && k < bk) { bk = k; best = r; } } return best; }
+            public int MostConstrainedRow() { int best = -1, bk = int.MaxValue; for (int r = 0; r < n; r++) { if (rowDone[r]) continue; int k = RowCount(r); if (k > 1 && k < bk) { bk = k; best = r; } } return best; }
             bool AllSameRow(List<int> cells, out int row) { row = cells[0] / n; foreach (int i in cells) if (i / n != row) return false; return true; }
             bool AllSameCol(List<int> cells, out int col) { col = cells[0] % n; foreach (int i in cells) if (i % n != col) return false; return true; }
             bool AllSameRegion(List<int> cells, out int g) { g = region[cells[0]]; foreach (int i in cells) if (region[i] != g) return false; return true; }

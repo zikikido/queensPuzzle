@@ -2,6 +2,7 @@ using Common;
 using Core;
 using QueensPuzzle;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,6 +24,7 @@ namespace qp {
         enum DragMode { None, PaintX, Erase }
 
         MBCell[,] _cells;            // [row, col]
+        LevelData _level;            // the level currently on the board (for hints)
         RectTransform _board;
         int _n;
         float _step, _cellSize;
@@ -48,7 +50,7 @@ namespace qp {
         void RunBoost(EBoostType type) {
             switch (type) {
                 case EBoostType.QUEEN: OpenQueen(); break;
-                case EBoostType.HINT:     OpenX();     break;
+                case EBoostType.HINT:  OpenHint();  break;
                 case EBoostType.UNDO:  Undo();      break;
             }
         }
@@ -57,12 +59,53 @@ namespace qp {
             Debug.Log("[MBGameplay] Boost: OpenQueen (TODO)");
         }
 
-        void OpenX() {
-            Debug.Log("[MBGameplay] Boost: OpenX (TODO)");
-        }
-
         void Undo() {
             Debug.Log("[MBGameplay] Boost: Undo (TODO)");
+        }
+
+        // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
+        void OpenHint() {
+            if (!_ready || _cells == null || _level == null) return;
+
+            // Gather the board for the solver:
+            //   QUEEN                        → a placed queen
+            //   WRONG_QUEEN                  → a non-solution cell, so a real X
+            //   X not on a solution cell     → a real X
+            //   X on a solution cell         → a "wrong X" (unsure): treated as EMPTY, so it
+            //                                  doesn't corrupt the deduction or spoil the queen.
+            var queens = new List<int>();
+            var xs = new List<int>();
+            foreach (var cell in _cells) {
+                int idx = cell.Y * _n + cell.X;
+                if (cell.State == MBCell.ECellType.QUEEN) queens.Add(idx);
+                else if (cell.State == MBCell.ECellType.WRONG_QUEEN) xs.Add(idx);
+                else if (cell.State == MBCell.ECellType.X && !cell.IsSolutionQueen) xs.Add(idx);
+            }
+
+            // 1) the next real deduction
+            if (SolveTracer.TryHint(_n, _level.regions, _level.solutionColumns, queens, xs, out var hint)) {
+                PresentHint(hint);
+                return;
+            }
+
+            // 2) last resort — a wrong X is hiding a forced queen (strong spoiler, only when stuck)
+            foreach (var cell in _cells)
+                if (cell.State == MBCell.ECellType.X && cell.IsSolutionQueen) {
+                    PresentHint(new Hint { kind = HintKind.WrongX, cells = new[] { cell.Y * _n + cell.X },
+                                           note = "a queen belongs here — clear this X" });
+                    return;
+                }
+
+            Debug.Log("[MBGameplay] Hint: no simple next step (would need a guess).");
+        }
+
+        void PresentHint(Hint hint) {
+            Debug.Log($"[MBGameplay] Hint ({hint.kind}): {hint.note}");
+            if (hint.cells == null) return;
+            foreach (int idx in hint.cells) {
+                int r = idx / _n, c = idx % _n;
+                if (r >= 0 && r < _n && c >= 0 && c < _n) _cells[r, c].Pulse();
+            }
         }
 
         // Re-run while already in play mode (called by the Level Builder): clears the current
@@ -91,6 +134,7 @@ namespace qp {
             }
 
             _ready = false;   // no input while we (re)build and bloom
+            _level = level;   // keep for hints
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
             var cellPrefab = MBCell.LoadFromResource();

@@ -26,6 +26,7 @@ namespace qp {
         GameObject _xGo, _queenGo, _wrongQueenGo;
         SpriteRenderer _cellSprite;
         Coroutine _markAnim;
+        Coroutine _pulseAnim;
 
         const float PopDur = 0.15f;     // mark "stamp" in
         const float ShrinkDur = 0.1f;   // mark shrink out (erase)
@@ -113,6 +114,25 @@ namespace qp {
             var c = _cellSprite.color;
             c.a = a;
             _cellSprite.color = c;
+        }
+
+        // Draw the eye to this cell (used by the hint boost): a couple of decaying scale bumps.
+        public void Pulse() {
+            if (_pulseAnim != null) StopCoroutine(_pulseAnim);
+            _pulseAnim = StartCoroutine(PulseRoutine());
+        }
+
+        IEnumerator PulseRoutine() {
+            const float dur = 0.6f;
+            var t = transform;
+            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
+                float k = e / dur;
+                float s = 1f + 0.2f * Mathf.Abs(Mathf.Sin(k * Mathf.PI * 2f)) * (1f - k);
+                t.localScale = Vector3.one * s;
+                yield return null;
+            }
+            t.localScale = Vector3.one;
+            _pulseAnim = null;
         }
     }
 }

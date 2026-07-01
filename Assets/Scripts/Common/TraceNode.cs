@@ -15,6 +15,7 @@ namespace QueensPuzzle
         SubsetRegionToLine = 7,  // k regions fill k rows/columns → clear those lines of other regions
         Fish = 8,                // k rows confined to k columns (or vice-versa) → clear those lines elsewhere
         Trial = 9,
+        QueenScope = 10,         // a queen rules out the rest of its row/column/region and its neighbours
     }
 
     /// <summary>What a trace node represents.</summary>

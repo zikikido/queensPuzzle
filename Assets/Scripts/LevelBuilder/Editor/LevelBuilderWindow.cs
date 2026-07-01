@@ -360,6 +360,7 @@ namespace QueensPuzzle.EditorTools
                 case SolveTechnique.SubsetLineToRegion: return "subset L→R";
                 case SolveTechnique.SubsetRegionToLine: return "subset R→L";
                 case SolveTechnique.Fish: return "fish";
+                case SolveTechnique.QueenScope: return "queen";
                 case SolveTechnique.Trial: return "guess";
                 default: return "step";
             }
