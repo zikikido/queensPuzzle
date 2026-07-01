@@ -18,36 +18,3 @@ MonoBehaviour:
   difficulty: 2
   estimatedSolveSeconds: 15.2
   seed: 0
-  solveTrace:
-  - parent: -1
-    technique: 1
-    kind: 0
-    outcome: 0
-    marks:
-    - cell: 1
-      mark: 1
-    note: "region B is down to one cell \u2192 place its queen"
-  - parent: 0
-    technique: 2
-    kind: 0
-    outcome: 0
-    marks:
-    - cell: 7
-      mark: 1
-    note: "row 1 is down to one cell \u2192 place its queen"
-  - parent: 1
-    technique: 1
-    kind: 0
-    outcome: 0
-    marks:
-    - cell: 14
-      mark: 1
-    note: "region C is down to one cell \u2192 place its queen"
-  - parent: 2
-    technique: 1
-    kind: 0
-    outcome: 0
-    marks:
-    - cell: 8
-      mark: 1
-    note: "region A is down to one cell \u2192 place its queen"
