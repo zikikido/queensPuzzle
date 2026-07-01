@@ -28,6 +28,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        Coroutine _shake;            // board shake on a wrong queen
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -219,7 +220,8 @@ namespace qp {
                 if (cell != null) {
                     bool correct = cell.IsSolutionQueen;
                     cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
-                    if (correct && IsSolved()) Win();
+                    if (correct) { if (IsSolved()) Win(); }
+                    else { if (_shake != null) StopCoroutine(_shake); _shake = StartCoroutine(ShakeBoard()); }
                 }
             }
             _drag = DragMode.None;
@@ -239,6 +241,19 @@ namespace qp {
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             if (_winPopup != null) _winPopup.gameObject.SetActive(true);
+        }
+
+        // Quick decaying horizontal shake of the board — feedback for a wrong queen.
+        IEnumerator ShakeBoard() {
+            if (_board == null) yield break;
+            const float dur = 0.3f;
+            float mag = _cellSize * 0.1f;
+            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
+                float x = Mathf.Sin(e * 60f) * mag * (1f - e / dur);
+                _board.localPosition = new Vector3(x, 0f, 0f);
+                yield return null;
+            }
+            _board.localPosition = Vector3.zero;
         }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.
