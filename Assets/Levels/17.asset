@@ -1,0 +1,309 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 878b0ea1c7b752745bfb146f9e70659b, type: 3}
+  m_Name: 17
+  m_EditorClassIdentifier: 
+  size: 9
+  regions: 000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000010000000000000001000000010000000000000002000000000000000100000001000000010000000100000001000000020000000200000002000000010000000100000003000000030000000400000001000000010000000400000002000000050000000600000003000000030000000400000004000000040000000400000002000000050000000500000005000000030000000300000004000000020000000400000002000000050000000700000008000000030000000300000002000000020000000200000002000000050000000700000007000000070000000300000003000000020000000200000003000000050000000500000007000000070000000300000003000000030000000300000003000000
+  solutionColumns: 060000000800000005000000070000000100000004000000020000000000000003000000
+  difficulty: 1
+  estimatedSolveSeconds: 21.5
+  seed: 0
+  solveTrace:
+  - parent: -1
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 37
+      mark: 1
+    note: "region G is down to one cell \u2192 place its queen"
+  - parent: 0
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 1
+      mark: 0
+    - cell: 10
+      mark: 0
+    - cell: 19
+      mark: 0
+    - cell: 28
+      mark: 0
+    - cell: 36
+      mark: 0
+    - cell: 38
+      mark: 0
+    - cell: 39
+      mark: 0
+    - cell: 40
+      mark: 0
+    - cell: 41
+      mark: 0
+    - cell: 42
+      mark: 0
+    - cell: 43
+      mark: 0
+    - cell: 44
+      mark: 0
+    - cell: 46
+      mark: 0
+    - cell: 55
+      mark: 0
+    - cell: 64
+      mark: 0
+    - cell: 73
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 1
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 27
+      mark: 0
+    - cell: 29
+      mark: 0
+    - cell: 45
+      mark: 0
+    - cell: 47
+      mark: 0
+    note: a queen rules out the cells touching it
+  - parent: 2
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 56
+      mark: 1
+    note: "region I is down to one cell \u2192 place its queen"
+  - parent: 3
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 2
+      mark: 0
+    - cell: 11
+      mark: 0
+    - cell: 20
+      mark: 0
+    - cell: 54
+      mark: 0
+    - cell: 57
+      mark: 0
+    - cell: 58
+      mark: 0
+    - cell: 59
+      mark: 0
+    - cell: 60
+      mark: 0
+    - cell: 61
+      mark: 0
+    - cell: 62
+      mark: 0
+    - cell: 65
+      mark: 0
+    - cell: 74
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 4
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 48
+      mark: 0
+    - cell: 66
+      mark: 0
+    note: a queen rules out the cells touching it
+  - parent: 5
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 75
+      mark: 1
+    note: "region H is down to one cell \u2192 place its queen"
+  - parent: 6
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 3
+      mark: 0
+    - cell: 12
+      mark: 0
+    - cell: 21
+      mark: 0
+    - cell: 30
+      mark: 0
+    - cell: 72
+      mark: 0
+    - cell: 76
+      mark: 0
+    - cell: 77
+      mark: 0
+    - cell: 78
+      mark: 0
+    - cell: 79
+      mark: 0
+    - cell: 80
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 7
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 67
+      mark: 0
+    note: a queen rules out the cells touching it
+  - parent: 8
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 63
+      mark: 1
+    note: "region F is down to one cell \u2192 place its queen"
+  - parent: 9
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 0
+      mark: 0
+    - cell: 9
+      mark: 0
+    - cell: 18
+      mark: 0
+    - cell: 68
+      mark: 0
+    - cell: 69
+      mark: 0
+    - cell: 70
+      mark: 0
+    - cell: 71
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 10
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 49
+      mark: 1
+    note: "region D is down to one cell \u2192 place its queen"
+  - parent: 11
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 4
+      mark: 0
+    - cell: 13
+      mark: 0
+    - cell: 22
+      mark: 0
+    - cell: 31
+      mark: 0
+    - cell: 50
+      mark: 0
+    - cell: 51
+      mark: 0
+    - cell: 52
+      mark: 0
+    - cell: 53
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 12
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 34
+      mark: 1
+    note: "region E is down to one cell \u2192 place its queen"
+  - parent: 13
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 7
+      mark: 0
+    - cell: 16
+      mark: 0
+    - cell: 25
+      mark: 0
+    - cell: 32
+      mark: 0
+    - cell: 33
+      mark: 0
+    - cell: 35
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 14
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 24
+      mark: 0
+    - cell: 26
+      mark: 0
+    note: a queen rules out the cells touching it
+  - parent: 15
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 17
+      mark: 1
+    note: "region C is down to one cell \u2192 place its queen"
+  - parent: 16
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 8
+      mark: 0
+    - cell: 14
+      mark: 0
+    - cell: 15
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 17
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 23
+      mark: 1
+    note: "region B is down to one cell \u2192 place its queen"
+  - parent: 18
+    technique: 10
+    kind: 1
+    outcome: 0
+    marks:
+    - cell: 5
+      mark: 0
+    note: a queen rules out the rest of its row and column
+  - parent: 19
+    technique: 1
+    kind: 0
+    outcome: 0
+    marks:
+    - cell: 6
+      mark: 1
+    note: "region A is down to one cell \u2192 place its queen"
