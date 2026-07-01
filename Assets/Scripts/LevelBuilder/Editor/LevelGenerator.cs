@@ -13,7 +13,7 @@ namespace QueensPuzzle
     /// </summary>
     public static class LevelGenerator
     {
-        public const int MinSize = 5;
+        public const int MinSize = 4;
         public const int MaxSize = 11;
 
         /// <summary>
