@@ -19,6 +19,12 @@ namespace QueensPuzzle
         [MenuItem("QueensPuzzle/Export Levels to Resources")]
         public static void Export()
         {
+            if (!EditorUtility.DisplayDialog(
+                    "Export levels to Resources",
+                    $"Copy all levels from {SourceFolder} into {TargetFolder} (overwriting) and update SOLevelsData?",
+                    "Export", "Cancel"))
+                return;
+
             if (!AssetDatabase.IsValidFolder(SourceFolder))
             { Debug.LogWarning($"[Levels] No source folder {SourceFolder}."); return; }
 
