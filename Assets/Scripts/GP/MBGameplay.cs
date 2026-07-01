@@ -38,7 +38,7 @@ namespace qp {
         // Collect every boost button under us and route its click to the boost for its type.
         void WireBoostButtons() {
             foreach (var boost in GetComponentsInChildren<MBBoostButton>(true)) {
-                var btn = boost.GetComponent<Button>();
+                var btn = boost.GetButton();
                 if (btn == null) continue;
                 var type = boost.BoostType;
                 btn.onClick.AddListener(() => RunBoost(type));

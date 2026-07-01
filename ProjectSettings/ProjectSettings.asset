@@ -682,6 +682,7 @@ PlayerSettings:
   scriptingDefineSymbols:
     Android: IGNORE_FIREBASE;IGNORE_COMMON_REVIEW
     Standalone: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE
+    WebGL: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE
     iPhone: 
   additionalCompilerArguments: {}
   platformArchitecture: {}
