@@ -109,7 +109,7 @@
 <text x="52" y="1814">stuck -> guess: 30 + chain to contradiction</text>
 <text x="52" y="1834">nested guess -> x3 per extra depth</text>
 </g>
-<text x="36" y="1858" font-size="12" fill="#6b6b6b">open = empty cells at that moment (25 = neutral board) &#183; find scales with clutter, think does not &#183; pencil assumed</text>
+<text x="36" y="1858" font-size="12" fill="#6b6b6b">open = empty cells now (25 = neutral) &#183; streak: same trick again in a row -> think x&#189; &#183; pencil assumed</text>
 <rect x="600" y="1746" width="320" height="132" rx="10" fill="#fff" stroke="#E7E5DF"/>
 <text x="618" y="1770" font-size="12" font-weight="600" fill="#2b2b2b">weight</text><text x="690" y="1770" font-size="12" font-weight="600" fill="#2b2b2b">feels like</text>
 <line x1="618" y1="1779" x2="902" y2="1779" stroke="#E7E5DF"/>

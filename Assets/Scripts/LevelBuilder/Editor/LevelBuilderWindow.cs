@@ -471,7 +471,8 @@ namespace QueensPuzzle.EditorTools
                 var nd = trace[i];
                 string prefix = nd.outcome == Outcome.DeadEnd ? "✗ "
                               : nd.outcome == Outcome.Unresolved ? "… " : "";
-                string label = $"{i}.  [{TechniqueTag(nd.technique)}]  {prefix}{nd.note}";
+                string cost = nd.cost > 0 ? (nd.streak ? $"+{nd.cost} (streak ×½)  " : $"+{nd.cost}  ") : "";
+                string label = $"{i}.  [{TechniqueTag(nd.technique)}]  {cost}{prefix}{nd.note}";
 
                 Color prevBg = GUI.backgroundColor;
                 if (i == _selectedStep) GUI.backgroundColor = new Color(1f, 0.88f, 0.35f);
@@ -526,8 +527,10 @@ namespace QueensPuzzle.EditorTools
                 if (_report.HasValue)
                 {
                     var rep = _report.Value;
+                    string shape = rep.evenness >= 0.7f ? "smooth grind" : rep.evenness <= 0.4f ? "peaky — has a wall" : "mixed";
                     EditorGUILayout.LabelField($"Rating breakdown — weight {rep.weight}", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField($"find (scanning) {rep.findCost}   +   think (tricks) {rep.thinkCost}   +   guesses {rep.guessCost}");
+                    EditorGUILayout.LabelField($"peak {rep.peak}   ·   evenness {rep.evenness:0.00}  —  {shape}");
                     EditorGUILayout.Space(4);
                     TechRow("Queen shadow (free)", rep.techUses[(int)SolveTechnique.QueenScope], 0, rep.weight);
                     TechRow("Region single", rep.regionSingles, TechCost(rep, SolveTechnique.RegionSingle), rep.weight);

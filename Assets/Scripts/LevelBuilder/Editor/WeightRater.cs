@@ -13,6 +13,8 @@ namespace QueensPuzzle
     ///     trapped region    20    squeeze         40    subset L→R 30+10k
     ///     subset R→L   40+10k    region choke    70    fish        50+10k
     ///   Queen shadow is free — the eyes are already on the queen that was just placed.
+    ///   Streak: the same trick again, right after (no other paid step between) → think cost
+    ///   halved — the pattern is still loaded in the player's head. A guess breaks the streak.
     ///
     /// A stuck board costs a guess: GuessSetup + the chain of forced moves to the cheapest
     /// contradiction (pencil profile — the chain is board work, not head work). Nesting
@@ -27,8 +29,6 @@ namespace QueensPuzzle
     /// </summary>
     public static class WeightRater
     {
-        const int Find = 3;            // scan cost of any non-shadow move, in tenths
-        const int Anchor = 25;         // open-cell count where the board feels "neutral"
         const int GuessSetup = 30;     // flat cost of deciding to try a what-if
         const int Nest = 3;            // multiplier per nesting level past the first
         const int MaxProbe = 3;        // beyond this a stuck branch pays a flat wall
@@ -59,6 +59,8 @@ namespace QueensPuzzle
             public int findCost;         // total scanning cost (the 3·open/25 parts)
             public int thinkCost;        // total trick-weight cost
             public int guessCost;        // total cost of all guesses (setup + chains)
+            public int peak;             // cost of the single most expensive step (the "wall")
+            public float evenness;       // 0..1 — 1 = every step costs the same (grind), →0 = one step holds it all (peak)
             public int[] techCost;       // cost per SolveTechnique (find + think of its steps)
             public int[] techUses;       // uses per SolveTechnique
         }
@@ -70,6 +72,7 @@ namespace QueensPuzzle
             var s = new SolveTracer.Board(n, region);
             int weight = 0;
             bool solved = true;
+            var prevTech = SolveTechnique.None; // last paid trick — a repeat halves the think cost
 
             while (!s.Solved)
             {
@@ -78,7 +81,16 @@ namespace QueensPuzzle
                 m.cycles++;
 
                 int open = s.OpenCells();
-                if (s.NextStep(out var step)) { weight += Tally(step, open, m); continue; }
+                if (s.NextStep(out var step))
+                {
+                    bool streak = step.tech == prevTech && TrickWeights.Streakable(step.tech);
+                    if (TrickWeights.Streakable(step.tech)) prevTech = step.tech;
+                    int cost = Tally(step, open, streak, m);
+                    if (cost > 0) m.costs.Add(cost);
+                    weight += cost;
+                    continue;
+                }
+                prevTech = SolveTechnique.None; // a guess is a context switch — streak broken
 
                 // stuck → guess: X the wrong cell that is cheapest to disprove
                 int row = s.MostConstrainedRow();
@@ -96,6 +108,7 @@ namespace QueensPuzzle
                 if (best < 0) { solved = false; break; }
                 m.trials++;
                 m.guessCost += bestCost;
+                if (bestCost > 0) m.costs.Add(bestCost);
                 weight += bestCost;
                 s.KnownX(row * n + best);
             }
@@ -128,8 +141,22 @@ namespace QueensPuzzle
                 techUses = m.techUses,
             };
             rep.technique = TechniqueName(m, rep.solved);
+            foreach (int c in m.costs) rep.peak = Math.Max(rep.peak, c);
+            rep.evenness = Evenness(m.costs);
             rep.estimatedSeconds = 10f + rep.weight; // one weight point ≈ one second of solving
             return rep;
+        }
+
+        // 1 − Gini of the step costs: 1 = all steps cost the same, →0 = one step carries everything.
+        static float Evenness(System.Collections.Generic.List<int> costs)
+        {
+            if (costs.Count < 2) return 1f;
+            costs.Sort();
+            double sum = 0, weighted = 0;
+            for (int i = 0; i < costs.Count; i++) { sum += costs[i]; weighted += (i + 1.0) * costs[i]; }
+            if (sum <= 0) return 1f;
+            double gini = 2.0 * weighted / (costs.Count * sum) - (costs.Count + 1.0) / costs.Count;
+            return (float)(1.0 - gini);
         }
 
         static string TechniqueName(Metrics m, bool solved)
@@ -148,29 +175,30 @@ namespace QueensPuzzle
         }
 
         // Cost of one deduction step found on a board with `open` candidate cells, plus metrics.
-        static int Tally(SolveTracer.Board.DeductionStep step, int open, Metrics m)
+        // streak = same trick as the previous paid step → think cost halved (pattern still loaded).
+        static int Tally(SolveTracer.Board.DeductionStep step, int open, bool streak, Metrics m)
         {
             m.techUses[(int)step.tech]++;
-            int weight;
             switch (step.tech)
             {
                 case SolveTechnique.QueenScope:         m.eliminations += step.cells.Length; return 0; // free — no scan
-                case SolveTechnique.RegionSingle:       m.placements++; m.regionSingles++;   weight = 0;  break;
-                case SolveTechnique.LineSingle:         m.placements++; m.lineSingles++;     weight = 10; break;
-                case SolveTechnique.LineToRegion:       m.lineToRegionUses++;       m.eliminations += step.cells.Length; weight = 10; break;
-                case SolveTechnique.RegionToLine:       m.regionToLineUses++;       m.eliminations += step.cells.Length; weight = 20; break;
-                case SolveTechnique.Squeeze:            m.squeezeUses++;            m.eliminations += step.cells.Length; weight = 40; break;
-                case SolveTechnique.RegionChoke:        m.regionChokeUses++;        m.eliminations += step.cells.Length; weight = 70; break;
-                case SolveTechnique.SubsetLineToRegion: m.subsetLineToRegionUses++; m.eliminations += step.cells.Length; weight = 30 + 10 * step.k; break;
-                case SolveTechnique.SubsetRegionToLine: m.subsetRegionToLineUses++; m.eliminations += step.cells.Length; weight = 40 + 10 * step.k; break;
-                case SolveTechnique.Fish:               m.fishUses++;               m.eliminations += step.cells.Length; weight = 50 + 10 * step.k; break;
-                default: weight = 0; break;
+                case SolveTechnique.RegionSingle:       m.placements++; m.regionSingles++;   break;
+                case SolveTechnique.LineSingle:         m.placements++; m.lineSingles++;     break;
+                case SolveTechnique.LineToRegion:       m.lineToRegionUses++;       m.eliminations += step.cells.Length; break;
+                case SolveTechnique.RegionToLine:       m.regionToLineUses++;       m.eliminations += step.cells.Length; break;
+                case SolveTechnique.Squeeze:            m.squeezeUses++;            m.eliminations += step.cells.Length; break;
+                case SolveTechnique.RegionChoke:        m.regionChokeUses++;        m.eliminations += step.cells.Length; break;
+                case SolveTechnique.SubsetLineToRegion: m.subsetLineToRegionUses++; m.eliminations += step.cells.Length; break;
+                case SolveTechnique.SubsetRegionToLine: m.subsetRegionToLineUses++; m.eliminations += step.cells.Length; break;
+                case SolveTechnique.Fish:               m.fishUses++;               m.eliminations += step.cells.Length; break;
             }
-            int find = Find * open / Anchor;
+            int find = TrickWeights.Find * open / TrickWeights.Anchor;
+            int think = TrickWeights.Of(step.tech, step.k);
+            if (streak) think /= 2;
             m.findCost += find;
-            m.thinkCost += weight;
-            m.techCost[(int)step.tech] += find + weight;
-            return find + weight;
+            m.thinkCost += think;
+            m.techCost[(int)step.tech] += find + think;
+            return find + think;
         }
 
         // Cost of following one wrong hypothesis to its contradiction (cheapest path wins).
@@ -182,6 +210,7 @@ namespace QueensPuzzle
 
             var t = new Metrics();
             int chain = 0;
+            var prevTech = SolveTechnique.None;
             while (true)
             {
                 if (++ctx.steps > StepCap) { ctx.aborted = true; return GuessSetup + chain; }
@@ -189,7 +218,9 @@ namespace QueensPuzzle
                 if (s.Solved) return GuessSetup + chain;           // cannot happen on a wrong branch
                 int open = s.OpenCells();
                 if (!s.NextStep(out var step)) break;              // stuck → must nest deeper
-                chain += Tally(step, open, t);
+                bool streak = step.tech == prevTech && TrickWeights.Streakable(step.tech);
+                if (TrickWeights.Streakable(step.tech)) prevTech = step.tech;
+                chain += Tally(step, open, streak, t);
             }
 
             if (depth >= MaxProbe) return GuessSetup + chain + DeepWall;
@@ -218,6 +249,7 @@ namespace QueensPuzzle
                 findCost, thinkCost, guessCost;
             public int[] techCost = new int[16];
             public int[] techUses = new int[16];
+            public System.Collections.Generic.List<int> costs = new System.Collections.Generic.List<int>();
         }
     }
 }

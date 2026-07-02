@@ -69,5 +69,7 @@ namespace QueensPuzzle
         public Outcome outcome;
         public TraceMark[] marks;     // cells this step marks (X or queen)
         public string note;           // human-readable reason (regions/lines), no coordinates
+        public int cost;              // find+think cost of this step (see TrickWeights)
+        public bool streak;           // same trick as the previous paid step → think cost was halved
     }
 }

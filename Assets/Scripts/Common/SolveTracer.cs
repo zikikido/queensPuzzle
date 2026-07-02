@@ -71,9 +71,9 @@ namespace QueensPuzzle
                 return b;
             }
 
-            int Add(int parent, NodeKind kind, SolveTechnique tech, Outcome outcome, TraceMark[] marks, string note)
+            int Add(int parent, NodeKind kind, SolveTechnique tech, Outcome outcome, TraceMark[] marks, string note, int cost = 0, bool streak = false)
             {
-                Nodes.Add(new TraceNode { parent = parent, technique = tech, kind = kind, outcome = outcome, marks = marks, note = note });
+                Nodes.Add(new TraceNode { parent = parent, technique = tech, kind = kind, outcome = outcome, marks = marks, note = note, cost = cost, streak = streak });
                 return Nodes.Count - 1;
             }
 
@@ -94,15 +94,20 @@ namespace QueensPuzzle
             public Outcome Run(int parent, int depth, bool guided)
             {
                 int cur = parent;
+                var prevTech = SolveTechnique.None; // last paid trick — a repeat halves the think cost
                 while (true)
                 {
                     if (HasEmptyUnit()) return Outcome.DeadEnd;
                     if (placed == n) return Outcome.Solved;
 
+                    int open = OpenCells();
                     if (NextStep(out var step))
                     {
+                        bool streak = step.tech == prevTech && TrickWeights.Streakable(step.tech);
+                        if (TrickWeights.Streakable(step.tech)) prevTech = step.tech;
                         var marks = step.kind == NodeKind.Placement ? QueenAt(step.cells[0]) : XMarks(step.cells);
-                        cur = Add(cur, step.kind, step.tech, Outcome.Continues, marks, step.note);
+                        cur = Add(cur, step.kind, step.tech, Outcome.Continues, marks, step.note,
+                            TrickWeights.StepCost(step.tech, step.k, open, streak), streak);
                         continue;
                     }
 
@@ -133,6 +138,7 @@ namespace QueensPuzzle
                     if (!guided) return Outcome.DeadEnd; // an impossible line — every option exhausted
                     Place(row, sol[row]);
                     cur = rightBranch;
+                    prevTech = SolveTechnique.None;      // a guess is a context switch — streak broken
                 }
             }
 
