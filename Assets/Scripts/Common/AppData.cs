@@ -20,6 +20,9 @@ namespace qp {
         // Current level index (0-based) for the lobby / progression.
         public static readonly PlayerPrefsHelper.IntHolder LevelIdx = new PlayerPrefsHelper.IntHolder("qp_level_idx", 0);
 
+        // Haptics (vibration) on/off.
+        public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);
+
 #if UNITY_EDITOR
         // Editor-only guard: catch an enum value that was added but not given a Boosts entry.
         [UnityEditor.InitializeOnLoadMethod]

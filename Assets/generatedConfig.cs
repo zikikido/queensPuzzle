@@ -11,8 +11,8 @@ namespace Common
     public static class generatedConfig
     {
         // Shared kido signing keystore.
-        public static string keyaliasName = "kidoverse";
-        public static string keyaliasPass = "Kidoverse1!";
+        public static string keyaliasName = "puzzby";
+        public static string keyaliasPass = "puzzby!";
 
         // Singular attribution — off until configured.
         public static bool HasSingualarForAndroid = false;

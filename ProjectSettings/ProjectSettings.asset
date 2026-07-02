@@ -142,7 +142,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 1.0
+  bundleVersion: 1.0.1
   preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0
@@ -264,11 +264,11 @@ PlayerSettings:
   useCustomGradlePropertiesTemplate: 0
   useCustomGradleSettingsTemplate: 0
   useCustomProguardFile: 0
-  AndroidTargetArchitectures: 2
+  AndroidTargetArchitectures: 3
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
   AndroidKeystoreName: '{inproject}: Assets/../user.keystore'
-  AndroidKeyaliasName: kidoverse
+  AndroidKeyaliasName: puzzby
   AndroidEnableArmv9SecurityFeatures: 0
   AndroidEnableArm64MTE: 0
   AndroidBuildApkPerCpuArchitecture: 0
@@ -680,7 +680,7 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols:
-    Android: IGNORE_FIREBASE;IGNORE_COMMON_REVIEW
+    Android: IGNORE_FIREBASE;IGNORE_COMMON_REVIEW;RemovePermissionsInjector_IGNORE
     Standalone: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE
     WebGL: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE
     iPhone: 

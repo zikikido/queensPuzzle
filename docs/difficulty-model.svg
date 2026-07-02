@@ -31,7 +31,7 @@
 <rect x="40" y="450" width="150" height="150" rx="4" fill="#ECEAE3"/><path d="M40 450V600M70 450V600M100 450V600M130 450V600M160 450V600M190 450V600M40 450H190M40 480H190M40 510H190M40 540H190M40 570H190M40 600H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M49 519L61 531M61 519L49 531M79 519L91 531M91 519L79 531M139 519L151 531M151 519L139 531M169 519L181 531M181 519L169 531M109 459L121 471M121 459L109 471M109 489L121 501M121 489L109 501M109 549L121 561M121 549L109 561M109 579L121 591M121 579L109 591M79 489L91 501M91 489L79 501M139 489L151 501M151 489L139 501M79 549L91 561M91 549L79 561M139 549L151 561M151 549L139 561" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><use href="#cr" x="103" y="514" fill="#2a2a30"/><rect x="40" y="450" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
 <text x="205" y="480">A placed queen blocks its row,</text>
 <text x="205" y="498">column, region and 8 neighbours.</text>
-<text x="205" y="516">The game marks these for you.</text>
+<text x="205" y="516">Trivial to see - you X them off.</text>
 <rect x="480" y="400" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="514" cy="430" r="11" fill="#EFEDE6"/><text x="514" y="434" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">4</text>
 <text x="532" y="435" font-size="14" font-weight="600" fill="#2b2b2b">Line is one colour</text>

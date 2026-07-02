@@ -1,5 +1,6 @@
 using Common;
 using Core;
+using Puzzby;
 using QueensPuzzle;
 using System.Collections;
 using System.Collections.Generic;
@@ -25,8 +26,15 @@ namespace qp {
         int _n;
         float _step, _cellSize;
         DragMode _drag;
+        Vector3 _lastDragWorld;      // previous drag sample — fill cells skipped between frames
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
+        MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        MBTopBar _topBar;            // "queens placed / total" HUD
+        Coroutine _shake;            // board shake on a wrong queen
+        float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
+        const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
+        MBCell _lastTapCell, _prevTapCell;  // last two tapped cells — a double-click must be the same cell
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -139,6 +147,10 @@ namespace qp {
             _board = board; _n = n; _cellSize = cellSize; _step = step;
             _cells = new MBCell[n, n];
 
+            // top-bar progress starts at 0 / n queens
+            if (_topBar == null) _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
+            _topBar?.Init(_n);
+
             // load the cells into $Board — n x n grid, centered on the board, row 0 on top
             for (int r = 0; r < n; r++) {
                 for (int c = 0; c < n; c++) {
@@ -171,6 +183,7 @@ namespace qp {
 
             // "Bloom" the cells in from the centre, then let the player interact
             yield return BloomReveal();
+            Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
         }
 
@@ -183,16 +196,21 @@ namespace qp {
         public void TouchDown(MBTouches.TouchData touch, bool firstTime) {
             if (!_ready || !firstTime) return;
             var cell = HitTest(touch.WorldPoint);
+            _lastDragWorld = touch.WorldPoint;   // start of the drag path
+            _prevTapCell = _lastTapCell;   // remember the last two taps so we can require same-cell double-clicks
+            _lastTapCell = cell;
             if (cell == null) { _drag = DragMode.None; return; }
 
             switch (cell.State) {
                 case MBCell.ECellType.EMPTY:
                     _drag = DragMode.PaintX;
                     cell.MarkCell(MBCell.ECellType.X);
+                    Tick();
                     break;
                 case MBCell.ECellType.X:
                     _drag = DragMode.Erase;
                     cell.MarkCell(MBCell.ECellType.EMPTY);
+                    Tick();
                     break;
                 default:
                     _drag = DragMode.None;   // don't paint over queens
@@ -202,24 +220,89 @@ namespace qp {
 
         public void TouchDrag(MBTouches.TouchData touch, bool samePoint) {
             if (!_ready || samePoint || _drag == DragMode.None) return;
-            var cell = HitTest(touch.WorldPoint);
-            if (cell == null) return;
 
-            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY)
+            // Walk from the previous sample to this one and paint every cell along the way, so a
+            // fast drag (finger moving several cells per frame) doesn't leave gaps in the row.
+            Vector3 from = _lastDragWorld, to = touch.WorldPoint;
+            float localDist = Vector2.Distance(_board.InverseTransformPoint(from), _board.InverseTransformPoint(to));
+            int steps = Mathf.Max(1, Mathf.CeilToInt(localDist / (_cellSize * 0.5f)));   // ≤ half a cell = no skips
+            for (int i = 1; i <= steps; i++)
+                PaintDrag(HitTest(Vector3.Lerp(from, to, (float)i / steps)));
+
+            _lastDragWorld = to;
+        }
+
+        // Apply the active drag mode to one cell. Idempotent — the state guard means re-visiting a
+        // cell (from overlapping steps) does nothing and won't re-fire the haptic.
+        void PaintDrag(MBCell cell) {
+            if (cell == null) return;
+            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY) {
                 cell.MarkCell(MBCell.ECellType.X);
-            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X)
+                DragTick();
+            }
+            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X) {
                 cell.MarkCell(MBCell.ECellType.EMPTY);
+                DragTick();
+            }
         }
 
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
             if (!_ready) return;
-            if (doubleClick) {
-                var cell = HitTest(touch.WorldPoint);
-                if (cell != null)
-                    cell.MarkCell(cell.IsSolutionQueen ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+            // a real double-click means both taps landed on the SAME cell — otherwise it's just two quick taps
+            if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell) {
+                _prevTapCell = null;   // consume it so a third quick tap can't re-trigger
+                var cell = _lastTapCell;
+                bool correct = cell.IsSolutionQueen;
+                cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+                if (correct) {
+                    int placed = CountQueens();
+                    _topBar?.SetProgress(placed);
+                    if (placed == _n) Win();
+                    else Haptics.Play(GameHaptic.Happy);
+                } else {
+                    Haptics.Play(GameHaptic.Wrong);
+                    if (_shake != null) StopCoroutine(_shake);
+                    _shake = StartCoroutine(ShakeBoard());
+                }
             }
             _drag = DragMode.None;
         }
+
+        // Queens correctly placed (they only ever land on solution cells).
+        int CountQueens() {
+            int placed = 0;
+            foreach (var cell in _cells)
+                if (cell.State == MBCell.ECellType.QUEEN) placed++;
+            return placed;
+        }
+
+        // Solved when every solution queen is on the board.
+        bool IsSolved() => CountQueens() == _n;
+
+        void Win() {
+            _ready = false;              // stop input
+            AppData.LevelIdx.Value++;    // advance progress (persisted)
+            if (_winPopup == null)
+                _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
+            if (_winPopup != null) _winPopup.gameObject.SetActive(true);
+            Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
+        }
+
+        // Quick decaying horizontal shake of the board — feedback for a wrong queen.
+        IEnumerator ShakeBoard() {
+            if (_board == null) yield break;
+            const float dur = 0.3f;
+            float mag = _cellSize * 0.1f;
+            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
+                float x = Mathf.Sin(e * 60f) * mag * (1f - e / dur);
+                _board.localPosition = new Vector3(x, 0f, 0f);
+                yield return null;
+            }
+            _board.localPosition = Vector3.zero;
+        }
+
+        void Tick() { _lastTick = Time.unscaledTime; Haptics.Play(GameHaptic.Tap); }
+        void DragTick() { if (Time.unscaledTime - _lastTick >= TickInterval) Tick(); }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.
         // Returns null for taps that land in the gaps/margin or off the board.
