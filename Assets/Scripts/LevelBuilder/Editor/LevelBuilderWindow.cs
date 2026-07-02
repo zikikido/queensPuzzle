@@ -20,6 +20,8 @@ namespace QueensPuzzle.EditorTools
         // Puzzby = our own game's levels). Discovered from disk — add a folder, get a set.
         string[] _sets = { "MSet", "Puzzby" };
         int _loadSetIdx, _saveSetIdx, _exportSetIdx;
+        // per-window selection, serialized so it survives domain reloads; empty = first open → prefs
+        [SerializeField] string _loadSetName, _saveSetName, _exportSetName;
         string LoadSet => SetAt(_loadSetIdx);
         string SaveSet => SetAt(_saveSetIdx);
         string ExportSet => SetAt(_exportSetIdx);
@@ -28,6 +30,11 @@ namespace QueensPuzzle.EditorTools
 
         void RefreshSets()
         {
+            // this window's own choice wins; the shared prefs only seed a freshly opened window
+            string load = string.IsNullOrEmpty(_loadSetName) ? EditorPrefs.GetString(PrefLoadSet, "MSet") : _loadSetName;
+            string save = string.IsNullOrEmpty(_saveSetName) ? EditorPrefs.GetString(PrefSaveSet, "Puzzby") : _saveSetName;
+            string export = string.IsNullOrEmpty(_exportSetName) ? EditorPrefs.GetString(PrefExportSet, "Puzzby") : _exportSetName;
+
             var found = new List<string>();
             if (System.IO.Directory.Exists(LevelsFolder))
                 foreach (var d in System.IO.Directory.GetDirectories(LevelsFolder))
@@ -35,9 +42,12 @@ namespace QueensPuzzle.EditorTools
             found.Sort(System.StringComparer.OrdinalIgnoreCase);
             if (found.Count == 0) found.AddRange(new[] { "MSet", "Puzzby" }); // created on first save
             _sets = found.ToArray();
-            _loadSetIdx = SetIndex(EditorPrefs.GetString(PrefLoadSet, "MSet"));
-            _saveSetIdx = SetIndex(EditorPrefs.GetString(PrefSaveSet, "Puzzby"));
-            _exportSetIdx = SetIndex(EditorPrefs.GetString(PrefExportSet, "Puzzby"));
+            _loadSetIdx = SetIndex(load);
+            _saveSetIdx = SetIndex(save);
+            _exportSetIdx = SetIndex(export);
+            _loadSetName = LoadSet;
+            _saveSetName = SaveSet;
+            _exportSetName = ExportSet;
         }
 
         int SetIndex(string name)
@@ -80,6 +90,14 @@ namespace QueensPuzzle.EditorTools
         public static void Open()
         {
             var w = GetWindow<LevelBuilderWindow>("Level Builder");
+            w.minSize = new Vector2(440, 680);
+        }
+
+        // A second (third…) independent window — e.g. one on the MSet reference, one saving to Puzzby.
+        [MenuItem("QueensPuzzle/New Level Builder Window")]
+        public static void OpenNew()
+        {
+            var w = CreateWindow<LevelBuilderWindow>("Level Builder");
             w.minSize = new Vector2(440, 680);
         }
 
@@ -222,6 +240,8 @@ namespace QueensPuzzle.EditorTools
             }
             if (EditorGUI.EndChangeCheck())
             {
+                _loadSetName = LoadSet;
+                _saveSetName = SaveSet;
                 EditorPrefs.SetString(PrefLoadSet, LoadSet);
                 EditorPrefs.SetString(PrefSaveSet, SaveSet);
                 RefreshMaxLevel();
@@ -262,7 +282,11 @@ namespace QueensPuzzle.EditorTools
                     LevelResourcesExporter.Export(SetFolder(ExportSet), ExportSet);
                 EditorGUI.BeginChangeCheck();
                 _exportSetIdx = EditorGUILayout.Popup(_exportSetIdx, _sets, GUILayout.Width(90));
-                if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(PrefExportSet, ExportSet);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _exportSetName = ExportSet;
+                    EditorPrefs.SetString(PrefExportSet, ExportSet);
+                }
             }
         }
 
