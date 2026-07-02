@@ -30,6 +30,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        MBTopBar _topBar;            // "queens placed / total" HUD
         Coroutine _shake;            // board shake on a wrong queen
         float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
         const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
@@ -146,6 +147,10 @@ namespace qp {
             _board = board; _n = n; _cellSize = cellSize; _step = step;
             _cells = new MBCell[n, n];
 
+            // top-bar progress starts at 0 / n queens
+            if (_topBar == null) _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
+            _topBar?.Init(_n);
+
             // load the cells into $Board — n x n grid, centered on the board, row 0 on top
             for (int r = 0; r < n; r++) {
                 for (int c = 0; c < n; c++) {
@@ -250,7 +255,9 @@ namespace qp {
                 bool correct = cell.IsSolutionQueen;
                 cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
                 if (correct) {
-                    if (IsSolved()) Win();
+                    int placed = CountQueens();
+                    _topBar?.SetProgress(placed);
+                    if (placed == _n) Win();
                     else Haptics.Play(GameHaptic.Happy);
                 } else {
                     Haptics.Play(GameHaptic.Wrong);
@@ -261,13 +268,16 @@ namespace qp {
             _drag = DragMode.None;
         }
 
-        // Solved when every solution queen is on the board (queens only land on solution cells).
-        bool IsSolved() {
+        // Queens correctly placed (they only ever land on solution cells).
+        int CountQueens() {
             int placed = 0;
             foreach (var cell in _cells)
                 if (cell.State == MBCell.ECellType.QUEEN) placed++;
-            return placed == _n;
+            return placed;
         }
+
+        // Solved when every solution queen is on the board.
+        bool IsSolved() => CountQueens() == _n;
 
         void Win() {
             _ready = false;              // stop input
