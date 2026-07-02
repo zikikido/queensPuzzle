@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 918476adc80a92e42b7626227750d748
+guid: 0b2bf9500fa9966469616089e2f9b37b
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Nunito
+  - Lilita One
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

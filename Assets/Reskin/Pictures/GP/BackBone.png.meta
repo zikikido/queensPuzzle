@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: e966c76801e5f34498ec5bf0831e520c
+guid: 34fbd228081ab8145824260a250eeb10
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8244289654497592092
-    second: ButtonBackSetting_0
+      213: 6222539436045546080
+    second: BackBone_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -52,7 +52,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteBorder: {x: 50, y: 0, z: 50, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: ButtonBackSetting_0
+      name: BackBone_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 120
-        height: 120
+        width: 104
+        height: 108
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4ec3e364d36669d80800000000000000
-      internalID: -8244289654497592092
+      spriteID: 062ba5e06a6ea5650800000000000000
+      internalID: 6222539436045546080
       vertices: []
       indices: 
       edges: []
@@ -152,7 +152,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      ButtonBackSetting_0: -8244289654497592092
+      BackBone_0: 6222539436045546080
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
