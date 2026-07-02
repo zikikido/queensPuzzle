@@ -11,13 +11,13 @@ namespace QueensPuzzle
     /// </summary>
     public static class LevelResourcesExporter
     {
-        const string DefaultSource = "Assets/Levels/Puzzyby";
+        const string DefaultSource = "Assets/Levels/Puzzby";
         const string ResourcesRoot = "Assets/Reskin/Resources";
         const string TargetFolder = ResourcesRoot + "/Levels";
         const string DataPath = ResourcesRoot + "/SOLevelsData.asset";
 
         [MenuItem("QueensPuzzle/Export Levels to Resources")]
-        public static void Export() => Export(DefaultSource, "Puzzyby");
+        public static void Export() => Export(DefaultSource, "Puzzby");
 
         public static void Export(string sourceFolder, string setName)
         {

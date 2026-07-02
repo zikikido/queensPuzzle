@@ -17,8 +17,8 @@ namespace QueensPuzzle.EditorTools
         const int LoadPickerId = 9210;
 
         // Level sets = the subfolders of Assets/Levels (e.g. MSet = Meowdoku references,
-        // Puzzyby = our own game's levels). Discovered from disk — add a folder, get a set.
-        string[] _sets = { "MSet", "Puzzyby" };
+        // Puzzby = our own game's levels). Discovered from disk — add a folder, get a set.
+        string[] _sets = { "MSet", "Puzzby" };
         int _loadSetIdx, _saveSetIdx, _exportSetIdx;
         string LoadSet => SetAt(_loadSetIdx);
         string SaveSet => SetAt(_saveSetIdx);
@@ -33,11 +33,11 @@ namespace QueensPuzzle.EditorTools
                 foreach (var d in System.IO.Directory.GetDirectories(LevelsFolder))
                     found.Add(System.IO.Path.GetFileName(d));
             found.Sort(System.StringComparer.OrdinalIgnoreCase);
-            if (found.Count == 0) found.AddRange(new[] { "MSet", "Puzzyby" }); // created on first save
+            if (found.Count == 0) found.AddRange(new[] { "MSet", "Puzzby" }); // created on first save
             _sets = found.ToArray();
             _loadSetIdx = SetIndex(EditorPrefs.GetString(PrefLoadSet, "MSet"));
-            _saveSetIdx = SetIndex(EditorPrefs.GetString(PrefSaveSet, "Puzzyby"));
-            _exportSetIdx = SetIndex(EditorPrefs.GetString(PrefExportSet, "Puzzyby"));
+            _saveSetIdx = SetIndex(EditorPrefs.GetString(PrefSaveSet, "Puzzby"));
+            _exportSetIdx = SetIndex(EditorPrefs.GetString(PrefExportSet, "Puzzby"));
         }
 
         int SetIndex(string name)
