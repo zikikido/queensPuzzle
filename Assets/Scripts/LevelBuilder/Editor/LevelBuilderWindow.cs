@@ -108,9 +108,11 @@ namespace QueensPuzzle.EditorTools
         const string PrefTolPeak = "QP.LevelBuilder.TolPeak";
         const string PrefTolEvenness = "QP.LevelBuilder.TolEvenness";
         const string PrefTolSteps = "QP.LevelBuilder.TolSteps";
+        const string PrefWarmStart = "QP.LevelBuilder.WarmStart";
 
         // fingerprint tolerances, in % — how far a generated level may deviate per parameter
         int _tolWeight = 10, _tolPeak = 15, _tolEvenness = 10, _tolSteps = 20;
+        bool _warmStart = true; // Generate mutates the loaded board (when sizes match) instead of a random start
 
         void OnEnable()
         {
@@ -119,6 +121,7 @@ namespace QueensPuzzle.EditorTools
             _tolPeak = EditorPrefs.GetInt(PrefTolPeak, 15);
             _tolEvenness = EditorPrefs.GetInt(PrefTolEvenness, 10);
             _tolSteps = EditorPrefs.GetInt(PrefTolSteps, 20);
+            _warmStart = EditorPrefs.GetBool(PrefWarmStart, true);
             _queenTex = BoardVisuals.CreateQueenTexture(64);
             RefreshMaxLevel();
 
@@ -224,6 +227,10 @@ namespace QueensPuzzle.EditorTools
                 EditorPrefs.SetInt(PrefTolSteps, _tolSteps);
             }
             EditorGUILayout.LabelField(" ", "weight 0 = random · peak/even/steps 0 = ignore · auto-fills on Load", EditorStyles.miniLabel);
+
+            EditorGUI.BeginChangeCheck();
+            _warmStart = EditorGUILayout.ToggleLeft("Warm start — mutate the loaded board (same size) instead of a random start", _warmStart);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetBool(PrefWarmStart, _warmStart);
 
             _requestedN = EditorGUILayout.IntSlider("Board size (N)", _requestedN,
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
@@ -713,7 +720,7 @@ namespace QueensPuzzle.EditorTools
             int seed = System.Environment.TickCount;
             var fp = TargetFingerprint();
             // warm start: anneal from the loaded board when it matches the requested size
-            bool warm = _targetWeight > 0 && _level != null && _level.size == _requestedN;
+            bool warm = _warmStart && _targetWeight > 0 && _level != null && _level.size == _requestedN;
             LevelData lvl;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try

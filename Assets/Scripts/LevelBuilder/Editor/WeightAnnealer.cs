@@ -39,22 +39,24 @@ namespace QueensPuzzle
         /// Anneals from a valid unique starting board toward the <paramref name="target"/> fingerprint.
         /// Returns the best region map found, with its solution in <paramref name="solution"/>.
         /// With <paramref name="minDriftFromStart"/> &gt; 0 (warm start from a reference board), only
-        /// boards that differ from the start in at least that many cells can win — so a warm start
-        /// returns a genuinely different board, not the reference itself.
+        /// boards that differ from the start in at least that many region cells AND move at least
+        /// <paramref name="minQueenDrift"/> queens can win — so a warm start returns a genuinely
+        /// different board with a genuinely different solution, not the reference in disguise.
         /// </summary>
         public static int[] Steer(int n, int[] startRegion, int[] startSol, LevelFingerprint target,
             float gamma, int iterations, int seed, out int[] solution, Action<float> onProgress = null,
-            int minDriftFromStart = 0)
+            int minDriftFromStart = 0, int minQueenDrift = 0)
         {
             var rng = new Random(seed);
             int[] origin = (int[])startRegion.Clone();
+            int[] originSol = (int[])startSol.Clone();
             int[] cur = (int[])startRegion.Clone();
             int[] curSol = (int[])startSol.Clone();
             double curCost = Cost(n, cur, curSol, target, gamma);
 
             int[] best = (int[])cur.Clone();
             int[] bestSol = (int[])curSol.Clone();
-            double bestCost = minDriftFromStart > 0 ? double.MaxValue : curCost;
+            double bestCost = minDriftFromStart > 0 || minQueenDrift > 0 ? double.MaxValue : curCost;
 
             double t = 4.0; // temperature — cools each step
             for (int it = 0; it < iterations; it++)
@@ -72,7 +74,7 @@ namespace QueensPuzzle
                 if (delta < 0 || rng.NextDouble() < Math.Exp(-delta / t))
                 {
                     cur = cand; curSol = candSol; curCost = candCost;
-                    if (curCost < bestCost && Diff(cur, origin) >= minDriftFromStart)
+                    if (curCost < bestCost && Diff(cur, origin) >= minDriftFromStart && Diff(curSol, originSol) >= minQueenDrift)
                     { bestCost = curCost; best = (int[])cur.Clone(); bestSol = (int[])curSol.Clone(); }
                 }
                 t *= 0.99;
