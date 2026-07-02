@@ -26,6 +26,7 @@ namespace qp {
         int _n;
         float _step, _cellSize;
         DragMode _drag;
+        Vector3 _lastDragWorld;      // previous drag sample — fill cells skipped between frames
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
@@ -177,6 +178,7 @@ namespace qp {
 
             // "Bloom" the cells in from the centre, then let the player interact
             yield return BloomReveal();
+            Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
         }
 
@@ -189,6 +191,7 @@ namespace qp {
         public void TouchDown(MBTouches.TouchData touch, bool firstTime) {
             if (!_ready || !firstTime) return;
             var cell = HitTest(touch.WorldPoint);
+            _lastDragWorld = touch.WorldPoint;   // start of the drag path
             _prevTapCell = _lastTapCell;   // remember the last two taps so we can require same-cell double-clicks
             _lastTapCell = cell;
             if (cell == null) { _drag = DragMode.None; return; }
@@ -212,9 +215,22 @@ namespace qp {
 
         public void TouchDrag(MBTouches.TouchData touch, bool samePoint) {
             if (!_ready || samePoint || _drag == DragMode.None) return;
-            var cell = HitTest(touch.WorldPoint);
-            if (cell == null) return;
 
+            // Walk from the previous sample to this one and paint every cell along the way, so a
+            // fast drag (finger moving several cells per frame) doesn't leave gaps in the row.
+            Vector3 from = _lastDragWorld, to = touch.WorldPoint;
+            float localDist = Vector2.Distance(_board.InverseTransformPoint(from), _board.InverseTransformPoint(to));
+            int steps = Mathf.Max(1, Mathf.CeilToInt(localDist / (_cellSize * 0.5f)));   // ≤ half a cell = no skips
+            for (int i = 1; i <= steps; i++)
+                PaintDrag(HitTest(Vector3.Lerp(from, to, (float)i / steps)));
+
+            _lastDragWorld = to;
+        }
+
+        // Apply the active drag mode to one cell. Idempotent — the state guard means re-visiting a
+        // cell (from overlapping steps) does nothing and won't re-fire the haptic.
+        void PaintDrag(MBCell cell) {
+            if (cell == null) return;
             if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY) {
                 cell.MarkCell(MBCell.ECellType.X);
                 DragTick();
@@ -235,9 +251,9 @@ namespace qp {
                 cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
                 if (correct) {
                     if (IsSolved()) Win();
-                    else Haptics.Light();
+                    else Haptics.Play(GameHaptic.Happy);
                 } else {
-                    Haptics.Wrong();
+                    Haptics.Play(GameHaptic.Wrong);
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
                 }
@@ -259,7 +275,7 @@ namespace qp {
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             if (_winPopup != null) _winPopup.gameObject.SetActive(true);
-            Haptics.Win();               // last, so nothing here can block the popup
+            Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
         }
 
         // Quick decaying horizontal shake of the board — feedback for a wrong queen.
@@ -275,7 +291,7 @@ namespace qp {
             _board.localPosition = Vector3.zero;
         }
 
-        void Tick() { _lastTick = Time.unscaledTime; Haptics.Selection(); }
+        void Tick() { _lastTick = Time.unscaledTime; Haptics.Play(GameHaptic.Tap); }
         void DragTick() { if (Time.unscaledTime - _lastTick >= TickInterval) Tick(); }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.

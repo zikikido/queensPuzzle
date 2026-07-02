@@ -6,14 +6,12 @@ using UnityEditor.iOS.Xcode;
 namespace Puzzby
 {
     /// <summary>
-    /// Links the iOS frameworks the haptics use. UIKit (UIImpact/UINotificationFeedbackGenerator)
-    /// is already linked by Unity, so this is mostly explicit/future-proof — the hook to add more
-    /// (e.g. CoreHaptics) lives here.
+    /// Links the iOS frameworks the haptics use: UIKit (feedback generators) and CoreHaptics
+    /// (CHHapticEngine). CoreHaptics is linked weak so the binary still loads on iOS &lt; 13, where
+    /// the code paths are guarded by @available and fall back to UIKit.
     /// </summary>
     public static class HapticsIOSBuild
     {
-        static readonly string[] Frameworks = { "UIKit.framework" };
-
         [PostProcessBuild]
         public static void OnPostProcessBuild(BuildTarget target, string buildPath)
         {
@@ -24,8 +22,8 @@ namespace Puzzby
             proj.ReadFromFile(projPath);
 
             string frameworkTarget = proj.GetUnityFrameworkTargetGuid();
-            foreach (var fw in Frameworks)
-                proj.AddFrameworkToProject(frameworkTarget, fw, weak: false);
+            proj.AddFrameworkToProject(frameworkTarget, "UIKit.framework", weak: false);
+            proj.AddFrameworkToProject(frameworkTarget, "CoreHaptics.framework", weak: true);
 
             proj.WriteToFile(projPath);
         }
