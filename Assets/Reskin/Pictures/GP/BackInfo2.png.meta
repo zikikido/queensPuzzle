@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 8a5efcdec0f510b4ea703d54e146bb13
+guid: daeb3fbf7b9353a4b8cb6298390add89
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8971254414307051857
-    second: DogIcon_0
+      213: -7640638968076918499
+    second: BackInfo2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -52,7 +52,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteBorder: {x: 19, y: 19, z: 19, w: 19}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: DogIcon_0
+      name: BackInfo2_0
       rect:
         serializedVersion: 2
-        x: 2
-        y: 9
-        width: 172
-        height: 185
+        x: 0
+        y: 0
+        width: 40
+        height: 40
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fa6b29554a3bf7380800000000000000
-      internalID: -8971254414307051857
+      spriteID: d11a4c2275ff6f590800000000000000
+      internalID: -7640638968076918499
       vertices: []
       indices: 
       edges: []
@@ -152,7 +152,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      DogIcon_0: -8971254414307051857
+      BackInfo2_0: -7640638968076918499
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

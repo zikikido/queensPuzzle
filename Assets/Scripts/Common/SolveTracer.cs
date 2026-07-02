@@ -10,7 +10,7 @@ namespace QueensPuzzle
     /// bounded to <see cref="MaxDepth"/> levels of nested guessing. Returned flattened (each node
     /// points to its parent) so it serializes onto the asset and rebuilds into a tree.
     ///
-    /// Separate from <see cref="DifficultyRater"/> (which only needs the score): this one trades
+    /// Separate from <c>WeightRater</c> (which only needs the weight): this one trades
     /// speed for a readable, branch-by-branch record. Pure C#; runs at build time.
     /// </summary>
     public static class SolveTracer
@@ -178,6 +178,7 @@ namespace QueensPuzzle
                 if (TrySqueeze(out note)) return Elimed(SolveTechnique.Squeeze, 0, note, out step);
                 if (TrySubsetLineToRegion(out note)) return Elimed(SolveTechnique.SubsetLineToRegion, _k, note, out step);
                 if (TrySubsetRegionToLine(out note)) return Elimed(SolveTechnique.SubsetRegionToLine, _k, note, out step);
+                if (TryRegionChoke(out note)) return Elimed(SolveTechnique.RegionChoke, 0, note, out step);
                 if (TryFish(out note)) return Elimed(SolveTechnique.Fish, _k, note, out step);
 
                 return false;
@@ -405,6 +406,30 @@ namespace QueensPuzzle
                 note = null; return false;
             }
 
+            // A queen on the marked cell would attack ALL of region g's candidates (its row, its
+            // column and the cells it touches combined) → g would have nowhere to go → mark it X.
+            // Generalizes Squeeze, which only counts the touch part of the attack.
+            bool TryRegionChoke(out string note)
+            {
+                for (int g = 0; g < n; g++)
+                {
+                    if (regDone[g]) continue;
+                    var cells = RegCells(g);
+                    if (cells.Count < 2) continue;
+                    _elim.Clear();
+                    for (int idx = 0; idx < cand.Length; idx++)
+                    {
+                        if (!C(idx) || region[idx] == g) continue;
+                        bool all = true;
+                        foreach (int x in cells)
+                            if (x / n != idx / n && x % n != idx % n && !Touch(idx, x)) { all = false; break; }
+                        if (all) Elim(idx);
+                    }
+                    if (_elim.Count > 0) { note = $"a queen on a marked cell would attack all {cells.Count} cells left for {Lr(g)} → {Lr(g)} would have nowhere to go, so mark it X"; return true; }
+                }
+                note = null; return false;
+            }
+
             bool TrySubsetRegionToLine(out string note)
             {
                 if (SubsetDir(true, out note)) return true;
@@ -578,6 +603,7 @@ namespace QueensPuzzle
             List<int> RowCells(int r) { var l = new List<int>(); for (int c = 0; c < n; c++) if (C(r * n + c)) l.Add(r * n + c); return l; }
             List<int> ColCells(int c) { var l = new List<int>(); for (int r = 0; r < n; r++) if (C(r * n + c)) l.Add(r * n + c); return l; }
             public List<int> RowCands(int r) { var l = new List<int>(); for (int c = 0; c < n; c++) if (C(r * n + c)) l.Add(c); return l; } // columns, not indices
+            public int OpenCells() { int k = 0; for (int i = 0; i < cand.Length; i++) if (C(i)) k++; return k; }
             public int MostConstrainedRow() { int best = -1, bk = int.MaxValue; for (int r = 0; r < n; r++) { if (rowDone[r]) continue; int k = RowCount(r); if (k > 1 && k < bk) { bk = k; best = r; } } return best; }
             bool AllSameRow(List<int> cells, out int row) { row = cells[0] / n; foreach (int i in cells) if (i / n != row) return false; return true; }
             bool AllSameCol(List<int> cells, out int col) { col = cells[0] % n; foreach (int i in cells) if (i % n != col) return false; return true; }

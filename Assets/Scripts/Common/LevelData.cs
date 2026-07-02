@@ -19,8 +19,8 @@ namespace QueensPuzzle
         [Tooltip("Solution: solutionColumns[row] = column of the queen in that row.")]
         public int[] solutionColumns;
 
-        [Tooltip("Measured difficulty. Unrated until the rating step runs.")]
-        public Difficulty difficulty = Difficulty.Unrated;
+        [Tooltip("Measured solve weight — total find+think effort; higher = harder. 0 until rated.")]
+        public int weight;
 
         [Tooltip("Rough estimate of human solve time, in seconds (derived, not measured).")]
         public float estimatedSolveSeconds;

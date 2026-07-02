@@ -12,6 +12,10 @@ PrefabInstance:
       propertyPath: BoostType
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3803229042335576278, guid: d437f9090b5644442af654f571300695, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5578795322279050859, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Name
       value: BoostUndo
@@ -99,7 +103,7 @@ PrefabInstance:
     - target: {fileID: 7807003396959013796, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 3027729053533445702, guid: ef6dda338054aea4db4e0abe98b745ce, type: 3}
+      objectReference: {fileID: 21300000, guid: 4761974c2e405254190230f5775893ef, type: 3}
     - target: {fileID: 7807003396959013796, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Color.b
       value: 0

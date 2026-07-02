@@ -4,29 +4,32 @@ using System.Collections.Generic;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Steers a board toward a target difficulty by simulated annealing on the region map.
+    /// Steers a board toward a target weight by simulated annealing on the region map.
     ///
     /// Each step flips one boundary cell into a touching region — but only "legal" flips that keep
     /// every region connected and non-empty, so the partition stays valid the whole time. The board
     /// is re-rated, and a move is accepted when it lowers a cost, or (rarely, while "hot") even when
     /// it raises it, so the search can climb out of local minima:
     ///
-    ///   cost = tierGap(board, target) * 10 + gamma * neighbourVariance
+    ///   cost = max(0, |weight - target| - Band) + gamma * neighbourStdDev
     ///
-    /// The first term aims at the requested difficulty tier. The second term — the spread of the board's
-    /// OWN one-flip neighbours' scores — steers away from fragile "knife-edge" boards (where one
-    /// different cell swings Medium↔Expert) toward stable ones that feel the difficulty they're
-    /// labelled. Uniqueness is enforced per move: a flip that creates a second solution is rejected.
+    /// The first term aims at the requested weight (anywhere within ±Band counts as a hit). The
+    /// second term — the spread of the board's OWN one-flip neighbours' weights — steers away from
+    /// fragile "knife-edge" boards (where one different cell swings the weight wildly) toward stable
+    /// ones that play like they're rated. Uniqueness is enforced per move: a flip that creates a
+    /// second solution is rejected.
     ///
     /// Pure C# (no Unity types); the editor wrapper <c>LevelSteerer</c> turns the result into an asset.
     /// </summary>
-    public static class DifficultyAnnealer
+    public static class WeightAnnealer
     {
+        public const int Band = 10;   // |weight - target| <= Band counts as on-target
+
         /// <summary>
-        /// Anneals from a valid unique starting board toward the <paramref name="target"/> tier.
+        /// Anneals from a valid unique starting board toward the <paramref name="target"/> weight.
         /// Returns the best region map found, with its solution in <paramref name="solution"/>.
         /// </summary>
-        public static int[] Steer(int n, int[] startRegion, int[] startSol, Difficulty target,
+        public static int[] Steer(int n, int[] startRegion, int[] startSol, int target,
             float gamma, int iterations, int seed, out int[] solution, Action<float> onProgress = null)
         {
             var rng = new Random(seed);
@@ -64,14 +67,14 @@ namespace QueensPuzzle
             return best;
         }
 
-        static double Cost(int n, int[] region, int[] sol, Difficulty target, float gamma)
+        static double Cost(int n, int[] region, int[] sol, int target, float gamma)
         {
-            int tierGap = Math.Abs((int)DifficultyRater.Rate(n, region, sol).difficulty - (int)target);
-            double variance = NeighbourVariance(n, region);
-            return tierGap * 10.0 + gamma * variance;
+            int gap = Math.Max(0, Math.Abs(WeightRater.Rate(n, region, sol).weight - target) - Band);
+            double stdDev = Math.Sqrt(NeighbourVariance(n, region));
+            return gap + gamma * stdDev;
         }
 
-        // Population variance of the scores of every legal one-cell-flip neighbour that stays unique.
+        // Population variance of the weights of every legal one-cell-flip neighbour that stays unique.
         static double NeighbourVariance(int n, int[] region)
         {
             var scores = new List<int>();
@@ -92,7 +95,7 @@ namespace QueensPuzzle
                     int[] cand = (int[])region.Clone();
                     cand[i] = b;
                     if (!QueensSolver.TrySolve(n, cand, out int[] sol, out bool unique) || !unique) continue;
-                    scores.Add(DifficultyRater.Rate(n, cand, sol).score);
+                    scores.Add(WeightRater.Rate(n, cand, sol).weight);
                 }
             }
             if (scores.Count == 0) return 0;

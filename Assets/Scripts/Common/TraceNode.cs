@@ -16,6 +16,7 @@ namespace QueensPuzzle
         Fish = 8,                // k rows confined to k columns (or vice-versa) → clear those lines elsewhere
         Trial = 9,
         QueenScope = 10,         // a queen rules out the rest of its row/column/region and its neighbours
+        RegionChoke = 11,        // a queen here would attack ALL of a region's candidates → that cell is an X
     }
 
     /// <summary>What a trace node represents.</summary>

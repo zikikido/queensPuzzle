@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -9,7 +9,6 @@ namespace QueensPuzzle.EditorTools
     /// Editor hub for levels: Generate a new unique puzzle, Load a saved one, Save the current
     /// one as an asset, and Play it (phase 1: the game just shows the board).
     ///
-    /// NOTE: the difficulty dropdown is a target only — generation does not steer toward it yet.
     /// Levels ARE measured: every generated/loaded level is rated, and Recheck re-rates on demand.
     /// </summary>
     public class LevelBuilderWindow : EditorWindow
@@ -17,17 +16,14 @@ namespace QueensPuzzle.EditorTools
         const string LevelsFolder = "Assets/Levels";
         const int LoadPickerId = 9210;
 
-        // What Generate aims for: a tier to steer toward, or Any for an instant random board.
-        enum Target { Any, Kitten, Easy, Medium, Hard, Expert }
-
         int _requestedN = 8;
-        Target _target = Target.Medium;
+        int _targetWeight;      // what Generate aims for; 0 = instant random board (no steering)
         int _levelNumber = 1;   // slot for numbered Load / Save (Assets/Levels/{n}.asset)
         int _levelCount;        // consecutive saved levels from 1 (cached; refreshed on focus / save)
         bool _levelGap;         // a numbered level exists past that run → a hole in the sequence (error)
 
         [SerializeField] LevelData _level;
-        DifficultyRater.Report? _report;
+        WeightRater.Report? _report;
         TraceNode[] _trace;   // built on Generate / Load / Recheck for display — not stored on the asset
         string _status = "Pick the parameters and press Generate.";
         Texture2D _queenTex;
@@ -118,14 +114,14 @@ namespace QueensPuzzle.EditorTools
         {
             EditorGUILayout.LabelField("Generate", EditorStyles.boldLabel);
 
-            _target = (Target)EditorGUILayout.EnumPopup("Difficulty", _target);
-            EditorGUILayout.LabelField(" ", "Any = instant random · a tier = steered toward it (~1–3s)", EditorStyles.miniLabel);
+            _targetWeight = Mathf.Max(0, EditorGUILayout.IntField("Target weight", _targetWeight));
+            EditorGUILayout.LabelField(" ", $"0 = instant random · otherwise steered to ±{WeightAnnealer.Band} (~1–3s)", EditorStyles.miniLabel);
 
             _requestedN = EditorGUILayout.IntSlider("Board size (N)", _requestedN,
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
             EditorGUILayout.LabelField(" ", $"= {_requestedN} queens", EditorStyles.miniLabel);
 
-            string genLabel = _target == Target.Any ? "Generate (random)" : $"Generate ({_target})";
+            string genLabel = _targetWeight <= 0 ? "Generate (random)" : $"Generate (weight ~{_targetWeight})";
             if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
 
             using (new EditorGUILayout.HorizontalScope())
@@ -169,7 +165,7 @@ namespace QueensPuzzle.EditorTools
                 if (EditorGUIUtility.GetObjectPickerObject() is LevelData picked)
                 {
                     SetLevel(picked);
-                    _status = $"Loaded {picked.name} ({picked.size}x{picked.size}) — measured {_report?.difficulty}.";
+                    _status = $"Loaded {picked.name} ({picked.size}x{picked.size}) — weight {_report?.weight}.";
                 }
                 Repaint();
             }
@@ -275,7 +271,7 @@ namespace QueensPuzzle.EditorTools
             if (data == null) { _status = "Build failed — " + error; Repaint(); return; }
             SetLevel(data);       // SetLevel clears _paintRegions so it re-seeds from the built level next time
             _paintMode = false;   // show the solved board
-            _status = $"Built {data.size}x{data.size} — {data.difficulty}, unique ✓. Press Save to keep it.";
+            _status = $"Built {data.size}x{data.size} — weight {data.weight}, unique ✓. Press Save to keep it.";
             Repaint();
         }
 
@@ -493,6 +489,7 @@ namespace QueensPuzzle.EditorTools
                 case SolveTechnique.LineToRegion: return "line→region";
                 case SolveTechnique.RegionToLine: return "region→line";
                 case SolveTechnique.Squeeze: return "squeeze";
+                case SolveTechnique.RegionChoke: return "choke";
                 case SolveTechnique.SubsetLineToRegion: return "subset L→R";
                 case SolveTechnique.SubsetRegionToLine: return "subset R→L";
                 case SolveTechnique.Fish: return "fish";
@@ -504,29 +501,47 @@ namespace QueensPuzzle.EditorTools
 
         // ---- footer ------------------------------------------------------------------
 
+        static int TechCost(WeightRater.Report rep, SolveTechnique t) =>
+            rep.techCost != null ? rep.techCost[(int)t] : 0;
+
+        // One line per technique actually used: uses, its share of the score, and a bar.
+        static void TechRow(string name, int uses, int cost, int total)
+        {
+            if (uses == 0) return;
+            int share = total > 0 ? Mathf.RoundToInt(cost * 100f / total) : 0;
+            string bar = new string('▮', Mathf.Clamp(Mathf.RoundToInt(cost * 20f / Mathf.Max(total, 1)), 0, 20));
+            EditorGUILayout.LabelField($"{name}:   ×{uses}   —   {cost} pts ({share}%)   {bar}");
+        }
+
         void DrawFooter()
         {
             if (_level != null)
             {
-                string scoreText = _report.HasValue ? _report.Value.score.ToString() : "-";
+                string weightText = _report.HasValue ? _report.Value.weight.ToString() : "-";
                 EditorGUILayout.HelpBox(
-                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  {_level.difficulty}  ·  score {scoreText}  ·  " +
+                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  weight {weightText}  ·  " +
                     $"~{Mathf.RoundToInt(_level.estimatedSolveSeconds)}s  ·  unique ✓",
                     MessageType.None);
 
                 if (_report.HasValue)
                 {
                     var rep = _report.Value;
-                    EditorGUILayout.LabelField("Rating breakdown — what decided the tier", EditorStyles.boldLabel);
-                    EditorGUILayout.LabelField($"Hardest technique:   {rep.technique}   →   {rep.difficulty}");
-                    EditorGUILayout.LabelField($"Score:   {rep.score}");
-                    EditorGUILayout.LabelField($"Singles — region:  {rep.regionSingles}     line:  {rep.lineSingles}");
-                    EditorGUILayout.LabelField($"Line→region:  {rep.lineToRegionUses}     Region→line:  {rep.regionToLineUses}");
-                    EditorGUILayout.LabelField($"Squeeze:  {rep.squeezeUses}     Subset L→R:  {rep.subsetLineToRegionUses}     Subset R→L:  {rep.subsetRegionToLineUses}");
-                    EditorGUILayout.LabelField($"Positional fish:  {rep.fishUses}");
-                    EditorGUILayout.LabelField($"Trials:  {rep.trials}     Max depth:  {rep.maxTrialDepth}");
-                    EditorGUILayout.LabelField($"Cycles:  {rep.cycles}     Placed:  {rep.placements}     Eliminated:  {rep.eliminations}");
-                    EditorGUILayout.LabelField($"Estimated solve time:   ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
+                    EditorGUILayout.LabelField($"Rating breakdown — weight {rep.weight}", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"find (scanning) {rep.findCost}   +   think (tricks) {rep.thinkCost}   +   guesses {rep.guessCost}");
+                    EditorGUILayout.Space(4);
+                    TechRow("Queen shadow (free)", rep.techUses[(int)SolveTechnique.QueenScope], 0, rep.weight);
+                    TechRow("Region single", rep.regionSingles, TechCost(rep, SolveTechnique.RegionSingle), rep.weight);
+                    TechRow("Line single", rep.lineSingles, TechCost(rep, SolveTechnique.LineSingle), rep.weight);
+                    TechRow("Line→region", rep.lineToRegionUses, TechCost(rep, SolveTechnique.LineToRegion), rep.weight);
+                    TechRow("Region→line", rep.regionToLineUses, TechCost(rep, SolveTechnique.RegionToLine), rep.weight);
+                    TechRow("Squeeze", rep.squeezeUses, TechCost(rep, SolveTechnique.Squeeze), rep.weight);
+                    TechRow("Subset L→R", rep.subsetLineToRegionUses, TechCost(rep, SolveTechnique.SubsetLineToRegion), rep.weight);
+                    TechRow("Subset R→L", rep.subsetRegionToLineUses, TechCost(rep, SolveTechnique.SubsetRegionToLine), rep.weight);
+                    TechRow("Region choke", rep.regionChokeUses, TechCost(rep, SolveTechnique.RegionChoke), rep.weight);
+                    TechRow("Positional fish", rep.fishUses, TechCost(rep, SolveTechnique.Fish), rep.weight);
+                    TechRow(rep.maxTrialDepth >= 2 ? $"Guesses (nested ×{rep.maxTrialDepth})" : "Guesses", rep.trials, rep.guessCost, rep.weight);
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.LabelField($"Steps: {rep.cycles}     Placed: {rep.placements}     Eliminated: {rep.eliminations}     ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
                 }
             }
             EditorGUILayout.LabelField(_status, EditorStyles.miniLabel);
@@ -540,14 +555,14 @@ namespace QueensPuzzle.EditorTools
             LevelData lvl;
             try
             {
-                if (_target == Target.Any)
+                if (_targetWeight <= 0)
                     lvl = LevelGenerator.Generate(_requestedN, seed, 250, p =>
                         EditorUtility.DisplayProgressBar("Generating level",
                             $"{_requestedN}x{_requestedN} — finding a unique puzzle…", p));
                 else
-                    lvl = LevelSteerer.Generate(ToDifficulty(_target), _requestedN, seed, p =>
+                    lvl = LevelSteerer.Generate(_targetWeight, _requestedN, seed, p =>
                         EditorUtility.DisplayProgressBar("Generating level",
-                            $"aiming for {_target} — annealing the region map…", p));
+                            $"aiming for weight {_targetWeight} — annealing the region map…", p));
             }
             finally
             {
@@ -560,27 +575,14 @@ namespace QueensPuzzle.EditorTools
             }
 
             SetLevel(lvl);
-            if (_target == Target.Any)
-                _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — {lvl.difficulty}, unique ✓";
+            if (_targetWeight <= 0)
+                _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — weight {lvl.weight}, unique ✓";
             else
             {
-                string hit = lvl.difficulty == ToDifficulty(_target) ? "✓ on target" : "closest reachable";
-                _status = $"Aimed for {_target} → {lvl.difficulty}, score {_report?.score} — {hit}.";
+                string hit = Mathf.Abs(lvl.weight - _targetWeight) <= WeightAnnealer.Band ? "✓ on target" : "closest reachable";
+                _status = $"Aimed for weight {_targetWeight} → {lvl.weight} — {hit}.";
             }
             Repaint();
-        }
-
-        static Difficulty ToDifficulty(Target t)
-        {
-            switch (t)
-            {
-                case Target.Kitten: return Difficulty.Kitten;
-                case Target.Easy: return Difficulty.Easy;
-                case Target.Medium: return Difficulty.Medium;
-                case Target.Hard: return Difficulty.Hard;
-                case Target.Expert: return Difficulty.Expert;
-                default: return Difficulty.Medium;
-            }
         }
 
         void Import()
@@ -589,7 +591,7 @@ namespace QueensPuzzle.EditorTools
             if (lvl == null) { _status = "Import failed — " + error; Repaint(); return; }
 
             SetLevel(lvl);
-            _status = $"Imported {lvl.size}x{lvl.size} — {lvl.difficulty}, unique ✓. Press Save to keep it.";
+            _status = $"Imported {lvl.size}x{lvl.size} — weight {lvl.weight}, unique ✓. Press Save to keep it.";
             Repaint();
         }
 
@@ -610,9 +612,9 @@ namespace QueensPuzzle.EditorTools
             SetLevel(lvl);
             // mirror the generate controls to the loaded level, so a following Generate matches it
             _requestedN = Mathf.Clamp(lvl.size, LevelGenerator.MinSize, LevelGenerator.MaxSize);
-            _target = System.Enum.TryParse(lvl.difficulty.ToString(), out Target t) ? t : Target.Any;
+            _targetWeight = lvl.weight;
             EditorGUIUtility.PingObject(lvl);
-            _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — measured {_report?.difficulty}.";
+            _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — weight {_report?.weight}.";
             Repaint();
         }
 
@@ -734,7 +736,7 @@ namespace QueensPuzzle.EditorTools
         void SetLevel(LevelData lvl)
         {
             _level = lvl;
-            _report = lvl != null ? DifficultyRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (DifficultyRater.Report?)null;
+            _report = lvl != null ? WeightRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (WeightRater.Report?)null;
             _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
             _importText = lvl != null ? LevelToGridText(lvl) : "";
             _paintRegions = null;   // re-seed the paint grid from the new level on next use
@@ -757,14 +759,14 @@ namespace QueensPuzzle.EditorTools
 
         void Recheck()
         {
-            var rep = DifficultyRater.Rate(_level.size, _level.regions, _level.solutionColumns);
+            var rep = WeightRater.Rate(_level.size, _level.regions, _level.solutionColumns);
             _report = rep;
-            _level.difficulty = rep.difficulty;
+            _level.weight = rep.weight;
             _level.estimatedSolveSeconds = rep.estimatedSeconds;
             _trace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _selectedStep = -1;
-            _status = $"Rechecked: {rep.difficulty} ({rep.technique}) — {_trace.Length} solve steps.";
+            _status = $"Rechecked: weight {rep.weight} ({rep.technique}) — {_trace.Length} solve steps.";
             Repaint();
         }
 

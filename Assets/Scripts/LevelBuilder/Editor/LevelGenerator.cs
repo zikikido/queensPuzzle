@@ -7,9 +7,8 @@ namespace QueensPuzzle
     /// keep retrying (re-growing, and re-placing as needed) until the board has exactly one
     /// solution. Returns a ready-to-save <see cref="LevelData"/>.
     ///
-    /// NOTE: difficulty rating is not implemented yet — the result is tagged
-    /// <see cref="Difficulty.Unrated"/>. Targeting a requested difficulty comes in a later
-    /// step once the logical (technique-tracking) solver exists.
+    /// Every generated level is auto-rated: <see cref="LevelData.weight"/> gets the measured
+    /// solve weight. Steering toward a requested weight is <c>LevelSteerer</c>'s job.
     /// </summary>
     public static class LevelGenerator
     {
@@ -41,8 +40,8 @@ namespace QueensPuzzle
                 data.solutionColumns = cols;
                 data.seed = seed;
 
-                var rating = DifficultyRater.Rate(n, region, cols); // auto-rate on generate
-                data.difficulty = rating.difficulty;
+                var rating = WeightRater.Rate(n, region, cols); // auto-rate on generate
+                data.weight = rating.weight;
                 data.estimatedSolveSeconds = rating.estimatedSeconds;
                 return data;
             }

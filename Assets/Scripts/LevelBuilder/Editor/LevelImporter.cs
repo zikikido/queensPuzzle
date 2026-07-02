@@ -94,8 +94,8 @@ namespace QueensPuzzle.EditorTools
             data.solutionColumns = cols;
             data.seed = 0; // authored, not generated from a seed
 
-            var rating = DifficultyRater.Rate(n, region, cols);
-            data.difficulty = rating.difficulty;
+            var rating = WeightRater.Rate(n, region, cols);
+            data.weight = rating.weight;
             data.estimatedSolveSeconds = rating.estimatedSeconds;
             return data;
         }

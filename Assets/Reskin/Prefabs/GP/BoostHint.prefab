@@ -14,7 +14,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3803229042335576278, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -8.8
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3803229042335576278, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -22,7 +22,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5578795322279050859, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Name
-      value: BoostX
+      value: BoostHint
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Pivot.x
@@ -107,7 +107,7 @@ PrefabInstance:
     - target: {fileID: 7807003396959013796, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 3027729053533445702, guid: 5ca2e84c94165fd4b9c5b38234fbabe1, type: 3}
+      objectReference: {fileID: 21300000, guid: 4761974c2e405254190230f5775893ef, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
