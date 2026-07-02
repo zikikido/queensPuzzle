@@ -42,7 +42,6 @@ namespace QueensPuzzle
 
                 var rating = WeightRater.Rate(n, region, cols); // auto-rate on generate
                 data.weight = rating.weight;
-                data.estimatedSolveSeconds = rating.estimatedSeconds;
                 return data;
             }
             return null;

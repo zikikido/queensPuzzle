@@ -13,14 +13,48 @@ namespace QueensPuzzle.EditorTools
     /// </summary>
     public class LevelBuilderWindow : EditorWindow
     {
-        const string LevelsFolder = "Assets/Levels";
+        const string LevelsFolder = "Assets/Levels";   // root; sets live in subfolders, __Play in the root
         const int LoadPickerId = 9210;
+
+        // Level sets = the subfolders of Assets/Levels (e.g. MSet = Meowdoku references,
+        // Puzzyby = our own game's levels). Discovered from disk — add a folder, get a set.
+        string[] _sets = { "MSet", "Puzzyby" };
+        int _loadSetIdx, _saveSetIdx, _exportSetIdx;
+        string LoadSet => SetAt(_loadSetIdx);
+        string SaveSet => SetAt(_saveSetIdx);
+        string ExportSet => SetAt(_exportSetIdx);
+        string SetAt(int i) => _sets[Mathf.Clamp(i, 0, _sets.Length - 1)];
+        static string SetFolder(string set) => $"{LevelsFolder}/{set}";
+
+        void RefreshSets()
+        {
+            var found = new List<string>();
+            if (System.IO.Directory.Exists(LevelsFolder))
+                foreach (var d in System.IO.Directory.GetDirectories(LevelsFolder))
+                    found.Add(System.IO.Path.GetFileName(d));
+            found.Sort(System.StringComparer.OrdinalIgnoreCase);
+            if (found.Count == 0) found.AddRange(new[] { "MSet", "Puzzyby" }); // created on first save
+            _sets = found.ToArray();
+            _loadSetIdx = SetIndex(EditorPrefs.GetString(PrefLoadSet, "MSet"));
+            _saveSetIdx = SetIndex(EditorPrefs.GetString(PrefSaveSet, "Puzzyby"));
+            _exportSetIdx = SetIndex(EditorPrefs.GetString(PrefExportSet, "Puzzyby"));
+        }
+
+        int SetIndex(string name)
+        {
+            for (int i = 0; i < _sets.Length; i++) if (_sets[i] == name) return i;
+            return 0;
+        }
 
         int _requestedN = 8;
         int _targetWeight;      // what Generate aims for; 0 = instant random board (no steering)
-        int _levelNumber = 1;   // slot for numbered Load / Save (Assets/Levels/{n}.asset)
-        int _levelCount;        // consecutive saved levels from 1 (cached; refreshed on focus / save)
-        bool _levelGap;         // a numbered level exists past that run → a hole in the sequence (error)
+        int _targetPeak;        // optional fingerprint targets; 0 = don't care
+        float _targetEvenness;
+        int _targetSteps;
+        int _levelNumber = 1;   // slot for numbered Load / Save ({set}/{n}.asset)
+        int _loadCount;         // consecutive levels from 1 in the load set (cached)
+        int _saveCount;         // same for the save set
+        bool _saveGap;          // a level exists past the save set's run → a hole in the sequence (error)
 
         [SerializeField] LevelData _level;
         WeightRater.Report? _report;
@@ -49,8 +83,24 @@ namespace QueensPuzzle.EditorTools
             w.minSize = new Vector2(440, 680);
         }
 
+        const string PrefLoadSet = "QP.LevelBuilder.LoadSet";
+        const string PrefSaveSet = "QP.LevelBuilder.SaveSet";
+        const string PrefExportSet = "QP.LevelBuilder.ExportSet";
+        const string PrefTolWeight = "QP.LevelBuilder.TolWeight";
+        const string PrefTolPeak = "QP.LevelBuilder.TolPeak";
+        const string PrefTolEvenness = "QP.LevelBuilder.TolEvenness";
+        const string PrefTolSteps = "QP.LevelBuilder.TolSteps";
+
+        // fingerprint tolerances, in % — how far a generated level may deviate per parameter
+        int _tolWeight = 10, _tolPeak = 15, _tolEvenness = 10, _tolSteps = 20;
+
         void OnEnable()
         {
+            RefreshSets();
+            _tolWeight = EditorPrefs.GetInt(PrefTolWeight, 10);
+            _tolPeak = EditorPrefs.GetInt(PrefTolPeak, 15);
+            _tolEvenness = EditorPrefs.GetInt(PrefTolEvenness, 10);
+            _tolSteps = EditorPrefs.GetInt(PrefTolSteps, 20);
             _queenTex = BoardVisuals.CreateQueenTexture(64);
             RefreshMaxLevel();
 
@@ -65,21 +115,26 @@ namespace QueensPuzzle.EditorTools
             }
         }
 
-        void OnFocus() { RefreshMaxLevel(); Repaint(); }   // catches deletes/renames done outside Unity
+        void OnFocus() { RefreshSets(); RefreshMaxLevel(); Repaint(); }   // catches folder/level changes done outside Unity
 
         void RefreshMaxLevel()
         {
+            CountSet(SetFolder(LoadSet), out _loadCount, out _);
+            CountSet(SetFolder(SaveSet), out _saveCount, out _saveGap);
+        }
+
+        static void CountSet(string folder, out int count, out bool gap)
+        {
             var present = new HashSet<int>();
             int max = 0;
-            if (System.IO.Directory.Exists(LevelsFolder))
-                foreach (var f in System.IO.Directory.GetFiles(LevelsFolder, "*.asset"))
+            if (System.IO.Directory.Exists(folder))
+                foreach (var f in System.IO.Directory.GetFiles(folder, "*.asset"))
                     if (int.TryParse(System.IO.Path.GetFileNameWithoutExtension(f), out int k))
                     { present.Add(k); if (k > max) max = k; }
 
-            int count = 0;
+            count = 0;
             while (present.Contains(count + 1)) count++;   // consecutive run from 1
-            _levelCount = count;
-            _levelGap = max > count;                       // a level sits past the gap → broken sequence
+            gap = max > count;                             // a level sits past the gap → broken sequence
         }
 
         void OnDisable()
@@ -114,8 +169,43 @@ namespace QueensPuzzle.EditorTools
         {
             EditorGUILayout.LabelField("Generate", EditorStyles.boldLabel);
 
-            _targetWeight = Mathf.Max(0, EditorGUILayout.IntField("Target weight", _targetWeight));
-            EditorGUILayout.LabelField(" ", $"0 = instant random · otherwise steered to ±{WeightAnnealer.Band} (~1–3s)", EditorStyles.miniLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Target fingerprint", GUILayout.Width(146));
+                GUILayout.Label("weight", EditorStyles.miniLabel, GUILayout.Width(42));
+                _targetWeight = Mathf.Max(0, EditorGUILayout.IntField(_targetWeight, GUILayout.Width(36)));
+                GUILayout.Label("peak", EditorStyles.miniLabel, GUILayout.Width(32));
+                _targetPeak = Mathf.Max(0, EditorGUILayout.IntField(_targetPeak, GUILayout.Width(36)));
+                GUILayout.Label("even", EditorStyles.miniLabel, GUILayout.Width(32));
+                _targetEvenness = Mathf.Clamp(EditorGUILayout.FloatField(_targetEvenness, GUILayout.Width(36)), 0f, 1f);
+                GUILayout.Label("steps", EditorStyles.miniLabel, GUILayout.Width(36));
+                _targetSteps = Mathf.Max(0, EditorGUILayout.IntField(_targetSteps, GUILayout.Width(36)));
+                using (new EditorGUI.DisabledScope(!_report.HasValue))
+                    if (GUILayout.Button("⟵ level", EditorStyles.miniButton, GUILayout.Width(56)))
+                        CopyFingerprintFromReport();
+            }
+
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Tolerance %", GUILayout.Width(146));
+                GUILayout.Label("weight", EditorStyles.miniLabel, GUILayout.Width(42));
+                _tolWeight = Mathf.Clamp(EditorGUILayout.IntField(_tolWeight, GUILayout.Width(36)), 0, 100);
+                GUILayout.Label("peak", EditorStyles.miniLabel, GUILayout.Width(32));
+                _tolPeak = Mathf.Clamp(EditorGUILayout.IntField(_tolPeak, GUILayout.Width(36)), 0, 100);
+                GUILayout.Label("even", EditorStyles.miniLabel, GUILayout.Width(32));
+                _tolEvenness = Mathf.Clamp(EditorGUILayout.IntField(_tolEvenness, GUILayout.Width(36)), 0, 100);
+                GUILayout.Label("steps", EditorStyles.miniLabel, GUILayout.Width(36));
+                _tolSteps = Mathf.Clamp(EditorGUILayout.IntField(_tolSteps, GUILayout.Width(36)), 0, 100);
+            }
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorPrefs.SetInt(PrefTolWeight, _tolWeight);
+                EditorPrefs.SetInt(PrefTolPeak, _tolPeak);
+                EditorPrefs.SetInt(PrefTolEvenness, _tolEvenness);
+                EditorPrefs.SetInt(PrefTolSteps, _tolSteps);
+            }
+            EditorGUILayout.LabelField(" ", "weight 0 = random · peak/even/steps 0 = ignore · auto-fills on Load", EditorStyles.miniLabel);
 
             _requestedN = EditorGUILayout.IntSlider("Board size (N)", _requestedN,
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
@@ -124,14 +214,27 @@ namespace QueensPuzzle.EditorTools
             string genLabel = _targetWeight <= 0 ? "Generate (random)" : $"Generate (weight ~{_targetWeight})";
             if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
 
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _loadSetIdx = EditorGUILayout.Popup("Load from", _loadSetIdx, _sets);
+                _saveSetIdx = EditorGUILayout.Popup("Save to", _saveSetIdx, _sets);
+            }
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorPrefs.SetString(PrefLoadSet, LoadSet);
+                EditorPrefs.SetString(PrefSaveSet, SaveSet);
+                RefreshMaxLevel();
+            }
+
             using (new EditorGUILayout.HorizontalScope())
             {
                 _levelNumber = Mathf.Max(1, EditorGUILayout.IntField("Level number", _levelNumber));
-                GUILayout.Label($"of {_levelCount} saved", EditorStyles.miniLabel, GUILayout.Width(90));
-                if (_levelGap)
+                GUILayout.Label($"of {_loadCount} in {LoadSet}", EditorStyles.miniLabel, GUILayout.Width(110));
+                if (_saveGap)
                 {
                     var prev = GUI.color; GUI.color = new Color(1f, 0.5f, 0.4f);
-                    GUILayout.Label($"⚠ level {_levelCount + 1} missing", EditorStyles.miniBoldLabel);
+                    GUILayout.Label($"⚠ {SaveSet}: level {_saveCount + 1} missing", EditorStyles.miniBoldLabel);
                     GUI.color = prev;
                 }
             }
@@ -153,8 +256,14 @@ namespace QueensPuzzle.EditorTools
                 if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
 
-            if (GUILayout.Button("Export levels → Resources", GUILayout.Height(22)))
-                LevelResourcesExporter.Export();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Export levels → Resources", GUILayout.Height(22)))
+                    LevelResourcesExporter.Export(SetFolder(ExportSet), ExportSet);
+                EditorGUI.BeginChangeCheck();
+                _exportSetIdx = EditorGUILayout.Popup(_exportSetIdx, _sets, GUILayout.Width(90));
+                if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(PrefExportSet, ExportSet);
+            }
         }
 
         void HandleObjectPicker()
@@ -165,6 +274,7 @@ namespace QueensPuzzle.EditorTools
                 if (EditorGUIUtility.GetObjectPickerObject() is LevelData picked)
                 {
                     SetLevel(picked);
+                    CopyFingerprintFromReport();
                     _status = $"Loaded {picked.name} ({picked.size}x{picked.size}) — weight {_report?.weight}.";
                 }
                 Repaint();
@@ -505,7 +615,7 @@ namespace QueensPuzzle.EditorTools
         static int TechCost(WeightRater.Report rep, SolveTechnique t) =>
             rep.techCost != null ? rep.techCost[(int)t] : 0;
 
-        // One line per technique actually used: uses, its share of the score, and a bar.
+        // One line per technique actually used: uses, its share of the weight, and a bar.
         static void TechRow(string name, int uses, int cost, int total)
         {
             if (uses == 0) return;
@@ -520,8 +630,7 @@ namespace QueensPuzzle.EditorTools
             {
                 string weightText = _report.HasValue ? _report.Value.weight.ToString() : "-";
                 EditorGUILayout.HelpBox(
-                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  weight {weightText}  ·  " +
-                    $"~{Mathf.RoundToInt(_level.estimatedSolveSeconds)}s  ·  unique ✓",
+                    $"{_level.size}x{_level.size}  ·  seed {_level.seed}  ·  weight {weightText}  ·  unique ✓",
                     MessageType.None);
 
                 if (_report.HasValue)
@@ -530,7 +639,7 @@ namespace QueensPuzzle.EditorTools
                     string shape = rep.evenness >= 0.7f ? "smooth grind" : rep.evenness <= 0.4f ? "peaky — has a wall" : "mixed";
                     EditorGUILayout.LabelField($"Rating breakdown — weight {rep.weight}", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField($"find (scanning) {rep.findCost}   +   think (tricks) {rep.thinkCost}   +   guesses {rep.guessCost}");
-                    EditorGUILayout.LabelField($"peak {rep.peak}   ·   evenness {rep.evenness:0.00}  —  {shape}");
+                    EditorGUILayout.LabelField($"peak {rep.peak}   ·   evenness {rep.evenness:0.00}   ·   paid steps {rep.paidSteps}  —  {shape}");
                     EditorGUILayout.Space(4);
                     TechRow("Queen shadow (free)", rep.techUses[(int)SolveTechnique.QueenScope], 0, rep.weight);
                     TechRow("Region single", rep.regionSingles, TechCost(rep, SolveTechnique.RegionSingle), rep.weight);
@@ -544,7 +653,7 @@ namespace QueensPuzzle.EditorTools
                     TechRow("Positional fish", rep.fishUses, TechCost(rep, SolveTechnique.Fish), rep.weight);
                     TechRow(rep.maxTrialDepth >= 2 ? $"Guesses (nested ×{rep.maxTrialDepth})" : "Guesses", rep.trials, rep.guessCost, rep.weight);
                     EditorGUILayout.Space(4);
-                    EditorGUILayout.LabelField($"Steps: {rep.cycles}     Placed: {rep.placements}     Eliminated: {rep.eliminations}     ~{Mathf.RoundToInt(rep.estimatedSeconds)}s");
+                    EditorGUILayout.LabelField($"Steps: {rep.cycles}     Placed: {rep.placements}     Eliminated: {rep.eliminations}");
                 }
             }
             EditorGUILayout.LabelField(_status, EditorStyles.miniLabel);
@@ -552,10 +661,37 @@ namespace QueensPuzzle.EditorTools
 
         // ---- actions -----------------------------------------------------------------
 
+        // Fill the target fingerprint from the currently loaded/rated level.
+        void CopyFingerprintFromReport()
+        {
+            if (!_report.HasValue) return;
+            var r = _report.Value;
+            _targetWeight = r.weight;
+            _targetPeak = r.peak;
+            _targetEvenness = Mathf.Round(r.evenness * 100f) / 100f;
+            _targetSteps = r.paidSteps;
+        }
+
+        LevelFingerprint TargetFingerprint() => new LevelFingerprint
+        {
+            weight = _targetWeight,
+            peak = _targetPeak,
+            evenness = _targetEvenness,
+            steps = _targetSteps,
+            tolWeightPct = _tolWeight,
+            tolPeakPct = _tolPeak,
+            tolEvennessPct = _tolEvenness,
+            tolStepsPct = _tolSteps,
+        };
+
         void Generate()
         {
             int seed = System.Environment.TickCount;
+            var fp = TargetFingerprint();
+            // warm start: anneal from the loaded board when it matches the requested size
+            bool warm = _targetWeight > 0 && _level != null && _level.size == _requestedN;
             LevelData lvl;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 if (_targetWeight <= 0)
@@ -563,14 +699,16 @@ namespace QueensPuzzle.EditorTools
                         EditorUtility.DisplayProgressBar("Generating level",
                             $"{_requestedN}x{_requestedN} — finding a unique puzzle…", p));
                 else
-                    lvl = LevelSteerer.Generate(_targetWeight, _requestedN, seed, p =>
+                    lvl = LevelSteerer.Generate(fp, _requestedN, seed,
+                        warm ? _level.regions : null, warm ? _level.solutionColumns : null, p =>
                         EditorUtility.DisplayProgressBar("Generating level",
-                            $"aiming for weight {_targetWeight} — annealing the region map…", p));
+                            $"aiming for weight {fp.weight} — {(warm ? "mutating the loaded board" : "annealing the region map")}…", p));
             }
             finally
             {
                 EditorUtility.ClearProgressBar();
             }
+            sw.Stop();
             if (lvl == null)
             {
                 _status = $"Generation failed for {_requestedN}x{_requestedN} — press Generate again.";
@@ -582,8 +720,13 @@ namespace QueensPuzzle.EditorTools
                 _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — weight {lvl.weight}, unique ✓";
             else
             {
-                string hit = Mathf.Abs(lvl.weight - _targetWeight) <= WeightAnnealer.Band ? "✓ on target" : "closest reachable";
-                _status = $"Aimed for weight {_targetWeight} → {lvl.weight} — {hit}.";
+                var rep = _report.Value;
+                string hit = WeightAnnealer.OnTarget(rep, fp) ? "✓ on target" : "closest reachable";
+                string got = $"weight {rep.weight}"
+                    + (fp.peak > 0 ? $" · peak {rep.peak}" : "")
+                    + (fp.evenness > 0 ? $" · even {rep.evenness:0.00}" : "")
+                    + (fp.steps > 0 ? $" · steps {rep.paidSteps}" : "");
+                _status = $"Aimed {fp.weight}/{(fp.peak > 0 ? fp.peak.ToString() : "-")}/{(fp.evenness > 0 ? fp.evenness.ToString("0.00") : "-")}/{(fp.steps > 0 ? fp.steps.ToString() : "-")} → {got} — {hit} ({(warm ? "warm" : "cold")}, {sw.Elapsed.TotalSeconds:0.0}s).";
             }
             Repaint();
         }
@@ -598,24 +741,24 @@ namespace QueensPuzzle.EditorTools
             Repaint();
         }
 
-        // ---- numbered load / save (Assets/Levels/{n}.asset) --------------------------
+        // ---- numbered load / save (Assets/Levels/{set}/{n}.asset) --------------------
 
-        string LevelPath(int n) => $"{LevelsFolder}/{n}.asset";
+        static string LevelPath(string set, int n) => $"{SetFolder(set)}/{n}.asset";
 
         void LoadNumber()
         {
-            var lvl = AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(_levelNumber));
+            var lvl = AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(LoadSet, _levelNumber));
             if (lvl == null)
             {
-                _status = $"No level {_levelNumber} in {LevelsFolder}.";
-                EditorUtility.DisplayDialog("Load failed", $"There's no level {_levelNumber} in {LevelsFolder}.", "OK");
+                _status = $"No level {_levelNumber} in {SetFolder(LoadSet)}.";
+                EditorUtility.DisplayDialog("Load failed", $"There's no level {_levelNumber} in {SetFolder(LoadSet)}.", "OK");
                 Repaint();
                 return;
             }
             SetLevel(lvl);
             // mirror the generate controls to the loaded level, so a following Generate matches it
             _requestedN = Mathf.Clamp(lvl.size, LevelGenerator.MinSize, LevelGenerator.MaxSize);
-            _targetWeight = lvl.weight;
+            CopyFingerprintFromReport();
             EditorGUIUtility.PingObject(lvl);
             _status = $"Loaded level {_levelNumber} ({lvl.size}x{lvl.size}) — weight {_report?.weight}.";
             Repaint();
@@ -624,23 +767,23 @@ namespace QueensPuzzle.EditorTools
         void SaveNumber()
         {
             if (_level == null) return;
-            EnsureLevelsFolder();
+            EnsureSetFolder(SaveSet);
             int n = _levelNumber;
 
-            if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(n)) != null)
+            if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(SaveSet, n)) != null)
             {
                 // returns 0 = Override, 1 = Cancel, 2 = Push
                 int choice = EditorUtility.DisplayDialogComplex(
-                    $"Level {n} already exists",
-                    $"Save to slot {n}?\n\n• Override replaces it.\n• Push inserts here and shifts {n} and up one slot higher.",
+                    $"{SaveSet} level {n} already exists",
+                    $"Save to {SaveSet} slot {n}?\n\n• Override replaces it.\n• Push inserts here and shifts {n} and up one slot higher.",
                     "Override", "Cancel", "Push");
                 if (choice == 1) { _status = "Save cancelled."; return; }
                 if (choice == 2) PushFrom(n);
             }
 
-            WriteLevel(LevelPath(n), n);
+            WriteLevel(LevelPath(SaveSet, n), n);
             RefreshMaxLevel();
-            _status = $"Saved level {n}.";
+            _status = $"Saved level {n} to {SaveSet}.";
         }
 
         // Free slot {from}: rename every existing level {k} >= from up to {k+1}, top-down so nothing collides.
@@ -648,16 +791,17 @@ namespace QueensPuzzle.EditorTools
         {
             for (int k = HighestLevelNumber(); k >= from; k--)
             {
-                if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(k)) == null) continue;
-                AssetDatabase.RenameAsset(LevelPath(k), (k + 1).ToString());
+                if (AssetDatabase.LoadAssetAtPath<LevelData>(LevelPath(SaveSet, k)) == null) continue;
+                AssetDatabase.RenameAsset(LevelPath(SaveSet, k), (k + 1).ToString());
             }
         }
 
         int HighestLevelNumber()
         {
-            if (!System.IO.Directory.Exists(LevelsFolder)) return 0;
+            string folder = SetFolder(SaveSet);
+            if (!System.IO.Directory.Exists(folder)) return 0;
             int max = 0;
-            foreach (var f in System.IO.Directory.GetFiles(LevelsFolder, "*.asset"))
+            foreach (var f in System.IO.Directory.GetFiles(folder, "*.asset"))
                 if (int.TryParse(System.IO.Path.GetFileNameWithoutExtension(f), out int k) && k > max) max = k;
             return max;
         }
@@ -765,7 +909,6 @@ namespace QueensPuzzle.EditorTools
             var rep = WeightRater.Rate(_level.size, _level.regions, _level.solutionColumns);
             _report = rep;
             _level.weight = rep.weight;
-            _level.estimatedSolveSeconds = rep.estimatedSeconds;
             _trace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _selectedStep = -1;
@@ -779,6 +922,13 @@ namespace QueensPuzzle.EditorTools
         {
             if (!AssetDatabase.IsValidFolder(LevelsFolder))
                 AssetDatabase.CreateFolder("Assets", "Levels");
+        }
+
+        static void EnsureSetFolder(string set)
+        {
+            EnsureLevelsFolder();
+            if (!AssetDatabase.IsValidFolder(SetFolder(set)))
+                AssetDatabase.CreateFolder(LevelsFolder, set);
         }
     }
 }

@@ -12,14 +12,34 @@ namespace QueensPuzzle
         public const int Iterations = 300;
         public const float Gamma = 0.5f;
 
-        public static LevelData Generate(int targetWeight, int n, int seed, Action<float> onProgress = null)
+        /// <summary>
+        /// Generates a level steered to <paramref name="target"/>. Pass <paramref name="warmRegion"/> +
+        /// <paramref name="warmSol"/> (a same-size reference board) to anneal FROM it — starts on the
+        /// fingerprint and mutates into a different board — instead of climbing from a random start.
+        /// </summary>
+        public static LevelData Generate(LevelFingerprint target, int n, int seed,
+            int[] warmRegion = null, int[] warmSol = null, Action<float> onProgress = null)
         {
-            var start = LevelGenerator.Generate(n, seed, 250, p => onProgress?.Invoke(p * 0.1f));
-            if (start == null) return null;
+            int[] startRegion, startSol;
+            int minDrift = 0;
+            if (warmRegion != null && warmSol != null && warmRegion.Length == n * n)
+            {
+                startRegion = warmRegion;
+                startSol = warmSol;
+                minDrift = n * n / 4; // must end up a genuinely different board, not the reference
+                onProgress?.Invoke(0.1f);
+            }
+            else
+            {
+                var start = LevelGenerator.Generate(n, seed, 250, p => onProgress?.Invoke(p * 0.1f));
+                if (start == null) return null;
+                startRegion = start.regions;
+                startSol = start.solutionColumns;
+            }
 
-            int[] region = WeightAnnealer.Steer(n, start.regions, start.solutionColumns,
-                targetWeight, Gamma, Iterations, seed,
-                out int[] sol, p => onProgress?.Invoke(0.1f + p * 0.9f));
+            int[] region = WeightAnnealer.Steer(n, startRegion, startSol,
+                target, Gamma, Iterations, seed,
+                out int[] sol, p => onProgress?.Invoke(0.1f + p * 0.9f), minDrift);
 
             var data = ScriptableObject.CreateInstance<LevelData>();
             data.size = n;
@@ -29,7 +49,6 @@ namespace QueensPuzzle
 
             var rating = WeightRater.Rate(n, region, sol);
             data.weight = rating.weight;
-            data.estimatedSolveSeconds = rating.estimatedSeconds;
             return data;
         }
     }

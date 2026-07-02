@@ -4,42 +4,57 @@ using System.Collections.Generic;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Steers a board toward a target weight by simulated annealing on the region map.
+    /// What Generate aims for. weight is required; peak / evenness / steps are optional
+    /// (&lt;= 0 = don't care). Each tolerance is a % of its target value — a level counts
+    /// as on-target when every active term is within its tolerance.
+    /// </summary>
+    public struct LevelFingerprint
+    {
+        public int weight, peak, steps;   // steps = paid steps (queen shadows excluded)
+        public float evenness;            // 0..1
+        public int tolWeightPct, tolPeakPct, tolEvennessPct, tolStepsPct;
+    }
+
+    /// <summary>
+    /// Steers a board toward a target fingerprint by simulated annealing on the region map.
     ///
     /// Each step flips one boundary cell into a touching region — but only "legal" flips that keep
     /// every region connected and non-empty, so the partition stays valid the whole time. The board
     /// is re-rated, and a move is accepted when it lowers a cost, or (rarely, while "hot") even when
     /// it raises it, so the search can climb out of local minima:
     ///
-    ///   cost = max(0, |weight - target| - Band) + gamma * neighbourStdDev
+    ///   cost = Σ %-beyond-tolerance per fingerprint term  +  gamma * neighbourStdDev%
     ///
-    /// The first term aims at the requested weight (anywhere within ±Band counts as a hit). The
-    /// second term — the spread of the board's OWN one-flip neighbours' weights — steers away from
-    /// fragile "knife-edge" boards (where one different cell swings the weight wildly) toward stable
-    /// ones that play like they're rated. Uniqueness is enforced per move: a flip that creates a
-    /// second solution is rejected.
+    /// The first term aims at the requested fingerprint (weight / peak / evenness / steps, each
+    /// within its % tolerance). The second term — the spread of the board's OWN one-flip
+    /// neighbours' weights — steers away from fragile "knife-edge" boards (where one different
+    /// cell swings the weight wildly) toward stable ones that play like they're rated.
+    /// Uniqueness is enforced per move: a flip that creates a second solution is rejected.
     ///
     /// Pure C# (no Unity types); the editor wrapper <c>LevelSteerer</c> turns the result into an asset.
     /// </summary>
     public static class WeightAnnealer
     {
-        public const int Band = 10;   // |weight - target| <= Band counts as on-target
-
         /// <summary>
-        /// Anneals from a valid unique starting board toward the <paramref name="target"/> weight.
+        /// Anneals from a valid unique starting board toward the <paramref name="target"/> fingerprint.
         /// Returns the best region map found, with its solution in <paramref name="solution"/>.
+        /// With <paramref name="minDriftFromStart"/> &gt; 0 (warm start from a reference board), only
+        /// boards that differ from the start in at least that many cells can win — so a warm start
+        /// returns a genuinely different board, not the reference itself.
         /// </summary>
-        public static int[] Steer(int n, int[] startRegion, int[] startSol, int target,
-            float gamma, int iterations, int seed, out int[] solution, Action<float> onProgress = null)
+        public static int[] Steer(int n, int[] startRegion, int[] startSol, LevelFingerprint target,
+            float gamma, int iterations, int seed, out int[] solution, Action<float> onProgress = null,
+            int minDriftFromStart = 0)
         {
             var rng = new Random(seed);
+            int[] origin = (int[])startRegion.Clone();
             int[] cur = (int[])startRegion.Clone();
             int[] curSol = (int[])startSol.Clone();
             double curCost = Cost(n, cur, curSol, target, gamma);
 
             int[] best = (int[])cur.Clone();
             int[] bestSol = (int[])curSol.Clone();
-            double bestCost = curCost;
+            double bestCost = minDriftFromStart > 0 ? double.MaxValue : curCost;
 
             double t = 4.0; // temperature — cools each step
             for (int it = 0; it < iterations; it++)
@@ -57,27 +72,56 @@ namespace QueensPuzzle
                 if (delta < 0 || rng.NextDouble() < Math.Exp(-delta / t))
                 {
                     cur = cand; curSol = candSol; curCost = candCost;
-                    if (curCost < bestCost) { bestCost = curCost; best = (int[])cur.Clone(); bestSol = (int[])curSol.Clone(); }
+                    if (curCost < bestCost && Diff(cur, origin) >= minDriftFromStart)
+                    { bestCost = curCost; best = (int[])cur.Clone(); bestSol = (int[])curSol.Clone(); }
                 }
                 t *= 0.99;
                 if (t < 0.05) t = 0.05;
             }
             onProgress?.Invoke(1f);
+            // drift never reached (warm start walked in circles) — return where the walk ended
+            if (bestCost == double.MaxValue) { best = cur; bestSol = curSol; }
             solution = bestSol;
             return best;
         }
 
-        static double Cost(int n, int[] region, int[] sol, int target, float gamma)
+        static int Diff(int[] a, int[] b)
         {
-            int gap = Math.Max(0, Math.Abs(WeightRater.Rate(n, region, sol).weight - target) - Band);
-            double stdDev = Math.Sqrt(NeighbourVariance(n, region));
-            return gap + gamma * stdDev;
+            int d = 0;
+            for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) d++;
+            return d;
+        }
+
+        static double Cost(int n, int[] region, int[] sol, LevelFingerprint target, float gamma)
+        {
+            var rep = WeightRater.Rate(n, region, sol);
+            double cost = FingerprintGap(rep, target);
+            // stability, in the same units (% of the target weight)
+            double stdDevPct = Math.Sqrt(NeighbourVariance(n, region)) * 100.0 / Math.Max(1, target.weight);
+            return cost + gamma * stdDevPct;
+        }
+
+        /// <summary>Sum of the %-beyond-tolerance gaps of all active fingerprint terms. 0 = on target.</summary>
+        public static double FingerprintGap(WeightRater.Report rep, LevelFingerprint t)
+            => Gap(rep.weight, t.weight, t.tolWeightPct)
+             + Gap(rep.peak, t.peak, t.tolPeakPct)
+             + Gap(rep.evenness, t.evenness, t.tolEvennessPct)
+             + Gap(rep.paidSteps, t.steps, t.tolStepsPct);
+
+        public static bool OnTarget(WeightRater.Report rep, LevelFingerprint t) => FingerprintGap(rep, t) <= 0;
+
+        // % deviation beyond the tolerance; 0 inside the tolerance or when the term is "don't care".
+        static double Gap(double value, double target, int tolPct)
+        {
+            if (target <= 0) return 0;
+            double pct = Math.Abs(value - target) * 100.0 / target;
+            return Math.Max(0, pct - tolPct);
         }
 
         // Population variance of the weights of every legal one-cell-flip neighbour that stays unique.
         static double NeighbourVariance(int n, int[] region)
         {
-            var scores = new List<int>();
+            var weights = new List<int>();
             var done = new HashSet<long>();
             int[] dr = { -1, 1, 0, 0 }, dc = { 0, 0, -1, 1 };
             for (int i = 0; i < n * n; i++)
@@ -95,13 +139,13 @@ namespace QueensPuzzle
                     int[] cand = (int[])region.Clone();
                     cand[i] = b;
                     if (!QueensSolver.TrySolve(n, cand, out int[] sol, out bool unique) || !unique) continue;
-                    scores.Add(WeightRater.Rate(n, cand, sol).weight);
+                    weights.Add(WeightRater.Rate(n, cand, sol).weight);
                 }
             }
-            if (scores.Count == 0) return 0;
-            double m = 0; foreach (int s in scores) m += s; m /= scores.Count;
-            double v = 0; foreach (int s in scores) v += (s - m) * (s - m);
-            return v / scores.Count;
+            if (weights.Count == 0) return 0;
+            double m = 0; foreach (int s in weights) m += s; m /= weights.Count;
+            double v = 0; foreach (int s in weights) v += (s - m) * (s - m);
+            return v / weights.Count;
         }
 
         // Picks a random boundary cell whose region stays connected after the flip.

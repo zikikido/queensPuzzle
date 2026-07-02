@@ -142,7 +142,7 @@ namespace QueensPuzzle
                 }
             }
 
-            // ---- one shared deduction step: the trace, the score and the hint all go through here ----
+            // ---- one shared deduction step: the trace, the weight and the hint all go through here ----
 
             public struct DeductionStep { public NodeKind kind; public SolveTechnique tech; public int k; public int[] cells; public string note; }
 
@@ -182,12 +182,44 @@ namespace QueensPuzzle
                 if (TryLineToRegion(out note)) return Elimed(SolveTechnique.LineToRegion, 0, note, out step);
                 if (TryRegionToLine(out note)) return Elimed(SolveTechnique.RegionToLine, 0, note, out step);
                 if (TrySqueeze(out note)) return Elimed(SolveTechnique.Squeeze, 0, note, out step);
-                if (TrySubsetLineToRegion(out note)) return Elimed(SolveTechnique.SubsetLineToRegion, _k, note, out step);
-                if (TrySubsetRegionToLine(out note)) return Elimed(SolveTechnique.SubsetRegionToLine, _k, note, out step);
-                if (TryRegionChoke(out note)) return Elimed(SolveTechnique.RegionChoke, 0, note, out step);
-                if (TryFish(out note)) return Elimed(SolveTechnique.Fish, _k, note, out step);
 
+                // the k-scaling tricks in TRUE weight order, so the cheapest representation fires
+                // first — a k=7 line subset is the same fact as a k=2 region subset seen from the
+                // other side, and the k=2 view is what a human finds.
+                foreach (var (tech, k, _, _) in KOrder())
+                {
+                    switch (tech)
+                    {
+                        case SolveTechnique.SubsetLineToRegion:
+                            if (TrySubsetLineToRegion(k, out note)) return Elimed(tech, k, note, out step);
+                            break;
+                        case SolveTechnique.SubsetRegionToLine:
+                            if (TrySubsetRegionToLine(k, out note)) return Elimed(tech, k, note, out step);
+                            break;
+                        case SolveTechnique.RegionChoke:
+                            if (TryRegionChoke(out note)) return Elimed(tech, 0, note, out step);
+                            break;
+                        case SolveTechnique.Fish:
+                            if (TryFish(k, out note)) return Elimed(tech, k, note, out step);
+                            break;
+                    }
+                }
                 return false;
+            }
+
+            // (technique, k) pairs sorted by weight; ties break colour-cued before positional.
+            List<(SolveTechnique tech, int k, int w, int tie)> KOrder()
+            {
+                var order = new List<(SolveTechnique tech, int k, int w, int tie)>
+                { (SolveTechnique.RegionChoke, 0, TrickWeights.Of(SolveTechnique.RegionChoke, 0), 0) };
+                for (int k = 2; k < n; k++)
+                {
+                    order.Add((SolveTechnique.SubsetLineToRegion, k, TrickWeights.Of(SolveTechnique.SubsetLineToRegion, k), 1));
+                    order.Add((SolveTechnique.SubsetRegionToLine, k, TrickWeights.Of(SolveTechnique.SubsetRegionToLine, k), 1));
+                    order.Add((SolveTechnique.Fish, k, TrickWeights.Of(SolveTechnique.Fish, k), 2));
+                }
+                order.Sort((a, b) => a.w != b.w ? a.w - b.w : a.tie - b.tie);
+                return order;
             }
 
             bool Elimed(SolveTechnique tech, int k, string note, out DeductionStep step)
@@ -436,23 +468,24 @@ namespace QueensPuzzle
                 note = null; return false;
             }
 
-            bool TrySubsetRegionToLine(out string note)
+            bool TrySubsetRegionToLine(int k, out string note)
             {
-                if (SubsetDir(true, out note)) return true;
-                if (SubsetDir(false, out note)) return true;
+                if (SubsetDir(true, k, out note)) return true;
+                if (SubsetDir(false, k, out note)) return true;
                 note = null; return false;
             }
 
-            bool TrySubsetLineToRegion(out string note)
+            bool TrySubsetLineToRegion(int k, out string note)
             {
-                if (LineSubsetDir(true, out note)) return true;
-                if (LineSubsetDir(false, out note)) return true;
+                if (LineSubsetDir(true, k, out note)) return true;
+                if (LineSubsetDir(false, k, out note)) return true;
                 note = null; return false;
             }
 
-            // region → line subset, general k: k regions filling exactly k lines → clear other regions there.
-            bool SubsetDir(bool rows, out string note)
+            // region → line subset at a specific k: k regions filling exactly k lines → clear other regions there.
+            bool SubsetDir(bool rows, int k, out string note)
             {
+                note = null;
                 int[] mask = new int[n];
                 var g = new List<int>();
                 for (int reg = 0; reg < n; reg++)
@@ -463,37 +496,36 @@ namespace QueensPuzzle
                     if (mk != 0) { mask[reg] = mk; g.Add(reg); }
                 }
                 int gc = g.Count;
-                var sel = new int[gc];
-                for (int k = 2; k < gc; k++)
+                if (k < 2 || k >= gc) return false;
+                var sel = new int[k];
+                for (int i = 0; i < k; i++) sel[i] = i;
+                do
                 {
-                    for (int i = 0; i < k; i++) sel[i] = i;
-                    do
+                    int u = 0; for (int i = 0; i < k; i++) u |= mask[g[sel[i]]];
+                    if (Pop(u) != k) continue;
+                    _elim.Clear();
+                    for (int idx = 0; idx < cand.Length; idx++)
                     {
-                        int u = 0; for (int i = 0; i < k; i++) u |= mask[g[sel[i]]];
-                        if (Pop(u) != k) continue;
-                        _elim.Clear();
-                        for (int idx = 0; idx < cand.Length; idx++)
-                        {
-                            if (!C(idx)) continue;
-                            if ((u & (1 << (rows ? idx / n : idx % n))) == 0) continue;
-                            bool inSet = false; for (int i = 0; i < k; i++) if (region[idx] == g[sel[i]]) { inSet = true; break; }
-                            if (!inSet) Elim(idx);
-                        }
-                        if (_elim.Count > 0)
-                        {
-                            var regs = new List<int>(); for (int i = 0; i < k; i++) regs.Add(g[sel[i]]);
-                            _k = k;
-                            note = $"colours {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other colour fits there, clear them out";
-                            return true;
-                        }
-                    } while (NextCombo(sel, k, gc));
-                }
-                note = null; return false;
+                        if (!C(idx)) continue;
+                        if ((u & (1 << (rows ? idx / n : idx % n))) == 0) continue;
+                        bool inSet = false; for (int i = 0; i < k; i++) if (region[idx] == g[sel[i]]) { inSet = true; break; }
+                        if (!inSet) Elim(idx);
+                    }
+                    if (_elim.Count > 0)
+                    {
+                        var regs = new List<int>(); for (int i = 0; i < k; i++) regs.Add(g[sel[i]]);
+                        _k = k;
+                        note = $"colours {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other colour fits there, clear them out";
+                        return true;
+                    }
+                } while (NextCombo(sel, k, gc));
+                return false;
             }
 
-            // line → region subset, general k: k rows/columns holding only k colours → clear those colours elsewhere.
-            bool LineSubsetDir(bool rows, out string note)
+            // line → region subset at a specific k: k rows/columns holding only k colours → clear those colours elsewhere.
+            bool LineSubsetDir(bool rows, int k, out string note)
             {
+                note = null;
                 int[] rmask = new int[n];
                 var L = new List<int>();
                 for (int line = 0; line < n; line++)
@@ -504,48 +536,47 @@ namespace QueensPuzzle
                     if (mk != 0) { rmask[line] = mk; L.Add(line); }
                 }
                 int lc = L.Count;
+                if (k < 2 || k >= lc) return false;
                 string what = rows ? "rows" : "columns";
-                var sel = new int[lc];
-                for (int k = 2; k < lc; k++)
+                var sel = new int[k];
+                for (int i = 0; i < k; i++) sel[i] = i;
+                do
                 {
-                    for (int i = 0; i < k; i++) sel[i] = i;
-                    do
+                    int u = 0; for (int i = 0; i < k; i++) u |= rmask[L[sel[i]]];
+                    if (Pop(u) != k) continue;
+                    _elim.Clear();
+                    for (int idx = 0; idx < cand.Length; idx++)
                     {
-                        int u = 0; for (int i = 0; i < k; i++) u |= rmask[L[sel[i]]];
-                        if (Pop(u) != k) continue;
-                        _elim.Clear();
-                        for (int idx = 0; idx < cand.Length; idx++)
-                        {
-                            if (!C(idx)) continue;
-                            if ((u & (1 << region[idx])) == 0) continue;
-                            int line = rows ? idx / n : idx % n;
-                            bool inLines = false; for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inLines = true; break; }
-                            if (!inLines) Elim(idx);
-                        }
-                        if (_elim.Count > 0)
-                        {
-                            var lines = new List<int>(); for (int i = 0; i < k; i++) lines.Add(L[sel[i]]);
-                            _k = k;
-                            note = $"{what} {Lines(lines)} hold only colours {Letters(u)} → those colours are confined here, clear them everywhere else";
-                            return true;
-                        }
-                    } while (NextCombo(sel, k, lc));
-                }
-                note = null; return false;
+                        if (!C(idx)) continue;
+                        if ((u & (1 << region[idx])) == 0) continue;
+                        int line = rows ? idx / n : idx % n;
+                        bool inLines = false; for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inLines = true; break; }
+                        if (!inLines) Elim(idx);
+                    }
+                    if (_elim.Count > 0)
+                    {
+                        var lines = new List<int>(); for (int i = 0; i < k; i++) lines.Add(L[sel[i]]);
+                        _k = k;
+                        note = $"{what} {Lines(lines)} hold only colours {Letters(u)} → those colours are confined here, clear them everywhere else";
+                        return true;
+                    }
+                } while (NextCombo(sel, k, lc));
+                return false;
             }
 
-            bool TryFish(out string note)
+            bool TryFish(int k, out string note)
             {
-                if (FishDir(true, out note)) return true;
-                if (FishDir(false, out note)) return true;
+                if (FishDir(true, k, out note)) return true;
+                if (FishDir(false, k, out note)) return true;
                 note = null; return false;
             }
 
-            // positional fish (X-Wing/Swordfish), general k: k rows whose candidate columns span
+            // positional fish (X-Wing/Swordfish) at a specific k: k rows whose candidate columns span
             // exactly k columns → those rows own those columns → clear those columns in other rows.
             // Colour-agnostic. rows=false is the column↔row mirror.
-            bool FishDir(bool rows, out string note)
+            bool FishDir(bool rows, int k, out string note)
             {
+                note = null;
                 int[] mask = new int[n];
                 var L = new List<int>();
                 for (int line = 0; line < n; line++)
@@ -556,37 +587,35 @@ namespace QueensPuzzle
                     if (mk != 0) { mask[line] = mk; L.Add(line); }
                 }
                 int lc = L.Count;
-                var sel = new int[lc];
-                for (int k = 2; k < lc; k++)
+                if (k < 2 || k >= lc) return false;
+                var sel = new int[k];
+                for (int i = 0; i < k; i++) sel[i] = i;
+                do
                 {
-                    for (int i = 0; i < k; i++) sel[i] = i;
-                    do
+                    int u = 0; for (int i = 0; i < k; i++) u |= mask[L[sel[i]]];
+                    if (Pop(u) != k) continue;
+                    _elim.Clear();
+                    for (int line = 0; line < n; line++)
                     {
-                        int u = 0; for (int i = 0; i < k; i++) u |= mask[L[sel[i]]];
-                        if (Pop(u) != k) continue;
-                        _elim.Clear();
-                        for (int line = 0; line < n; line++)
+                        bool inSet = false; for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inSet = true; break; }
+                        if (inSet) continue;
+                        for (int p = 0; p < n; p++)
                         {
-                            bool inSet = false; for (int i = 0; i < k; i++) if (L[sel[i]] == line) { inSet = true; break; }
-                            if (inSet) continue;
-                            for (int p = 0; p < n; p++)
-                            {
-                                if ((u & (1 << p)) == 0) continue;
-                                int idx = rows ? line * n + p : p * n + line;
-                                if (C(idx)) Elim(idx);
-                            }
+                            if ((u & (1 << p)) == 0) continue;
+                            int idx = rows ? line * n + p : p * n + line;
+                            if (C(idx)) Elim(idx);
                         }
-                        if (_elim.Count > 0)
-                        {
-                            var set = new List<int>(); for (int i = 0; i < k; i++) set.Add(L[sel[i]]);
-                            _k = k;
-                            string lw = rows ? "rows" : "columns", pw = rows ? "columns" : "rows";
-                            note = $"{lw} {Lines(set)} are confined to {pw} {Lines(u)} → those {pw} are theirs, clear them everywhere else";
-                            return true;
-                        }
-                    } while (NextCombo(sel, k, lc));
-                }
-                note = null; return false;
+                    }
+                    if (_elim.Count > 0)
+                    {
+                        var set = new List<int>(); for (int i = 0; i < k; i++) set.Add(L[sel[i]]);
+                        _k = k;
+                        string lw = rows ? "rows" : "columns", pw = rows ? "columns" : "rows";
+                        note = $"{lw} {Lines(set)} are confined to {pw} {Lines(u)} → those {pw} are theirs, clear them everywhere else";
+                        return true;
+                    }
+                } while (NextCombo(sel, k, lc));
+                return false;
             }
 
             static bool NextCombo(int[] sel, int k, int total)

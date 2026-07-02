@@ -21,9 +21,9 @@ namespace QueensPuzzle
     /// multiplies deeper cost by Nest per level and hits a flat wall at MaxProbe.
     /// The known unique solution guides which wrong cell to disprove (luck-free, cheapest first).
     ///
-    /// The total is the level's WEIGHT (int) — how heavy it is to solve. ("Score" is reserved
-    /// for the player's in-game result.) Rough feel: &lt;10 trivial, ~40 easy, ~100 medium,
-    /// ~300 hard, 400+ brutal. Full model documented in docs/weight-model.svg.
+    /// The total is the level's WEIGHT (int) — how heavy it is to solve.
+    /// Rough feel: &lt;10 trivial, ~40 easy, ~100 medium, ~300 hard, 400+ brutal.
+    /// Full model documented in docs/weight-model.svg.
     ///
     /// Pure C# (no Unity types) so it is unit-testable and runs at build time.
     /// </summary>
@@ -55,12 +55,12 @@ namespace QueensPuzzle
             public int fishUses;
             public int trials;
             public int maxTrialDepth;
-            public float estimatedSeconds;
             public int findCost;         // total scanning cost (the 3·open/25 parts)
             public int thinkCost;        // total trick-weight cost
             public int guessCost;        // total cost of all guesses (setup + chains)
             public int peak;             // cost of the single most expensive step (the "wall")
             public float evenness;       // 0..1 — 1 = every step costs the same (grind), →0 = one step holds it all (peak)
+            public int paidSteps;        // steps that cost anything (queen shadows and free endgame moves excluded)
             public int[] techCost;       // cost per SolveTechnique (find + think of its steps)
             public int[] techUses;       // uses per SolveTechnique
         }
@@ -141,9 +141,9 @@ namespace QueensPuzzle
                 techUses = m.techUses,
             };
             rep.technique = TechniqueName(m, rep.solved);
+            rep.paidSteps = m.costs.Count;
             foreach (int c in m.costs) rep.peak = Math.Max(rep.peak, c);
             rep.evenness = Evenness(m.costs);
-            rep.estimatedSeconds = 10f + rep.weight; // one weight point ≈ one second of solving
             return rep;
         }
 

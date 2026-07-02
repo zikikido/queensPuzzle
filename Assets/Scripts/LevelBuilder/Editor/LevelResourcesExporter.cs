@@ -5,40 +5,46 @@ using UnityEngine;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Copies the authoring levels (Assets/Levels/{n}.asset) into a skin's Resources folder so the
+    /// Copies a level set (Assets/Levels/{set}/{n}.asset) into a skin's Resources folder so the
     /// runtime can load them by index (LevelLoader → Resources.Load("Levels/{n}")). Authoring stays
-    /// in Assets/Levels; the export is the runtime copy. Future skins = other Resources targets.
+    /// in Assets/Levels/{set}; the export is the runtime copy. Future skins = other Resources targets.
     /// </summary>
     public static class LevelResourcesExporter
     {
-        const string SourceFolder = "Assets/Levels";
+        const string DefaultSource = "Assets/Levels/Puzzyby";
         const string ResourcesRoot = "Assets/Reskin/Resources";
         const string TargetFolder = ResourcesRoot + "/Levels";
         const string DataPath = ResourcesRoot + "/SOLevelsData.asset";
 
         [MenuItem("QueensPuzzle/Export Levels to Resources")]
-        public static void Export()
+        public static void Export() => Export(DefaultSource, "Puzzyby");
+
+        public static void Export(string sourceFolder, string setName)
         {
             if (!EditorUtility.DisplayDialog(
                     "Export levels to Resources",
-                    $"Copy all levels from {SourceFolder} into {TargetFolder} (overwriting) and update SOLevelsData?",
+                    $"Copy all {setName} levels ({sourceFolder}) into {TargetFolder} (replacing its content) and update SOLevelsData?",
                     "Export", "Cancel"))
                 return;
 
-            if (!AssetDatabase.IsValidFolder(SourceFolder))
-            { Debug.LogWarning($"[Levels] No source folder {SourceFolder}."); return; }
+            if (!AssetDatabase.IsValidFolder(sourceFolder))
+            { Debug.LogWarning($"[Levels] No source folder {sourceFolder}."); return; }
 
             EnsureFolder(TargetFolder);
 
+            // clear stale numbered levels first — a smaller set must not leave the old tail behind
+            foreach (var file in Directory.GetFiles(TargetFolder, "*.asset"))
+                if (int.TryParse(Path.GetFileNameWithoutExtension(file), out _))
+                    AssetDatabase.DeleteAsset(file.Replace('\\', '/'));
+
             int count = 0;
-            foreach (var file in Directory.GetFiles(SourceFolder, "*.asset"))
+            foreach (var file in Directory.GetFiles(sourceFolder, "*.asset"))
             {
                 string name = Path.GetFileNameWithoutExtension(file);
                 if (!int.TryParse(name, out _)) continue;   // only numbered levels (skip __Play etc.)
 
                 string dst = $"{TargetFolder}/{name}.asset";
-                AssetDatabase.DeleteAsset(dst);             // overwrite
-                if (AssetDatabase.CopyAsset($"{SourceFolder}/{name}.asset", dst)) count++;
+                if (AssetDatabase.CopyAsset($"{sourceFolder}/{name}.asset", dst)) count++;
             }
 
             // write / update the level-set data asset (loaded at runtime for the levels count)

@@ -22,9 +22,6 @@ namespace QueensPuzzle
         [Tooltip("Measured solve weight — total find+think effort; higher = harder. 0 until rated.")]
         public int weight;
 
-        [Tooltip("Rough estimate of human solve time, in seconds (derived, not measured).")]
-        public float estimatedSolveSeconds;
-
         [Tooltip("RNG seed that produced this level — lets us reproduce it exactly.")]
         public int seed;
 

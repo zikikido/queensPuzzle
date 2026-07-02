@@ -96,7 +96,6 @@ namespace QueensPuzzle.EditorTools
 
             var rating = WeightRater.Rate(n, region, cols);
             data.weight = rating.weight;
-            data.estimatedSolveSeconds = rating.estimatedSeconds;
             return data;
         }
 
