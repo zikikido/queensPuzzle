@@ -1533,17 +1533,17 @@ MonoBehaviour:
   - {fileID: 1005806399}
   ListneresMethod: 0
   _minRatioSize:
-    screenRatio: 0.45
+    screenRatio: 0.75
     TopNormal: 0.038403034
     BottomNormal: 0.080628484
     LeftNormal: 0.020381866
     RightNormal: 0.020381866
   _maxRatioSize:
     screenRatio: 0.75
-    TopNormal: 0.034861535
-    BottomNormal: 0.10314873
-    LeftNormal: 0.2118
-    RightNormal: 0.21513335
+    TopNormal: 0.038403034
+    BottomNormal: 0.080628484
+    LeftNormal: 0.020381866
+    RightNormal: 0.020381866
 --- !u!1 &1882869832
 GameObject:
   m_ObjectHideFlags: 0
