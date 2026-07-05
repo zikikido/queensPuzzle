@@ -413,7 +413,7 @@ GameObject:
   - component: {fileID: 7121023833894240762}
   - component: {fileID: 2176350165963409647}
   m_Layer: 0
-  m_Name: Settings
+  m_Name: $Settings
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1303,7 +1303,7 @@ GameObject:
   - component: {fileID: 3995900219596827067}
   - component: {fileID: 5678798159153152112}
   m_Layer: 0
-  m_Name: Back
+  m_Name: $Back
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2635,6 +2635,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7945461107691372750}
   - component: {fileID: 8840851194286823983}
+  - component: {fileID: 3262900889254167879}
   m_Layer: 0
   m_Name: TopBarContainer
   m_TagString: Untagged
@@ -2681,6 +2682,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _queenFoundCLR: {r: 0.27058825, g: 0.8039216, b: 0.98039216, a: 1}
+--- !u!225 &3262900889254167879
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8885773307272847153}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &8946699094199723142
 GameObject:
   m_ObjectHideFlags: 0

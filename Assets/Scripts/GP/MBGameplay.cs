@@ -65,8 +65,9 @@ namespace qp {
             _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             if (_winPopup != null && !_winPopup.gameObject.activeSelf) {
                 _winPopup.gameObject.SetActive(true);
-                _winPopup.gameObject.SetActive(false);
             }
+
+            _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
         }
 
         void OnDestroy() {
@@ -126,7 +127,7 @@ namespace qp {
             cell.Pulse();
 
             int placed = CountQueens();
-            _topBar?.SetProgress(placed);
+            _topBar.SetProgress(placed);
             if (placed == _n) Win();
             else Haptics.Play(GameHaptic.Happy);
         }
@@ -218,10 +219,17 @@ namespace qp {
             MBToturial.instance?.ShowHint(hint); // the tutorial owns spotlight, lock and completion
         }
 
-        // Re-run while already in play mode (called by the Level Builder): clears the current
-        // board and rebuilds it from the current level.
+        // Re-run while already in play mode (win → next level, or Play hit again from the
+        // Level Builder): reset the overlays, then rebuild the board from the current level.
         public void Replay() {
             StopAllCoroutines();
+
+            // Overlays reset ONLY here — never on the first build: there they manage their own
+            // SetActive true/false themselves (the invisible layout pass), and hiding them
+            // mid-pass kills their Start() coroutines (the bug that froze the win popup).
+            if (_winPopup != null) _winPopup.gameObject.SetActive(false);
+            MBToturial.instance?.Hide();
+
             StartCoroutine(BuildBoard());
         }
 
@@ -234,13 +242,9 @@ namespace qp {
             }
 
             _ready = false;   // no input while we (re)build and bloom
+            SetChromeInteractable(false);   // top/bottom bars locked until the bloom finishes
             _level = level;   // keep for hints
 
-            // fresh start — clear any leftover state from the previous level so it can't bleed in:
-            //   win popup (hide it) and the tutorial (Hide() also clears its cell-locks/targets,
-            //   otherwise the new board's cells would all read as locked).
-            if (_winPopup != null) _winPopup.gameObject.SetActive(false);
-            MBToturial.instance?.Hide();
 
             // attempts counter: fresh level → 1; same level again (retry / app restart) → +1
             if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
@@ -268,9 +272,7 @@ namespace qp {
             _cells = new MBCell[n, n];
             _undo.Clear(); _stroke = null;   // fresh board, nothing to undo
 
-            // top-bar progress starts at 0 / n queens
-            if (_topBar == null) _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
-            _topBar?.Init(_n);
+            _topBar.Init(_n);
 
             // load the cells into $Board — n x n grid, centered on the board, row 0 on top
             for (int r = 0; r < n; r++) {
@@ -306,9 +308,20 @@ namespace qp {
             yield return BloomReveal();
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
+            SetChromeInteractable(true);   // bloom done — bars usable again
 
             MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
         }
+
+        // Lock/unlock the whole chrome (top bar + boost buttons): visible but untouchable
+        // while the board builds and blooms — on game enter and after every win/replay.
+        void SetChromeInteractable(bool on) {
+
+            _topBar.SetInteractable(on);
+            foreach (var boost in GetComponentsInChildren<MBBoostButton>(true))
+                boost.SetInteractable(on);
+        }
+
 
         void OnDisable() {
             if (_touches != null) { this.UnRegister(_touches); _touches = null; }
@@ -441,7 +454,8 @@ namespace qp {
             AppData.LevelIdx.Value++;    // advance progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
-            if (_winPopup != null) _winPopup.gameObject.SetActive(true);
+            Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
+            if (_winPopup != null) _winPopup.Show();
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
         }
 

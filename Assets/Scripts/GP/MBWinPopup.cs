@@ -6,6 +6,14 @@ namespace qp {
     public class MBWinPopup : MonoBehaviour {
 
         CanvasGroup _group;
+        bool _showing;   // a real win is on screen (guards the layout pass from hiding it)
+
+        /// <summary>The one way to open the popup (MBGameplay.Win).</summary>
+        public void Show() {
+            _showing = true;
+            _group.alpha = 1f;   // whatever the layout pass left behind, a real show is opaque
+            gameObject.SetActive(true);
+        }
 
         // Same trick as the tutorial: stay ACTIVE but invisible for the first frames so the UI
         // lays out at real size; only after the layout cycles hide for real. Keep the popup
@@ -31,12 +39,13 @@ namespace qp {
             yield return new WaitForEndOfFrame();
             yield return new WaitForEndOfFrame();
             _group.alpha = 1f;
-            gameObject.SetActive(false);   // hidden until Win() shows it
+            if (!_showing) gameObject.SetActive(false);   // layout pass only — hidden until Win()
         }
 
         // Rebuild the board with the now-current level (LevelIdx was advanced on win) — no scene
         // reload, so the scene and the banner ad stay loaded.
         void Next() {
+            _showing = false;
             gameObject.SetActive(false);
             var gp = FindAnyObjectByType<MBGameplay>();
             if (gp != null) gp.Replay();

@@ -1,4 +1,5 @@
 using Common;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,8 +11,19 @@ namespace qp {
         private TMP_Text _amountText;
         private int _lastAmount = int.MinValue;
 
+        Button _btn = null;
+
         public Button GetButton() {
-            return GetComponent<Button>();
+
+            if (_btn == null) {
+                _btn = GetComponent<Button>();
+            }
+
+            return _btn;
+        }
+
+        internal void SetInteractable(bool on) {
+            GetButton().interactable = on;
         }
 
         private void Awake() {
