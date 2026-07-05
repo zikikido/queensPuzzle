@@ -236,6 +236,12 @@ namespace qp {
             _ready = false;   // no input while we (re)build and bloom
             _level = level;   // keep for hints
 
+            // fresh start — clear any leftover state from the previous level so it can't bleed in:
+            //   win popup (hide it) and the tutorial (Hide() also clears its cell-locks/targets,
+            //   otherwise the new board's cells would all read as locked).
+            if (_winPopup != null) _winPopup.gameObject.SetActive(false);
+            MBToturial.instance?.Hide();
+
             // attempts counter: fresh level → 1; same level again (retry / app restart) → +1
             if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
                 AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
