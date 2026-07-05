@@ -1,0 +1,380 @@
+using Common;
+using System.Collections;
+using System.Collections.Generic;
+using QueensPuzzle;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace qp {
+    /// <summary>
+    /// The tutorial's spotlight API: every call darkens the board (the Black drape) and opens
+    /// holes over the cells it names — the player's eye goes exactly where the step wants it.
+    /// Compose steps from these calls and finish with Hide():
+    ///
+    ///   ShowCell(2, 3)          — one cell
+    ///   ShowCells(indices)      — any set of cells (flat index = row * N + col)
+    ///   ShowRow(2) / ShowColumn(3)
+    ///   ShowRegion(4)           — a whole colour
+    ///   Hide()                  — close the holes, lift the drape
+    /// </summary>
+    public class MBToturial : MonoBehaviour {
+
+        public static MBToturial instance;
+
+        [SerializeField] GameObject _blackCurtain;   // the darkening drape; found by name when left empty
+        [SerializeField] CanvasGroup _canvas;        // the tutorial UI canvas; found in children when left empty
+        [SerializeField] Button _applyButton;        // auto-fills the hint's suggestion
+
+        float _curtainAlpha = 1f;   // the curtain's designed alpha — "opacity 1" restores THIS
+        TMPro.TMP_Text _text;       // $Text under the tutorial — the step's message
+        RectTransform _textContainer;   // $TextContainer — parked above the board on Show
+        RectTransform _applyRt;         // $ApplayButton — parked under the board on Show
+        GameObject _hand;               // $Hand — the demo finger (its own tap animation runs on $FingerImage)
+        GameObject _doubleTapText;      // $DoublieTapTex — shown only when the step wants a queen (double tap)
+        Transform _finger;              // $FingerImage — rotated by code to mime the taps
+        Coroutine _fingerAnim;
+        Coroutine _handSweep;
+
+        [SerializeField] float _boardMargin = 0.4f;   // gap to the board, in cell widths
+
+        // while a spotlight is up: only these cells may be edited…
+        readonly HashSet<MBCell> _allowed = new HashSet<MBCell>();
+        // …and (for hints) each target cell must reach this state before the tutorial closes
+        readonly Dictionary<MBCell, MBCell.ECellType> _targets = new Dictionary<MBCell, MBCell.ECellType>();
+
+        /// <summary>True for cells the player may NOT touch while a spotlight is up.</summary>
+        public bool IsLocked(MBCell cell) => _allowed.Count > 0 && !_allowed.Contains(cell);
+
+        /// <summary>
+        /// While a spotlight is up, only the suggested edit is allowed: outside the holes —
+        /// nothing; inside a hint step — exactly the target mark; inside a plain spotlight — anything.
+        /// </summary>
+        public bool AllowsEdit(MBCell cell, MBCell.ECellType intended) {
+            if (_allowed.Count == 0) return true;          // no spotlight — free play
+            if (!_allowed.Contains(cell)) return false;    // outside the holes — locked
+            if (_targets.Count == 0) return true;          // plain spotlight — free inside
+            return _targets.TryGetValue(cell, out var t) && t == intended;
+        }
+
+        // The trick: everything stays ACTIVE but at opacity 0 for the first frames, so Unity's
+        // layout pass sizes/stretches the UI properly; only after that we hide for real.
+        void Awake() {
+
+            instance = this;
+            _blackCurtain = GameObject.Find("$BlackCurtain");
+            _canvas = GetComponentInChildren<CanvasGroup>(true);
+            _text = transform.RecursiveFindChild<TMPro.TMP_Text>("$Text");
+            _textContainer = transform.RecursiveFindChild("$TextContainer") as RectTransform;
+            _applyRt = transform.RecursiveFindChild("$ApplayButton") as RectTransform;
+            var hand = transform.RecursiveFindChild("$Hand");
+            _hand = hand != null ? hand.gameObject : null;
+            var dtt = transform.RecursiveFindChild("$DoublieTapTex");
+            _doubleTapText = dtt != null ? dtt.gameObject : null;
+            _finger = transform.RecursiveFindChild("$FingerImage");
+
+            var sr = _blackCurtain.GetComponent<SpriteRenderer>();
+
+            if (sr != null) {
+                _curtainAlpha = sr.color.a;
+            }
+
+            if (_applyButton == null && _applyRt != null) _applyButton = _applyRt.GetComponentInChildren<Button>(true);
+            if (_applyButton != null) _applyButton.onClick.AddListener(Apply);
+            else Debug.LogWarning("[MBToturial] No Apply button found ($ApplayButton).");
+            SetOpacity(0f);   // invisible, but alive for the layout pass
+        }
+
+        // the step completes itself the moment every target cell holds the right mark
+        void Update() {
+            if (_targets.Count == 0) return;
+            foreach (var kv in _targets)
+                if (kv.Key.State != kv.Value) return;
+            Hide();
+        }
+
+        void OnDestroy() { if (instance == this) instance = null; }
+
+        IEnumerator Start() {
+            // wait for UI to refresh our layout
+            yield return new WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
+            if (_blackCurtain != null) _blackCurtain.SetActive(false);
+            gameObject.SetActive(false);
+            SetOpacity(1f);
+            MBDrapeHoles.SetCurtain(_blackCurtain);
+        }
+
+        void SetOpacity(float a) {
+
+            if (_canvas != null) _canvas.alpha = a;
+
+            var sr = _blackCurtain != null ? _blackCurtain.GetComponent<SpriteRenderer>() : null;
+
+            if (sr != null) {
+                var c = sr.color;
+                c.a = a * _curtainAlpha;
+                sr.color = c; 
+            }
+        }
+
+        /// <summary>
+        /// Spotlight a hint and lock the rest of the board: the tutorial closes only when the
+        /// player does what the hint says (or taps Apply, which does it for them).
+        /// </summary>
+        public void ShowHint(Hint hint) {
+            _targets.Clear();
+            var gp = MBGameplay.instance;
+            if (gp == null || hint.cells == null || hint.cells.Length == 0) return;
+
+            var lit = new List<MBCell>();
+            var target = TargetFor(hint.kind);
+            foreach (int idx in hint.cells) {
+                var cell = gp.CellAt(idx / gp.N, idx % gp.N);
+                if (cell == null) continue;
+                lit.Add(cell);
+                if (target.HasValue) _targets[cell] = target.Value;
+            }
+
+            // the queen(s) CAUSING the elimination (queen-scope: "a queen rules out its row/
+            // column/region/neighbours") get a hole too, so the player sees the why — they're
+            // lit but never targets. Other tricks have no attacking queen, so nothing is added.
+            if (hint.kind == HintKind.Eliminate)
+                AddCauseQueens(lit, gp);
+
+            Spot(lit);
+            SetText(hint.note);
+            ShowHand(hint, gp);
+        }
+
+        // The demo finger: queen steps park it on the cell with the double-tap text; X/clear
+        // steps hide the text and sweep the finger along the cells to mark.
+        void ShowHand(Hint hint, MBGameplay gp) {
+            if (_hand == null) return;
+            if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
+
+            var target = TargetFor(hint.kind);
+            if (!target.HasValue) { _hand.SetActive(false); return; }
+
+            var cells = new List<MBCell>();
+            foreach (int idx in hint.cells) {
+                var cell = gp.CellAt(idx / gp.N, idx % gp.N);
+                if (cell != null) cells.Add(cell);
+            }
+            if (cells.Count == 0) { _hand.SetActive(false); return; }
+
+            bool doubleTap = target.Value == MBCell.ECellType.QUEEN;
+            _hand.SetActive(true);
+            if (_doubleTapText != null) _doubleTapText.SetActive(doubleTap);
+            PlayFingerAnim(doubleTap);   // tap-tap only when demonstrating a queen
+
+            if (doubleTap || cells.Count == 1) _hand.transform.position = cells[0].transform.position;
+            else _handSweep = StartCoroutine(SweepHand(cells, target.Value));
+        }
+
+        void PlayFingerAnim(bool on) {
+            if (_fingerAnim != null) { StopCoroutine(_fingerAnim); _fingerAnim = null; }
+            if (_finger == null) return;
+            _finger.localRotation = Quaternion.identity;
+            if (on) _fingerAnim = StartCoroutine(FingerDoubleTap());
+        }
+
+        // tap-tap … pause … tap-tap — a quick press-rotation and back, twice
+        IEnumerator FingerDoubleTap() {
+            const float angle = -27f, press = 0.09f, gap = 0.12f, pause = 0.7f;
+            while (true) {
+                yield return FingerTap(angle, press);
+                yield return new WaitForSecondsRealtime(gap);
+                yield return FingerTap(angle, press);
+                yield return new WaitForSecondsRealtime(pause);
+            }
+        }
+
+        IEnumerator FingerTap(float angle, float dur) {
+            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
+                _finger.localRotation = Quaternion.Euler(Mathf.Lerp(0f, angle, e / dur), 0f, 0f);
+                yield return null;
+            }
+            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
+                _finger.localRotation = Quaternion.Euler(Mathf.Lerp(angle, 0f, e / dur), 0f, 0f);
+                yield return null;
+            }
+            _finger.localRotation = Quaternion.identity;
+        }
+
+        // glide the finger along the cells, looping with a small pause. Every cycle drops the
+        // cells the player already marked, so the hand only shows what's still left to do.
+        IEnumerator SweepHand(List<MBCell> cells, MBCell.ECellType target) {
+            const float perCell = 0.35f, pause = 0.4f;
+            var pending = new List<MBCell>();
+            while (true) {
+                pending.Clear();
+                foreach (var c in cells) if (c.State != target) pending.Add(c);
+
+                if (pending.Count == 0) { _hand.SetActive(false); yield break; }  // all done — completion closes the step
+
+                // drag is only demonstrated on a gapless straight line — anything else
+                // (scattered cells, or a line broken by the player's marks) gets a pointing
+                // finger on the next cell instead, so we never teach a drag that would
+                // paint over cells in between.
+                if (pending.Count == 1 || !IsContiguousLine(pending)) {
+                    _hand.transform.position = pending[0].transform.position;
+                    yield return null;
+                    continue;
+                }
+
+                _hand.transform.position = pending[0].transform.position;
+                for (int i = 0; i < pending.Count - 1; i++) {
+                    Vector3 a = pending[i].transform.position, b = pending[i + 1].transform.position;
+                    for (float e = 0f; e < perCell; e += Time.unscaledDeltaTime) {
+                        _hand.transform.position = Vector3.Lerp(a, b, e / perCell);
+                        yield return null;
+                    }
+                }
+                yield return new WaitForSecondsRealtime(pause);
+            }
+        }
+
+        // same row or same column, with consecutive positions — a drag can cover it exactly
+        static bool IsContiguousLine(List<MBCell> cells) {
+            bool sameRow = true, sameCol = true;
+            foreach (var c in cells) {
+                if (c.Y != cells[0].Y) sameRow = false;
+                if (c.X != cells[0].X) sameCol = false;
+            }
+            if (!sameRow && !sameCol) return false;
+
+            var vals = new List<int>();
+            foreach (var c in cells) vals.Add(sameRow ? c.X : c.Y);
+            vals.Sort();
+            for (int i = 1; i < vals.Count; i++)
+                if (vals[i] != vals[i - 1] + 1) return false;
+            return true;
+        }
+
+        /// <summary>The message shown with the spotlight ($Text).</summary>
+        public void SetText(string message) {
+            if (_text != null) _text.text = message ?? "";
+        }
+
+        // every placed queen that attacks one of the lit cells
+        void AddCauseQueens(List<MBCell> lit, MBGameplay gp) {
+            int n = lit.Count; // only test against the original hint cells
+            for (int r = 0; r < gp.N; r++)
+                for (int c = 0; c < gp.N; c++) {
+                    var q = gp.CellAt(r, c);
+                    if (q == null || q.State != MBCell.ECellType.QUEEN || lit.Contains(q)) continue;
+                    for (int i = 0; i < n; i++)
+                        if (Attacks(q, lit[i], gp.Level)) { lit.Add(q); break; }
+                }
+        }
+
+        static bool Attacks(MBCell q, MBCell t, LevelData level) {
+            if (q.Y == t.Y || q.X == t.X) return true;                                  // row / column
+            if (Mathf.Abs(q.Y - t.Y) <= 1 && Mathf.Abs(q.X - t.X) <= 1) return true;    // touch
+            return level != null && level.RegionAt(q.Y, q.X) == level.RegionAt(t.Y, t.X); // region
+        }
+
+        // what state completes each hint kind; null = no single right edit (Guess = just look)
+        static MBCell.ECellType? TargetFor(HintKind kind) {
+            switch (kind) {
+                case HintKind.PlaceQueen: return MBCell.ECellType.QUEEN;
+                case HintKind.Eliminate:  return MBCell.ECellType.X;
+                case HintKind.WrongX:     return MBCell.ECellType.EMPTY;
+                case HintKind.WrongQueen: return MBCell.ECellType.EMPTY;
+                default:                  return null;
+            }
+        }
+
+        /// <summary>Auto-fill the hint's suggestion (the Apply button).</summary>
+        public void Apply() {
+            var gp = MBGameplay.instance; if (gp == null) return;
+            if (_targets.Count == 0) { Debug.LogWarning("[MBToturial] Apply clicked but this step has no targets."); return; }
+            foreach (var kv in _targets) gp.ApplyTutorialMark(kv.Key, kv.Value);
+            // Update sees every target met and closes the tutorial
+        }
+
+        public void ShowCell(int row, int col) => Spot(Collect(c => c.Y == row && c.X == col));
+
+        public void ShowCells(IEnumerable<int> cellIndices) {
+            var gp = MBGameplay.instance; if (gp == null) return;
+            var lit = new List<MBCell>();
+            foreach (int idx in cellIndices) {
+                var cell = gp.CellAt(idx / gp.N, idx % gp.N);
+                if (cell != null) lit.Add(cell);
+            }
+            Spot(lit);
+        }
+
+        public void ShowRow(int row) => Spot(Collect(c => c.Y == row));
+
+        public void ShowColumn(int col) => Spot(Collect(c => c.X == col));
+
+        public void ShowRegion(int region) {
+            var gp = MBGameplay.instance; if (gp == null || gp.Level == null) return;
+            Spot(Collect(c => gp.Level.RegionAt(c.Y, c.X) == region));
+        }
+
+        public void Hide() {
+            _allowed.Clear();
+            _targets.Clear();
+            if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
+            PlayFingerAnim(false);
+            if (_hand != null) _hand.SetActive(false);
+            MBDrapeHoles.Clear();
+            gameObject.SetActive(false);   // back to sleep until the next Show*
+        }
+
+        // ---- helpers ------------------------------------------------------------------
+
+        List<MBCell> Collect(System.Predicate<MBCell> pick) {
+            var lit = new List<MBCell>();
+            var gp = MBGameplay.instance; if (gp == null) return lit;
+            for (int r = 0; r < gp.N; r++)
+                for (int c = 0; c < gp.N; c++) {
+                    var cell = gp.CellAt(r, c);
+                    if (cell != null && pick(cell)) lit.Add(cell);
+                }
+            return lit;
+        }
+
+        void Spot(List<MBCell> cells) {
+            if (cells.Count == 0) return;
+            _allowed.Clear();
+            foreach (var c in cells) _allowed.Add(c);   // everything else is locked
+            SetText("");                  // stale text never survives into a new spotlight
+            gameObject.SetActive(true);   // the tutorial put itself to sleep after layout — wake it
+            PlaceAroundBoard();
+            MBDrapeHoles.Show(cells);
+        }
+
+        // Park $TextContainer above the board and $ApplayButton below it, with a margin.
+        void PlaceAroundBoard() {
+            var gp = MBGameplay.instance;
+            if (gp == null) return;
+
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue, half = 0f;
+            for (int r = 0; r < gp.N; r++)
+                for (int c = 0; c < gp.N; c++) {
+                    var cell = gp.CellAt(r, c);
+                    if (cell == null) continue;
+                    var p = cell.transform.position;
+                    minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x);
+                    minY = Mathf.Min(minY, p.y); maxY = Mathf.Max(maxY, p.y);
+                    half = cell.GetSize().x * cell.transform.lossyScale.x * 0.5f;
+                }
+            if (half <= 0f) return;
+
+            float centerX = (minX + maxX) * 0.5f;
+            float margin = half * 2f * _boardMargin;
+
+            if (_textContainer != null) {
+                float h = _textContainer.rect.height * _textContainer.lossyScale.y * 0.5f;
+                _textContainer.position = new Vector3(centerX, maxY + half + margin + h, _textContainer.position.z);
+            }
+            if (_applyRt != null) {
+                float h = _applyRt.rect.height * _applyRt.lossyScale.y * 0.5f;
+                _applyRt.position = new Vector3(centerX, minY - half - margin - h, _applyRt.position.z);
+            }
+        }
+    }
+}

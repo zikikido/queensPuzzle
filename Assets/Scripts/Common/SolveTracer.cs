@@ -31,9 +31,10 @@ namespace QueensPuzzle
         /// Returns false when the next step would need a guess or a harder technique.
         /// </summary>
         public static bool TryHint(int n, int[] region, int[] solution,
-                                   IReadOnlyList<int> queenCells, IReadOnlyList<int> xCells, out Hint hint)
+                                   IReadOnlyList<int> queenCells, IReadOnlyList<int> xCells, out Hint hint,
+                                   Func<int, string> regionName = null, string piece = "queen", string pieces = "queens")
         {
-            var board = new Board(n, region, solution, new List<TraceNode>());
+            var board = new Board(n, region, solution, new List<TraceNode>(), regionName, piece, pieces);
             if (queenCells != null) foreach (int idx in queenCells) board.SeedQueen(idx);
             if (xCells != null) foreach (int idx in xCells) board.KnownX(idx);
             return board.TryHint(out hint);
@@ -64,6 +65,8 @@ namespace QueensPuzzle
         {
             readonly int n;
             readonly int[] region, sol;
+            readonly Func<int, string> _name;   // how notes name a region — letters by default, the game injects colour names
+            readonly string _piece, _pieces;    // what notes call the piece — queen(s) by default; puppy/cat per game
             bool[] cand, queen, rowDone, colDone, regDone;
             int placed;
             int _k;                     // size of the last subset/fish that fired (for weighting)
@@ -75,9 +78,12 @@ namespace QueensPuzzle
 
             public Board(int n, int[] region) : this(n, region, null, null) { }
 
-            public Board(int n, int[] region, int[] sol, List<TraceNode> nodes)
+            public Board(int n, int[] region, int[] sol, List<TraceNode> nodes, Func<int, string> regionName = null,
+                         string piece = "queen", string pieces = "queens")
             {
                 this.n = n; this.region = region; this.sol = sol; Nodes = nodes;
+                _name = regionName ?? Lr;
+                _piece = piece; _pieces = pieces;
                 cand = new bool[n * n];
                 for (int i = 0; i < cand.Length; i++) cand[i] = true;
                 queen = new bool[n * n]; rowDone = new bool[n]; colDone = new bool[n]; regDone = new bool[n];
@@ -85,7 +91,7 @@ namespace QueensPuzzle
 
             public Board Clone()
             {
-                var b = new Board(n, region, sol, Nodes);
+                var b = new Board(n, region, sol, Nodes, _name, _piece, _pieces);
                 b.cand = (bool[])cand.Clone(); b.queen = (bool[])queen.Clone();
                 b.rowDone = (bool[])rowDone.Clone(); b.colDone = (bool[])colDone.Clone(); b.regDone = (bool[])regDone.Clone();
                 b.placed = placed;
@@ -186,7 +192,7 @@ namespace QueensPuzzle
                 {
                     Place(idx / n, idx % n);
                     step = new DeductionStep { kind = NodeKind.Placement, tech = SolveTechnique.RegionSingle, cells = new[] { idx },
-                        note = $"region {Lr(region[idx])} is down to one cell → place its queen" };
+                        note = $"1 {_piece} per color {_name(region[idx])}" };
                     return true;
                 }
 
@@ -195,7 +201,7 @@ namespace QueensPuzzle
                 {
                     Place(idx / n, idx % n);
                     step = new DeductionStep { kind = NodeKind.Placement, tech = SolveTechnique.LineSingle, cells = new[] { idx },
-                        note = $"{(isRow ? "row" : "column")} {line} is down to one cell → place its queen" };
+                        note = $"1 {_piece} per {(isRow ? "row" : "column")}" };
                     return true;
                 }
 
@@ -256,7 +262,7 @@ namespace QueensPuzzle
                     if (!C(idx)) continue;
                     if (rowDone[idx / n] || colDone[idx % n]) Elim(idx);
                 }
-                if (_elim.Count > 0) { note = "a queen rules out the rest of its row and column"; return true; }
+                if (_elim.Count > 0) { note = $"1 {_piece} per row and column"; return true; }
 
                 _elim.Clear();
                 for (int idx = 0; idx < cand.Length; idx++)
@@ -264,7 +270,7 @@ namespace QueensPuzzle
                     if (!C(idx)) continue;
                     if (regDone[region[idx]]) Elim(idx);
                 }
-                if (_elim.Count > 0) { note = "a queen rules out the rest of its region"; return true; }
+                if (_elim.Count > 0) { note = $"1 {_piece} per color"; return true; }
 
                 _elim.Clear();
                 for (int idx = 0; idx < cand.Length; idx++)
@@ -272,7 +278,7 @@ namespace QueensPuzzle
                     if (!C(idx)) continue;
                     if (AdjacentToQueen(idx / n, idx % n)) Elim(idx);
                 }
-                if (_elim.Count > 0) { note = "a queen rules out the cells touching it"; return true; }
+                if (_elim.Count > 0) { note = $"{_pieces} cannot touch"; return true; }
 
                 note = null; return false;
             }
@@ -310,7 +316,7 @@ namespace QueensPuzzle
                 if (TryTrialElim(out int cell, out int options))
                 {
                     hint = new Hint { kind = HintKind.Guess, cells = new[] { cell },
-                        note = $"guessing among the {options} options here — a queen on this one leads to a contradiction, so X it" };
+                        note = $"a {_piece} here leads to a dead end → mark it X" };
                     return true;
                 }
 
@@ -318,7 +324,7 @@ namespace QueensPuzzle
                 int row = MostConstrainedRow();
                 if (row < 0 || sol == null) return false;
                 hint = new Hint { kind = HintKind.Guess, cells = new[] { row * n + sol[row] },
-                    note = "no certain move — best guess: a queen here" };
+                    note = $"no certain move — best guess: a {_piece} here" };
                 return true;
             }
 
@@ -405,13 +411,13 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int c = 0; c < n; c++) { int i = rr * n + c; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"region {Lr(g)} is confined to row {rr} → that row is {Lr(g)}'s queen, clear other colours from row {rr}"; return true; }
+                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in row {rr} → clear other colors from row {rr}"; return true; }
                     }
                     if (AllSameCol(cells, out int cc))
                     {
                         _elim.Clear();
                         for (int r = 0; r < n; r++) { int i = r * n + cc; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"region {Lr(g)} is confined to column {cc} → that column is {Lr(g)}'s queen, clear other colours from column {cc}"; return true; }
+                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in column {cc} → clear other colors from column {cc}"; return true; }
                     }
                 }
                 note = null; return false;
@@ -428,7 +434,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i / n != r) Elim(i);
-                        if (_elim.Count > 0) { note = $"row {r} is all one colour ({Lr(g)}) → {Lr(g)}'s queen is in row {r}, clear {Lr(g)} everywhere else"; return true; }
+                        if (_elim.Count > 0) { note = $"row {r} is all {_name(g)} → clear {_name(g)} outside row {r}"; return true; }
                     }
                 }
                 for (int c = 0; c < n; c++)
@@ -439,7 +445,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i % n != c) Elim(i);
-                        if (_elim.Count > 0) { note = $"column {c} is all one colour ({Lr(g)}) → {Lr(g)}'s queen is in column {c}, clear {Lr(g)} everywhere else"; return true; }
+                        if (_elim.Count > 0) { note = $"column {c} is all {_name(g)} → clear {_name(g)} outside column {c}"; return true; }
                     }
                 }
                 note = null; return false;
@@ -460,7 +466,7 @@ namespace QueensPuzzle
                         foreach (int x in cells) if (!Touch(idx, x)) { all = false; break; }
                         if (all) Elim(idx);
                     }
-                    if (_elim.Count > 0) { note = $"region {Lr(g)}'s queen ({cells.Count} options left) attacks every marked cell → none of them can hold a queen"; return true; }
+                    if (_elim.Count > 0) { note = $"{_name(g)}'s {_piece} attacks every marked cell"; return true; }
                 }
                 note = null; return false;
             }
@@ -484,7 +490,7 @@ namespace QueensPuzzle
                             if (x / n != idx / n && x % n != idx % n && !Touch(idx, x)) { all = false; break; }
                         if (all) Elim(idx);
                     }
-                    if (_elim.Count > 0) { note = $"a queen on a marked cell would attack all {cells.Count} cells left for {Lr(g)} → {Lr(g)} would have nowhere to go, so mark it X"; return true; }
+                    if (_elim.Count > 0) { note = $"a {_piece} on a marked cell leaves {_name(g)} no room → mark it X"; return true; }
                 }
                 note = null; return false;
             }
@@ -536,7 +542,7 @@ namespace QueensPuzzle
                     {
                         var regs = new List<int>(); for (int i = 0; i < k; i++) regs.Add(g[sel[i]]);
                         _k = k;
-                        note = $"colours {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other colour fits there, clear them out";
+                        note = $"colors {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other color fits there, clear them out";
                         return true;
                     }
                 } while (NextCombo(sel, k, gc));
@@ -578,7 +584,7 @@ namespace QueensPuzzle
                     {
                         var lines = new List<int>(); for (int i = 0; i < k; i++) lines.Add(L[sel[i]]);
                         _k = k;
-                        note = $"{what} {Lines(lines)} hold only colours {Letters(u)} → those colours are confined here, clear them everywhere else";
+                        note = $"{what} {Lines(lines)} hold only colors {Letters(u)} → those colors live here, clear them everywhere else";
                         return true;
                     }
                 } while (NextCombo(sel, k, lc));
@@ -666,7 +672,7 @@ namespace QueensPuzzle
             bool AllSameRegion(List<int> cells, out int g) { g = region[cells[0]]; foreach (int i in cells) if (region[i] != g) return false; return true; }
             bool Touch(int a, int b) { int dr = Math.Abs(a / n - b / n), dc = Math.Abs(a % n - b % n); return Math.Max(dr, dc) == 1; }
             static int Pop(int x) { int c = 0; while (x != 0) { x &= x - 1; c++; } return c; }
-            static char Lr(int g) => (char)('A' + g);
+            static string Lr(int g) => ((char)('A' + g)).ToString();   // default region name: a letter
 
             // "5, 6, 7" from a bitmask or a list of line indices
             static string Lines(int mask) { var l = new List<int>(); for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) l.Add(i); return Lines(l); }
@@ -678,13 +684,13 @@ namespace QueensPuzzle
                 return sb.ToString();
             }
 
-            // "C, D, F" from a region bitmask or a list of region ids
-            static string Letters(int mask) { var l = new List<int>(); for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) l.Add(i); return Letters(l); }
-            static string Letters(List<int> gs)
+            // "C, D, F" (or "Pink, Teal, …" in game) from a region bitmask or a list of region ids
+            string Letters(int mask) { var l = new List<int>(); for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) l.Add(i); return Letters(l); }
+            string Letters(List<int> gs)
             {
                 gs.Sort();
                 var sb = new StringBuilder();
-                for (int i = 0; i < gs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append((char)('A' + gs[i])); }
+                for (int i = 0; i < gs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append(_name(gs[i])); }
                 return sb.ToString();
             }
         }

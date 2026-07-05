@@ -4,11 +4,14 @@ using Puzzby;
 using QueensPuzzle;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace qp {
     public class MBGameplay : MonoBehaviour, IMBTouchesListener {
+
+        static public MBGameplay instance;
 
         [Header("Board layout (fractions of a cell)")]
         [SerializeField] float _spacing = 0.08f;   // gap between cells
@@ -41,6 +44,21 @@ namespace qp {
         struct CellEdit { public int idx; public MBCell.ECellType from; public CellEdit(int i, MBCell.ECellType f) { idx = i; from = f; } }
         readonly List<List<CellEdit>> _undo = new List<List<CellEdit>>();
         List<CellEdit> _stroke;             // the stroke being recorded now (null between strokes)
+
+        // read-only board access for the tutorial (spotlights need real cells)
+        public int N => _n;
+        public LevelData Level => _level;
+        public MBCell CellAt(int row, int col) =>
+            _cells != null && row >= 0 && row < _n && col >= 0 && col < _n ? _cells[row, col] : null;
+
+        void Awake() {
+            instance = this;
+        }
+
+        void OnDestroy() {
+            instance = null;
+        }
+
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -144,7 +162,7 @@ namespace qp {
             GatherBoard(out var queens, out var xs);
 
             // 1) the next real deduction
-            if (SolveTracer.TryHint(_n, _level.regions, _level.solutionColumns, queens, xs, out var hint)) {
+            if (SolveTracer.TryHint(_n, _level.regions, _level.solutionColumns, queens, xs, out var hint, RegionRichName, PieceName, PieceNamePlural)) {
                 PresentHint(hint);
                 return;
             }
@@ -153,11 +171,22 @@ namespace qp {
             foreach (var cell in _cells)
                 if (cell.State == MBCell.ECellType.X && cell.IsSolutionQueen) {
                     PresentHint(new Hint { kind = HintKind.WrongX, cells = new[] { cell.Y * _n + cell.X },
-                                           note = "a queen belongs here — clear this X" });
+                                           note = $"a {PieceName} belongs here — clear this X" });
                     return;
                 }
 
             Debug.Log("[MBGameplay] Hint: no simple next step (would need a guess).");
+        }
+
+        // What hint texts call the piece — this game's queens are puppies (another skin: cats).
+        const string PieceName = "puppy";
+        const string PieceNamePlural = "puppies";
+
+        // How hint texts name a region for the PLAYER: the colour's name, tinted in that colour.
+        static string RegionRichName(int g) {
+            string name = SORegionsColors.NameAt(g);
+            if (string.IsNullOrEmpty(name)) name = ((char)('A' + g)).ToString();
+            return $"<color=#{UnityEngine.ColorUtility.ToHtmlStringRGB(SORegionsColors.ColorAt(g))}>{name}</color>";
         }
 
         void PresentHint(Hint hint) {
@@ -167,6 +196,7 @@ namespace qp {
                 int r = idx / _n, c = idx % _n;
                 if (r >= 0 && r < _n && c >= 0 && c < _n) _cells[r, c].Pulse();
             }
+            MBToturial.instance?.ShowHint(hint); // the tutorial owns spotlight, lock and completion
         }
 
         // Re-run while already in play mode (called by the Level Builder): clears the current
@@ -261,12 +291,14 @@ namespace qp {
 
             switch (cell.State) {
                 case MBCell.ECellType.EMPTY:
+                    if (!TutorialAllows(cell, MBCell.ECellType.X)) { _drag = DragMode.None; break; }
                     _drag = DragMode.PaintX;
                     _stroke = new List<CellEdit>();   // begin recording this stroke
                     PaintCell(cell, MBCell.ECellType.X);
                     Tick();
                     break;
                 case MBCell.ECellType.X:
+                    if (!TutorialAllows(cell, MBCell.ECellType.EMPTY)) { _drag = DragMode.None; break; }
                     _drag = DragMode.Erase;
                     _stroke = new List<CellEdit>();
                     PaintCell(cell, MBCell.ECellType.EMPTY);
@@ -276,6 +308,17 @@ namespace qp {
                     _drag = DragMode.None;   // don't paint over queens
                     break;
             }
+        }
+
+        // While a tutorial spotlight is up, only the SUGGESTED edit on its own cells is allowed.
+        static bool TutorialAllows(MBCell cell, MBCell.ECellType intended) =>
+            MBToturial.instance == null || MBToturial.instance.AllowsEdit(cell, intended);
+
+        // Apply a tutorial suggestion to a cell the proper way (queens advance progress/win).
+        public void ApplyTutorialMark(MBCell cell, MBCell.ECellType target) {
+            if (cell == null || cell.State == target) return;
+            if (target == MBCell.ECellType.QUEEN) PlaceBoostQueen(cell.Y * _n + cell.X);
+            else cell.MarkCell(target);
         }
 
         // Change a cell's X/empty state as part of the current stroke, remembering its prior state.
@@ -302,11 +345,11 @@ namespace qp {
         // cell (from overlapping steps) does nothing and won't re-fire the haptic.
         void PaintDrag(MBCell cell) {
             if (cell == null) return;
-            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY) {
+            if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY && TutorialAllows(cell, MBCell.ECellType.X)) {
                 PaintCell(cell, MBCell.ECellType.X);
                 DragTick();
             }
-            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X) {
+            else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X && TutorialAllows(cell, MBCell.ECellType.EMPTY)) {
                 PaintCell(cell, MBCell.ECellType.EMPTY);
                 DragTick();
             }
@@ -315,7 +358,7 @@ namespace qp {
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
             if (!_ready) return;
             // a real double-click means both taps landed on the SAME cell — otherwise it's just two quick taps
-            if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell) {
+            if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell && TutorialAllows(_lastTapCell, MBCell.ECellType.QUEEN)) {
                 _prevTapCell = null;   // consume it so a third quick tap can't re-trigger
                 var cell = _lastTapCell;
 
