@@ -36,6 +36,12 @@ namespace qp {
         const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
         MBCell _lastTapCell, _prevTapCell;  // last two tapped cells — a double-click must be the same cell
 
+        // Undo: each stroke (one tap or one drag of X edits) is a group of cell changes we can revert.
+        // Queens / wrong-queens are never recorded, so they can't be undone.
+        struct CellEdit { public int idx; public MBCell.ECellType from; public CellEdit(int i, MBCell.ECellType f) { idx = i; from = f; } }
+        readonly List<List<CellEdit>> _undo = new List<List<CellEdit>>();
+        List<CellEdit> _stroke;             // the stroke being recorded now (null between strokes)
+
         IEnumerator Start() {
             WireBoostButtons();
             yield return BuildBoard();
@@ -114,8 +120,22 @@ namespace qp {
             }
         }
 
+        // Undo boost: revert the most recent stroke of X edits (a whole drag counts as one).
+        // Never touches a queen / wrong-queen cell.
         void Undo() {
-            Debug.Log("[MBGameplay] Boost: Undo (TODO)");
+            if (!_ready || _undo.Count == 0) return;
+
+            var stroke = _undo[_undo.Count - 1];
+            _undo.RemoveAt(_undo.Count - 1);
+
+            bool any = false;
+            foreach (var e in stroke) {
+                var cell = _cells[e.idx / _n, e.idx % _n];
+                if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) continue;
+                cell.MarkCell(e.from);
+                any = true;
+            }
+            if (any) Haptics.Play(GameHaptic.Tap);
         }
 
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
@@ -183,6 +203,7 @@ namespace qp {
             // remember geometry for touch hit-testing
             _board = board; _n = n; _cellSize = cellSize; _step = step;
             _cells = new MBCell[n, n];
+            _undo.Clear(); _stroke = null;   // fresh board, nothing to undo
 
             // top-bar progress starts at 0 / n queens
             if (_topBar == null) _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
@@ -241,18 +262,26 @@ namespace qp {
             switch (cell.State) {
                 case MBCell.ECellType.EMPTY:
                     _drag = DragMode.PaintX;
-                    cell.MarkCell(MBCell.ECellType.X);
+                    _stroke = new List<CellEdit>();   // begin recording this stroke
+                    PaintCell(cell, MBCell.ECellType.X);
                     Tick();
                     break;
                 case MBCell.ECellType.X:
                     _drag = DragMode.Erase;
-                    cell.MarkCell(MBCell.ECellType.EMPTY);
+                    _stroke = new List<CellEdit>();
+                    PaintCell(cell, MBCell.ECellType.EMPTY);
                     Tick();
                     break;
                 default:
                     _drag = DragMode.None;   // don't paint over queens
                     break;
             }
+        }
+
+        // Change a cell's X/empty state as part of the current stroke, remembering its prior state.
+        void PaintCell(MBCell cell, MBCell.ECellType to) {
+            _stroke?.Add(new CellEdit(cell.Y * _n + cell.X, cell.State));
+            cell.MarkCell(to);
         }
 
         public void TouchDrag(MBTouches.TouchData touch, bool samePoint) {
@@ -274,11 +303,11 @@ namespace qp {
         void PaintDrag(MBCell cell) {
             if (cell == null) return;
             if (_drag == DragMode.PaintX && cell.State == MBCell.ECellType.EMPTY) {
-                cell.MarkCell(MBCell.ECellType.X);
+                PaintCell(cell, MBCell.ECellType.X);
                 DragTick();
             }
             else if (_drag == DragMode.Erase && cell.State == MBCell.ECellType.X) {
-                cell.MarkCell(MBCell.ECellType.EMPTY);
+                PaintCell(cell, MBCell.ECellType.EMPTY);
                 DragTick();
             }
         }
@@ -289,6 +318,13 @@ namespace qp {
             if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell) {
                 _prevTapCell = null;   // consume it so a third quick tap can't re-trigger
                 var cell = _lastTapCell;
+
+                // This gesture is a queen, not X edits — drop the two taps' X toggles from undo.
+                _stroke = null;
+                int qidx = cell.Y * _n + cell.X;
+                if (_undo.Count > 0 && _undo[_undo.Count - 1].Count == 1 && _undo[_undo.Count - 1][0].idx == qidx)
+                    _undo.RemoveAt(_undo.Count - 1);
+
                 bool correct = cell.IsSolutionQueen;
                 cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
                 if (correct) {
@@ -302,6 +338,12 @@ namespace qp {
                     _shake = StartCoroutine(ShakeBoard());
                 }
             }
+            else if (_stroke != null) {
+                // a tap or a whole drag of X edits = one undo entry
+                if (_stroke.Count > 0) _undo.Add(_stroke);
+                _stroke = null;
+            }
+
             _drag = DragMode.None;
         }
 
