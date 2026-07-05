@@ -3028,7 +3028,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 601878281659667153, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 787619954648341803, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Pivot.x
@@ -3123,6 +3123,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: ShapeModule.m_Scale.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: UVModule.startFrame.scalar
       value: 0.9999
       objectReference: {fileID: 0}
@@ -3133,6 +3137,14 @@ PrefabInstance:
     - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: UVModule.startFrame.minMaxState
       value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: InitialModule.startLifetime.scalar
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: InitialModule.startLifetime.minScalar
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2204896993829263375, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: UVModule.sprites.Array.data[0].sprite
@@ -3371,8 +3383,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7810618026860665685, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: m_Scale3D.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7810618026860665685, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: m_Scale3D.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7810618026860665685, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
+      propertyPath: m_Scale3D.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7810618026860665685, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Particles.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7932887595852150522, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Name
