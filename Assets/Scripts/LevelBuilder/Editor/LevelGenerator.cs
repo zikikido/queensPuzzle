@@ -22,29 +22,44 @@ namespace QueensPuzzle
         public static LevelData Generate(int n, int seed, int maxAttempts = 250,
             System.Action<float> onProgress = null)
         {
+            if (!TryGenerateRaw(n, seed, maxAttempts, out int[] region, out int[] cols, out int weight, onProgress))
+                return null;
+
+            var data = ScriptableObject.CreateInstance<LevelData>();
+            data.size = Mathf.Clamp(n, MinSize, MaxSize);
+            data.regions = region;
+            data.solutionColumns = cols;
+            data.seed = seed;
+            data.weight = weight;
+            return data;
+        }
+
+        /// <summary>
+        /// Thread-safe core of <see cref="Generate"/>: produces the raw region/solution/weight of a
+        /// unique board without touching the Unity object model — safe to run on a worker thread
+        /// (pass a null <paramref name="onProgress"/> off the main thread).
+        /// </summary>
+        public static bool TryGenerateRaw(int n, int seed, int maxAttempts,
+            out int[] region, out int[] cols, out int weight, System.Action<float> onProgress = null)
+        {
             n = Mathf.Clamp(n, MinSize, MaxSize);
             var rng = new System.Random(seed);
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
                 onProgress?.Invoke(attempt / (float)maxAttempts);
-                int[] cols = SolutionPlacer.TryPlace(n, rng);
-                if (cols == null) continue;
+                int[] c = SolutionPlacer.TryPlace(n, rng);
+                if (c == null) continue;
 
-                int[] region = RegionGrower.Grow(n, cols, rng);
-                if (!MakeUnique(n, region, cols, rng)) continue; // couldn't repair → re-roll
+                int[] r = RegionGrower.Grow(n, c, rng);
+                if (!MakeUnique(n, r, c, rng)) continue; // couldn't repair → re-roll
 
-                var data = ScriptableObject.CreateInstance<LevelData>();
-                data.size = n;
-                data.regions = region;
-                data.solutionColumns = cols;
-                data.seed = seed;
-
-                var rating = WeightRater.Rate(n, region, cols); // auto-rate on generate
-                data.weight = rating.weight;
-                return data;
+                region = r; cols = c;
+                weight = WeightRater.Rate(n, r, c).weight; // auto-rate on generate
+                return true;
             }
-            return null;
+            region = null; cols = null; weight = 0;
+            return false;
         }
 
         /// <summary>

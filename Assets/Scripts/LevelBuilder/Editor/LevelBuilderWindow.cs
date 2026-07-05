@@ -11,7 +11,7 @@ namespace QueensPuzzle.EditorTools
     ///
     /// Levels ARE measured: every generated/loaded level is rated, and Recheck re-rates on demand.
     /// </summary>
-    public class LevelBuilderWindow : EditorWindow
+    public partial class LevelBuilderWindow : EditorWindow
     {
         const string LevelsFolder = "Assets/Levels";   // root; sets live in subfolders, __Play in the root
         const int LoadPickerId = 9210;
@@ -238,6 +238,8 @@ namespace QueensPuzzle.EditorTools
 
             string genLabel = _targetWeight <= 0 ? "Generate (random)" : $"Generate (weight ~{_targetWeight})";
             if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
+
+            DrawRangeGenerate();   // parallel "from N to M" regenerate, keeping each slot's size
 
             EditorGUI.BeginChangeCheck();
             using (new EditorGUILayout.HorizontalScope())

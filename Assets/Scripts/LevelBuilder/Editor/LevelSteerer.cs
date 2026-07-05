@@ -20,6 +20,27 @@ namespace QueensPuzzle
         public static LevelData Generate(LevelFingerprint target, int n, int seed,
             int[] warmRegion = null, int[] warmSol = null, Action<float> onProgress = null)
         {
+            if (!TrySteerRaw(target, n, seed, warmRegion, warmSol, out int[] region, out int[] sol, out int weight, onProgress))
+                return null;
+
+            var data = ScriptableObject.CreateInstance<LevelData>();
+            data.size = n;
+            data.regions = region;
+            data.solutionColumns = sol;
+            data.seed = seed;
+            data.weight = weight;
+            return data;
+        }
+
+        /// <summary>
+        /// Thread-safe core of <see cref="Generate"/>: steers to a raw region/solution/weight without
+        /// touching the Unity object model — safe to run on a worker thread (pass a null
+        /// <paramref name="onProgress"/> off the main thread).
+        /// </summary>
+        public static bool TrySteerRaw(LevelFingerprint target, int n, int seed,
+            int[] warmRegion, int[] warmSol, out int[] region, out int[] sol, out int weight,
+            Action<float> onProgress = null)
+        {
             int[] startRegion, startSol;
             int minDrift = 0;
             if (warmRegion != null && warmSol != null && warmRegion.Length == n * n)
@@ -34,25 +55,18 @@ namespace QueensPuzzle
             }
             else
             {
-                var start = LevelGenerator.Generate(n, seed, 250, p => onProgress?.Invoke(p * 0.1f));
-                if (start == null) return null;
-                startRegion = start.regions;
-                startSol = start.solutionColumns;
+                if (!LevelGenerator.TryGenerateRaw(n, seed, 250, out startRegion, out startSol, out _,
+                        p => onProgress?.Invoke(p * 0.1f)))
+                { region = null; sol = null; weight = 0; return false; }
             }
 
-            int[] region = WeightAnnealer.Steer(n, startRegion, startSol,
+            region = WeightAnnealer.Steer(n, startRegion, startSol,
                 target, Gamma, Iterations, seed,
-                out int[] sol, p => onProgress?.Invoke(0.1f + p * 0.9f), minDrift);
+                out sol, p => onProgress?.Invoke(0.1f + p * 0.9f), minDrift);
+            if (region == null || sol == null) { weight = 0; return false; }
 
-            var data = ScriptableObject.CreateInstance<LevelData>();
-            data.size = n;
-            data.regions = region;
-            data.solutionColumns = sol;
-            data.seed = seed;
-
-            var rating = WeightRater.Rate(n, region, sol);
-            data.weight = rating.weight;
-            return data;
+            weight = WeightRater.Rate(n, region, sol).weight;
+            return true;
         }
 
         // One of the 7 non-identity board symmetries (flip H / flip V / transpose, combined).
