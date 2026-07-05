@@ -1744,7 +1744,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Applay
+  m_text: Apply
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: a626c64704565124884f9b87c20e42ea, type: 2}
   m_sharedMaterial: {fileID: -8553950518751908551, guid: a626c64704565124884f9b87c20e42ea, type: 2}
@@ -2031,7 +2031,7 @@ GameObject:
   - component: {fileID: 1608957677}
   - component: {fileID: 1608957676}
   m_Layer: 0
-  m_Name: $ApplayButton
+  m_Name: $ApplyButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2841,9 +2841,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da322bb745253284e851e638e662064c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _blackCurtain: {fileID: 0}
-  _canvas: {fileID: 0}
-  _applyButton: {fileID: 0}
   _boardMargin: 0.4
 --- !u!114 &2114892198
 MonoBehaviour:

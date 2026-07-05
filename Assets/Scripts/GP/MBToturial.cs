@@ -21,9 +21,9 @@ namespace qp {
 
         public static MBToturial instance;
 
-        [SerializeField] GameObject _blackCurtain;   // the darkening drape; found by name when left empty
-        [SerializeField] CanvasGroup _canvas;        // the tutorial UI canvas; found in children when left empty
-        [SerializeField] Button _applyButton;        // auto-fills the hint's suggestion
+        GameObject _blackCurtain;   // the darkening drape; found by name when left empty
+        CanvasGroup _canvas;        // the tutorial UI canvas; found in children when left empty
+        Button _applyButton;        // auto-fills the hint's suggestion
 
         float _curtainAlpha = 1f;   // the curtain's designed alpha — "opacity 1" restores THIS
         TMPro.TMP_Text _text;       // $Text under the tutorial — the step's message
@@ -67,7 +67,7 @@ namespace qp {
             _canvas = GetComponentInChildren<CanvasGroup>(true);
             _text = transform.RecursiveFindChild<TMPro.TMP_Text>("$Text");
             _textContainer = transform.RecursiveFindChild("$TextContainer") as RectTransform;
-            _applyRt = transform.RecursiveFindChild("$ApplayButton") as RectTransform;
+            _applyRt = transform.RecursiveFindChild("$ApplyButton") as RectTransform;
             var hand = transform.RecursiveFindChild("$Hand");
             _hand = hand != null ? hand.gameObject : null;
             var dtt = transform.RecursiveFindChild("$DoublieTapTex");
