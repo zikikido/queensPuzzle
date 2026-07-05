@@ -37,6 +37,8 @@ namespace qp {
 
         [SerializeField] float _boardMargin = 0.4f;   // gap to the board, in cell widths
 
+        bool _handEnabled = true, _applyEnabled = true;   // per-step visibility switches (sticky until changed)
+
         // while a spotlight is up: only these cells may be edited…
         readonly HashSet<MBCell> _allowed = new HashSet<MBCell>();
         // …and (for hints) each target cell must reach this state before the tutorial closes
@@ -144,6 +146,23 @@ namespace qp {
             Spot(lit);
             SetText(hint.note);
             ShowHand(hint, gp);
+            if (_applyRt != null) _applyRt.gameObject.SetActive(_applyEnabled && _targets.Count > 0);
+        }
+
+        /// <summary>Show/hide the demo hand (sticky — applies to this and future steps).</summary>
+        public void SetHandVisible(bool on) {
+            _handEnabled = on;
+            if (!on) {
+                if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
+                PlayFingerAnim(false);
+                if (_hand != null) _hand.SetActive(false);
+            }
+        }
+
+        /// <summary>Show/hide the Apply button (sticky — applies to this and future steps).</summary>
+        public void SetApplyVisible(bool on) {
+            _applyEnabled = on;
+            if (_applyRt != null) _applyRt.gameObject.SetActive(on && _targets.Count > 0);
         }
 
         // The demo finger: queen steps park it on the cell with the double-tap text; X/clear
@@ -151,6 +170,7 @@ namespace qp {
         void ShowHand(Hint hint, MBGameplay gp) {
             if (_hand == null) return;
             if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
+            if (!_handEnabled) { _hand.SetActive(false); return; }
 
             var target = TargetFor(hint.kind);
             if (!target.HasValue) { _hand.SetActive(false); return; }

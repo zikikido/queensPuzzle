@@ -46,6 +46,7 @@ namespace qp {
         List<CellEdit> _stroke;             // the stroke being recorded now (null between strokes)
 
         // read-only board access for the tutorial (spotlights need real cells)
+        public bool Ready => _ready;
         public int N => _n;
         public LevelData Level => _level;
         public MBCell CellAt(int row, int col) =>
@@ -78,7 +79,11 @@ namespace qp {
         void RunBoost(EBoostType type) {
             switch (type) {
                 case EBoostType.QUEEN: OpenQueen(); break;
-                case EBoostType.HINT:  OpenHint();  break;
+                case EBoostType.HINT:
+                    MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
+                    MBToturial.instance?.SetApplyVisible(true);
+                    OpenHint();
+                    break;
                 case EBoostType.UNDO:  Undo();      break;
             }
         }
@@ -157,7 +162,8 @@ namespace qp {
         }
 
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
-        void OpenHint() {
+        // Public: the first-play tutorial drives the same flow, step by step.
+        public void OpenHint() {
             if (!_ready || _cells == null || _level == null) return;
             GatherBoard(out var queens, out var xs);
 
@@ -273,6 +279,8 @@ namespace qp {
             yield return BloomReveal();
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
+
+            MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
         }
 
         void OnDisable() {
