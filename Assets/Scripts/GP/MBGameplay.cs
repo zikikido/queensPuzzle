@@ -54,6 +54,19 @@ namespace qp {
 
         void Awake() {
             instance = this;
+
+            // The tutorial object may be left disabled in the scene; wake it so its Awake runs and
+            // registers MBToturial.instance (it puts itself back to sleep after its layout pass).
+            var tut = FindAnyObjectByType<MBToturial>(FindObjectsInactive.Include);
+            if (tut != null && !tut.gameObject.activeSelf) tut.gameObject.SetActive(true);
+
+            // Same for the win popup: wake it so its Awake wires the button, then hide it again
+            // (unlike the tutorial it doesn't self-sleep — it only shows on win).
+            _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
+            if (_winPopup != null && !_winPopup.gameObject.activeSelf) {
+                _winPopup.gameObject.SetActive(true);
+                _winPopup.gameObject.SetActive(false);
+            }
         }
 
         void OnDestroy() {
@@ -222,6 +235,14 @@ namespace qp {
 
             _ready = false;   // no input while we (re)build and bloom
             _level = level;   // keep for hints
+
+            // attempts counter: fresh level → 1; same level again (retry / app restart) → +1
+            if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
+                AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
+                AppData.LevelAttempts.Value = 1;
+            } else {
+                AppData.LevelAttempts.Value++;
+            }
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
             var cellPrefab = MBCell.LoadFromResource();

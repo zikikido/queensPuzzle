@@ -20,6 +20,11 @@ namespace qp {
         // Current level index (0-based) for the lobby / progression.
         public static readonly PlayerPrefsHelper.IntHolder LevelIdx = new PlayerPrefsHelper.IntHolder("qp_level_idx", 0);
 
+        // How many times the CURRENT level was started, and which level the counter belongs to.
+        // Reset only when a different level begins — LevelAttempts == 1 on the win = first try.
+        public static readonly PlayerPrefsHelper.IntHolder LevelAttempts = new PlayerPrefsHelper.IntHolder("qp_level_attempts", 0);
+        public static readonly PlayerPrefsHelper.IntHolder AttemptsLevelIdx = new PlayerPrefsHelper.IntHolder("qp_attempts_level_idx", -1);
+
         // Haptics (vibration) on/off.
         public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);
 
