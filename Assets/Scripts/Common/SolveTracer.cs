@@ -39,6 +39,27 @@ namespace QueensPuzzle
             return board.TryHint(out hint);
         }
 
+        /// <summary>
+        /// The most trivial forced queen from the seeded board: apply the cheapest deductions in
+        /// order until the first forced placement appears — that's the easiest queen to deduce
+        /// right now. False = no queen is strictly forced (the board would need a guess).
+        /// </summary>
+        public static bool TryQueenBoost(int n, int[] region, int[] solution,
+                                         IReadOnlyList<int> queenCells, IReadOnlyList<int> xCells, out int queenIdx)
+        {
+            queenIdx = -1;
+            var board = new Board(n, region, solution, new List<TraceNode>());
+            if (queenCells != null) foreach (int idx in queenCells) board.SeedQueen(idx);
+            if (xCells != null) foreach (int idx in xCells) board.KnownX(idx);
+            if (board.Solved) return false;
+
+            // NextStep applies the cheapest deduction each call; the first placement it makes is it.
+            for (int guard = n * n * 8; guard-- > 0 && board.NextStep(out var step); )
+                if (step.kind == NodeKind.Placement) { queenIdx = step.cells[0]; return true; }
+
+            return false;
+        }
+
         public class Board
         {
             readonly int n;

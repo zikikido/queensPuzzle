@@ -59,8 +59,59 @@ namespace qp {
             }
         }
 
+        // Queen boost: place the most trivial forced queen; if none is strictly forced (the board
+        // would need a guess) still reveal a correct, unplaced solution queen.
         void OpenQueen() {
-            Debug.Log("[MBGameplay] Boost: OpenQueen (TODO)");
+            if (!_ready || _cells == null || _level == null) return;
+            GatherBoard(out var queens, out var xs);
+
+            if (SolveTracer.TryQueenBoost(_n, _level.regions, _level.solutionColumns, queens, xs, out int target)) {
+                PlaceBoostQueen(target);
+                return;
+            }
+
+            int fallback = FirstUnplacedSolutionQueen();
+            if (fallback >= 0) PlaceBoostQueen(fallback);
+            else Debug.Log("[MBGameplay] Queen boost: nothing to place.");
+        }
+
+        // Place a correct queen from a boost and advance the game (as a manual correct placement).
+        void PlaceBoostQueen(int idx) {
+            int r = idx / _n, c = idx % _n;
+            var cell = _cells[r, c];
+            if (cell.State == MBCell.ECellType.QUEEN) return;
+            cell.MarkCell(MBCell.ECellType.QUEEN);
+            cell.Pulse();
+
+            int placed = CountQueens();
+            _topBar?.SetProgress(placed);
+            if (placed == _n) Win();
+            else Haptics.Play(GameHaptic.Happy);
+        }
+
+        // A solution queen not yet on the board (row-major), or -1 when they're all placed.
+        int FirstUnplacedSolutionQueen() {
+            foreach (var cell in _cells)
+                if (cell.IsSolutionQueen && cell.State != MBCell.ECellType.QUEEN)
+                    return cell.Y * _n + cell.X;
+            return -1;
+        }
+
+        // Read the board for the solver:
+        //   QUEEN                        → a placed queen
+        //   WRONG_QUEEN                  → a non-solution cell, so a real X
+        //   X not on a solution cell     → a real X
+        //   X on a solution cell         → a "wrong X" (unsure): treated as EMPTY, so it
+        //                                  doesn't corrupt the deduction or spoil the queen.
+        void GatherBoard(out List<int> queens, out List<int> xs) {
+            queens = new List<int>();
+            xs = new List<int>();
+            foreach (var cell in _cells) {
+                int idx = cell.Y * _n + cell.X;
+                if (cell.State == MBCell.ECellType.QUEEN) queens.Add(idx);
+                else if (cell.State == MBCell.ECellType.WRONG_QUEEN) xs.Add(idx);
+                else if (cell.State == MBCell.ECellType.X && !cell.IsSolutionQueen) xs.Add(idx);
+            }
         }
 
         void Undo() {
@@ -70,21 +121,7 @@ namespace qp {
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
         void OpenHint() {
             if (!_ready || _cells == null || _level == null) return;
-
-            // Gather the board for the solver:
-            //   QUEEN                        → a placed queen
-            //   WRONG_QUEEN                  → a non-solution cell, so a real X
-            //   X not on a solution cell     → a real X
-            //   X on a solution cell         → a "wrong X" (unsure): treated as EMPTY, so it
-            //                                  doesn't corrupt the deduction or spoil the queen.
-            var queens = new List<int>();
-            var xs = new List<int>();
-            foreach (var cell in _cells) {
-                int idx = cell.Y * _n + cell.X;
-                if (cell.State == MBCell.ECellType.QUEEN) queens.Add(idx);
-                else if (cell.State == MBCell.ECellType.WRONG_QUEEN) xs.Add(idx);
-                else if (cell.State == MBCell.ECellType.X && !cell.IsSolutionQueen) xs.Add(idx);
-            }
+            GatherBoard(out var queens, out var xs);
 
             // 1) the next real deduction
             if (SolveTracer.TryHint(_n, _level.regions, _level.solutionColumns, queens, xs, out var hint)) {
