@@ -23,6 +23,38 @@ namespace qp {
         CanvasGroup _popupGroup; // fades with the pop, so no scaling from zero
         Vector3 _popupScale;     // design-time scale, animations run relative to it
         Coroutine _anim;
+        bool _initialized;       // layout pass done
+        bool _openRequested;     // Open() was called — this activation is a real open
+
+        /// <summary>The one way to open the popup (the top bar) — plays the in animation.</summary>
+        public void Open() {
+            _openRequested = true;
+            gameObject.SetActive(true);
+            // Start() runs only once — if the layout pass never completed, finish it here
+            if (!_initialized) StartCoroutine(LateFirstOpen());
+        }
+
+        IEnumerator LateFirstOpen() {
+            yield return new WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
+            _initialized = true;
+            if (_openRequested) { _openRequested = false; PlayIn(); }
+        }
+
+        // Closed by default: stay active-but-invisible for the first frames so the UI lays out
+        // at real size, then self-hide until Open().
+        IEnumerator Start() {
+            yield return new WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
+            _initialized = true;
+            if (_openRequested) { _openRequested = false; PlayIn(); }
+            else if (_anim == null) gameObject.SetActive(false);
+        }
+
+        void PlayIn() {
+            if (_anim != null) StopCoroutine(_anim);
+            _anim = StartCoroutine(In());
+        }
 
         void Awake() {
             _sound = transform.RecursiveFindChild("$Sounds").GetComponentInChildren<MBSwitch>();
@@ -36,6 +68,10 @@ namespace qp {
             _popupScale = _popup.localScale;
             _popupGroup = _popup.GetComponent<CanvasGroup>();
             if (_popupGroup == null) _popupGroup = _popup.gameObject.AddComponent<CanvasGroup>();
+
+            // invisible during the layout pass — Start() hides the object right after
+            (_bg.targetGraphic as Image).SetAlpha(0f);
+            _popupGroup.alpha = 0f;
 
             
         }
@@ -51,8 +87,7 @@ namespace qp {
                 if (on) Haptics.Play(GameHaptic.Tap);   // instant proof it's back on
             });
 
-            if (_anim != null) StopCoroutine(_anim);
-            _anim = StartCoroutine(In());
+            if (_initialized && _openRequested) { _openRequested = false; PlayIn(); }
         }
 
         /// <summary>Play the out animation, then deactivate the popup.</summary>

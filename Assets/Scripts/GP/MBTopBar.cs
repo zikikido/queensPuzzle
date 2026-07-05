@@ -1,6 +1,7 @@
 using Common;
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace qp {
@@ -23,16 +24,17 @@ namespace qp {
             _canvasGroup = GetComponent<CanvasGroup>();
 
             _settingsBtn = transform.RecursiveFindChild<Button>("$SettingsBtn");
-            if (_settingsBtn != null) _settingsBtn.onClick.AddListener(OpenSettings);
+            _settingsBtn.onClick.AddListener(OpenSettings);
+
+            transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => SceneManager.LoadScene("Lobby"));
         }
 
-        // Activate the settings popup — its OnEnable plays the in animation.
         void OpenSettings() {
             if (_settings == null) {
                 _settings = FindAnyObjectByType<MBSettingsPopup>(FindObjectsInactive.Include);
-            } 
+            }
 
-            _settings.gameObject.SetActive(true);
+            _settings.Open();   // plays the in animation (plain SetActive would skip it)
         }
 
         // Set the level's queen target and reset the display to 0/total.

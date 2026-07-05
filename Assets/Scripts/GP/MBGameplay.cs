@@ -124,6 +124,7 @@ namespace qp {
             var cell = _cells[r, c];
             if (cell.State == MBCell.ECellType.QUEEN) return;
             cell.MarkCell(MBCell.ECellType.QUEEN);
+            SaveBoard();
             cell.Pulse();
 
             int placed = CountQueens();
@@ -172,7 +173,7 @@ namespace qp {
                 cell.MarkCell(e.from);
                 any = true;
             }
-            if (any) Haptics.Play(GameHaptic.Tap);
+            if (any) { SaveBoard(); Haptics.Play(GameHaptic.Tap); }
         }
 
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
@@ -287,6 +288,8 @@ namespace qp {
                 }
             }
 
+            RestoreBoard();   // same level reopened → back to the exact last state (wrong queens too)
+
             // board size = grid + gaps + margin border on every side
             float boardSize = cellSize * (n + (n - 1) * _spacing + 2f * _margin);
             transform.RecursiveFindChild<RectTransform>("$BoardScaler").sizeDelta = board.sizeDelta = new Vector2(boardSize, boardSize);
@@ -366,13 +369,56 @@ namespace qp {
         public void ApplyTutorialMark(MBCell cell, MBCell.ECellType target) {
             if (cell == null || cell.State == target) return;
             if (target == MBCell.ECellType.QUEEN) PlaceBoostQueen(cell.Y * _n + cell.X);
-            else cell.MarkCell(target);
+            else { cell.MarkCell(target); SaveBoard(); }
         }
 
         // Change a cell's X/empty state as part of the current stroke, remembering its prior state.
         void PaintCell(MBCell cell, MBCell.ECellType to) {
             _stroke?.Add(new CellEdit(cell.Y * _n + cell.X, cell.State));
             cell.MarkCell(to);
+            SaveBoard();
+        }
+
+        // ---- board persistence: every move is saved; reopening the same level restores it ----
+
+        void SaveBoard() {
+            if (_cells == null) return;
+            var sb = new System.Text.StringBuilder(_n * _n);
+            foreach (var cell in _cells) sb.Append(StateChar(cell.State));
+            AppData.BoardState.Value = sb.ToString();
+            AppData.BoardStateLevelIdx.Value = AppData.LevelIdx.Value;
+        }
+
+        // Re-apply the saved marks (wrong queens included) when the same level reopens.
+        void RestoreBoard() {
+            if (AppData.BoardStateLevelIdx.Value != AppData.LevelIdx.Value) return;
+            string s = AppData.BoardState.Value;
+            if (string.IsNullOrEmpty(s) || s.Length != _n * _n) return;
+
+            int i = 0;
+            foreach (var cell in _cells) {
+                var state = CharState(s[i++]);
+                if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
+            }
+            _topBar.SetProgress(CountQueens());
+        }
+
+        static char StateChar(MBCell.ECellType t) {
+            switch (t) {
+                case MBCell.ECellType.QUEEN: return 'Q';
+                case MBCell.ECellType.X: return 'X';
+                case MBCell.ECellType.WRONG_QUEEN: return 'W';
+                default: return '0';
+            }
+        }
+
+        static MBCell.ECellType CharState(char c) {
+            switch (c) {
+                case 'Q': return MBCell.ECellType.QUEEN;
+                case 'X': return MBCell.ECellType.X;
+                case 'W': return MBCell.ECellType.WRONG_QUEEN;
+                default: return MBCell.ECellType.EMPTY;
+            }
         }
 
         public void TouchDrag(MBTouches.TouchData touch, bool samePoint) {
@@ -418,6 +464,7 @@ namespace qp {
 
                 bool correct = cell.IsSolutionQueen;
                 cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+                SaveBoard();
                 if (correct) {
                     int placed = CountQueens();
                     _topBar?.SetProgress(placed);
@@ -451,6 +498,7 @@ namespace qp {
 
         void Win() {
             _ready = false;              // stop input
+            AppData.BoardStateLevelIdx.Value = -1;   // level done — the saved board is history
             AppData.LevelIdx.Value++;    // advance progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);

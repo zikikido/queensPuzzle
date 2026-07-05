@@ -25,6 +25,12 @@ namespace qp {
         public static readonly PlayerPrefsHelper.IntHolder LevelAttempts = new PlayerPrefsHelper.IntHolder("qp_level_attempts", 0);
         public static readonly PlayerPrefsHelper.IntHolder AttemptsLevelIdx = new PlayerPrefsHelper.IntHolder("qp_attempts_level_idx", -1);
 
+        // The in-progress board of the CURRENT level, one char per cell (0/X/Q/W — including
+        // wrong queens), so reopening the app lands exactly where the player stopped.
+        // Valid only while BoardStateLevelIdx matches LevelIdx; invalidated on win.
+        public static readonly PlayerPrefsHelper.StringHolder BoardState = new PlayerPrefsHelper.StringHolder("qp_board_state", "");
+        public static readonly PlayerPrefsHelper.IntHolder BoardStateLevelIdx = new PlayerPrefsHelper.IntHolder("qp_board_state_level", -1);
+
         // Haptics (vibration) on/off.
         public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);
 
