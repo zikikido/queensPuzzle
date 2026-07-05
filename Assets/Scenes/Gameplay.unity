@@ -574,6 +574,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2026913892974966227, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2026913892974966227, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2026913892974966227, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
+      propertyPath: m_Color.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2026913892974966227, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4400821137456267292, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
       propertyPath: m_Name
       value: BoostUndo
