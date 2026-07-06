@@ -39,6 +39,13 @@ namespace qp {
         // Haptics (vibration) on/off.
         public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);
 
+        // Debug mode, unlocked by the settings-popup switch code (MBSettingsPopup). Persists so
+        // the short open-code works on every later run until explicitly exited in MBDebugWin.
+        public static readonly PlayerPrefsHelper.BoolHolder DebugMode = new PlayerPrefsHelper.BoolHolder("qp_debug_mode", false);
+
+        // FPS overlay on/off (MBFpsOverlay) — persists so it's already up on the next run.
+        public static readonly PlayerPrefsHelper.BoolHolder ShowFps = new PlayerPrefsHelper.BoolHolder("qp_show_fps", false);
+
 #if UNITY_EDITOR
         // Editor-only guard: catch an enum value that was added but not given a Boosts entry.
         [UnityEditor.InitializeOnLoadMethod]

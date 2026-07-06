@@ -2,6 +2,7 @@ using Common;
 using Puzzby;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -82,16 +83,65 @@ namespace qp {
 
         void OnEnable() {
             _sound?.Init(MBSFX.Instance == null || !MBSFX.Instance.Mute, on => {
+                RegisterCodeTap(1);
                 if (MBSFX.Instance != null) MBSFX.Instance.Mute = !on;
             });
 
             _vibration?.Init(AppData.Haptics.Value, on => {
+                RegisterCodeTap(2);
                 AppData.Haptics.Value = on;
                 Haptics.Enabled = on;
                 if (on) Haptics.Play(GameHaptic.Tap);   // instant proof it's back on
             });
 
             if (_initialized && _openRequested) { _openRequested = false; PlayIn(); }
+        }
+
+        // ---- debug-mode codes: Sound = 1, Vibration = 2 (tapped in this popup) --------------
+        // Not in debug mode: the long code (max 2s between taps) turns AppData.DebugMode on.
+        // In debug mode: the short code within 2s total opens the debug window.
+        static readonly int[] EnterCode = { 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 2 };
+        static readonly int[] OpenCode = { 1, 1, 2, 2 };
+        const float CodeTapGap = 2f;
+        readonly List<(int id, float time)> _codeTaps = new List<(int, float)>();
+
+        void RegisterCodeTap(int id) {
+            _codeTaps.Add((id, Time.unscaledTime));
+            if (_codeTaps.Count > EnterCode.Length) _codeTaps.RemoveAt(0);
+
+            if (!AppData.DebugMode.Value) {
+                if (TailMatches(EnterCode) && GapsWithin(EnterCode.Length, CodeTapGap)) {
+                    AppData.DebugMode.Value = true;
+                    Haptics.Play(GameHaptic.Happy);   // you're in — the OnGUI badge shows it too
+                }
+            }
+            else if (TailMatches(OpenCode) && TotalWithin(OpenCode.Length, CodeTapGap)) {
+                MBDebugWin.Open();
+            }
+        }
+
+        bool TailMatches(int[] code) {
+            if (_codeTaps.Count < code.Length) return false;
+            for (int i = 0; i < code.Length; i++)
+                if (_codeTaps[_codeTaps.Count - code.Length + i].id != code[i]) return false;
+            return true;
+        }
+
+        bool GapsWithin(int count, float maxGap) {
+            for (int i = _codeTaps.Count - count + 1; i < _codeTaps.Count; i++)
+                if (_codeTaps[i].time - _codeTaps[i - 1].time > maxGap) return false;
+            return true;
+        }
+
+        bool TotalWithin(int count, float window) =>
+            _codeTaps[_codeTaps.Count - 1].time - _codeTaps[_codeTaps.Count - count].time <= window;
+
+        // "you are in debug mode" badge while the popup is up (IMGUI: no prefab change needed)
+        void OnGUI() {
+            if (!AppData.DebugMode.Value) return;
+            var style = new GUIStyle(GUI.skin.label) { fontSize = Mathf.RoundToInt(14 * Mathf.Max(1f, Screen.dpi / 96f)), alignment = TextAnchor.MiddleCenter };
+            style.normal.textColor = Color.red;
+            GUI.Label(new Rect(0, 10, Screen.width, style.fontSize * 2), "DEBUG MODE", style);
         }
 
         /// <summary>Play the out animation, then deactivate the popup.</summary>
