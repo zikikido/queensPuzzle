@@ -315,7 +315,9 @@ namespace QueensPuzzle
                 // leads to a contradiction (X it). The last one left then falls out as a single.
                 if (TryTrialElim(out int cell, out int options))
                 {
-                    hint = new Hint { kind = HintKind.Guess, cells = new[] { cell },
+                    // Eliminate, not Guess: the X is proven (by contradiction), and the tutorial
+                    // needs a target state — a target-less spotlight has no way to close.
+                    hint = new Hint { kind = HintKind.Eliminate, cells = new[] { cell },
                         note = $"a {_piece} here leads to a dead end → mark it X" };
                     return true;
                 }
@@ -323,7 +325,9 @@ namespace QueensPuzzle
                 // the contradiction needs deeper look-ahead than one step — fall back to the queen
                 int row = MostConstrainedRow();
                 if (row < 0 || sol == null) return false;
-                hint = new Hint { kind = HintKind.Guess, cells = new[] { row * n + sol[row] },
+                // PlaceQueen, not Guess: the cell comes from the solution so the move is safe,
+                // and the step must have a target state for Apply/completion to work.
+                hint = new Hint { kind = HintKind.PlaceQueen, cells = new[] { row * n + sol[row] },
                     note = $"no certain move — best guess: a {_piece} here" };
                 return true;
             }
