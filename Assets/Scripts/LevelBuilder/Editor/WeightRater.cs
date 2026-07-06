@@ -63,6 +63,7 @@ namespace QueensPuzzle
             public int paidSteps;        // steps that cost anything (queen shadows and free endgame moves excluded)
             public int[] techCost;       // cost per SolveTechnique (find + think of its steps)
             public int[] techUses;       // uses per SolveTechnique
+            public int[] guessCosts;     // one entry per stuck point (consecutive guesses merge into one run)
         }
 
         public static Report Rate(int n, int[] region, int[] solution)
@@ -73,6 +74,11 @@ namespace QueensPuzzle
             int weight = 0;
             bool solved = true;
             var prevTech = SolveTechnique.None; // last paid trick — a repeat halves the think cost
+
+            // Guess costs grouped per stuck point: a row with k options costs k-1 consecutive
+            // guesses — one run, shown as one number on the trace's TrialRoot row.
+            var guessRuns = new System.Collections.Generic.List<int>();
+            bool prevWasGuess = false;
 
             while (!s.Solved)
             {
@@ -88,6 +94,7 @@ namespace QueensPuzzle
                     int cost = Tally(step, open, streak, m);
                     if (cost > 0) m.costs.Add(cost);
                     weight += cost;
+                    prevWasGuess = false;   // a deduction resumed — the guess run (if any) is over
                     continue;
                 }
                 prevTech = SolveTechnique.None; // a guess is a context switch — streak broken
@@ -110,6 +117,9 @@ namespace QueensPuzzle
                 m.guessCost += bestCost;
                 if (bestCost > 0) m.costs.Add(bestCost);
                 weight += bestCost;
+                if (prevWasGuess && guessRuns.Count > 0) guessRuns[guessRuns.Count - 1] += bestCost;
+                else guessRuns.Add(bestCost);
+                prevWasGuess = true;
                 s.KnownX(row * n + best);
             }
 
@@ -139,6 +149,7 @@ namespace QueensPuzzle
                 guessCost = m.guessCost,
                 techCost = m.techCost,
                 techUses = m.techUses,
+                guessCosts = guessRuns.ToArray(),
             };
             rep.technique = TechniqueName(m, rep.solved);
             rep.paidSteps = m.costs.Count;

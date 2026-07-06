@@ -148,13 +148,13 @@ namespace QueensPuzzle
                     int row = MostConstrainedRow();
                     var cols = RowCands(row);
                     int trial = Add(cur, NodeKind.TrialRoot, SolveTechnique.Trial, Outcome.Continues,
-                        NoMarks, $"stuck — guess in row {row} ({cols.Count} options)");
+                        NoMarks, $"stuck — guess in row {row + 1} ({cols.Count} options)");
 
                     int rightBranch = -1;
                     foreach (int c in cols)
                     {
                         int branch = Add(trial, NodeKind.TrialBranch, SolveTechnique.Trial, Outcome.Continues,
-                            QueenAt(row * n + c), $"try a queen in row {row}");
+                            QueenAt(row * n + c), $"try a queen in row {row + 1}");
                         if (guided && c == sol[row]) { rightBranch = branch; continue; } // the real path continues here
                         var clone = Clone();
                         clone.Place(row, c);
@@ -411,13 +411,13 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int c = 0; c < n; c++) { int i = rr * n + c; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in row {rr} → clear other colors from row {rr}"; return true; }
+                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in row {rr + 1} → clear other colors from row {rr + 1}"; return true; }
                     }
                     if (AllSameCol(cells, out int cc))
                     {
                         _elim.Clear();
                         for (int r = 0; r < n; r++) { int i = r * n + cc; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in column {cc} → clear other colors from column {cc}"; return true; }
+                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in column {cc + 1} → clear other colors from column {cc + 1}"; return true; }
                     }
                 }
                 note = null; return false;
@@ -434,7 +434,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i / n != r) Elim(i);
-                        if (_elim.Count > 0) { note = $"row {r} is all {_name(g)} → clear {_name(g)} outside row {r}"; return true; }
+                        if (_elim.Count > 0) { note = $"row {r + 1} is all {_name(g)} → clear {_name(g)} outside row {r + 1}"; return true; }
                     }
                 }
                 for (int c = 0; c < n; c++)
@@ -445,7 +445,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i % n != c) Elim(i);
-                        if (_elim.Count > 0) { note = $"column {c} is all {_name(g)} → clear {_name(g)} outside column {c}"; return true; }
+                        if (_elim.Count > 0) { note = $"column {c + 1} is all {_name(g)} → clear {_name(g)} outside column {c + 1}"; return true; }
                     }
                 }
                 note = null; return false;

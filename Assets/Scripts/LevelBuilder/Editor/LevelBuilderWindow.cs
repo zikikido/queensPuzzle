@@ -918,9 +918,33 @@ namespace QueensPuzzle.EditorTools
             _level = lvl;
             _report = lvl != null ? WeightRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (WeightRater.Report?)null;
             _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
+            AnnotateGuessCosts(_trace, _report);
             _importText = lvl != null ? LevelToGridText(lvl) : "";
             _paintRegions = null;   // re-seed the paint grid from the new level on next use
             _selectedStep = -1;
+        }
+
+        // The tracer prices deduction rows only — a guess's cost (setup + cheapest contradiction
+        // chain) is the rater's. Stamp each guided-path TrialRoot with its stuck-point cost so
+        // the steps list shows "+N" on [guess] rows too.
+        static void AnnotateGuessCosts(TraceNode[] trace, WeightRater.Report? report)
+        {
+            if (trace == null || report == null || report.Value.guessCosts == null) return;
+            var costs = report.Value.guessCosts;
+            int next = 0;
+            for (int i = 0; i < trace.Length && next < costs.Length; i++)
+            {
+                if (trace[i].kind != NodeKind.TrialRoot || !OnGuidedPath(trace, i)) continue;
+                trace[i].cost = costs[next++];
+            }
+        }
+
+        // Guided path = no ancestor is a refuted trial branch (those are the what-if detours).
+        static bool OnGuidedPath(TraceNode[] trace, int idx)
+        {
+            for (int p = trace[idx].parent; p >= 0; p = trace[p].parent)
+                if (trace[p].kind == NodeKind.TrialBranch && trace[p].outcome != Outcome.Continues) return false;
+            return true;
         }
 
         // The level's regions as a grid of letters (A, B, …), one row per line — the Import format.
@@ -943,6 +967,7 @@ namespace QueensPuzzle.EditorTools
             _report = rep;
             _level.weight = rep.weight;
             _trace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
+            AnnotateGuessCosts(_trace, _report);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _selectedStep = -1;
             _status = $"Rechecked: weight {rep.weight} ({rep.technique}) — {_trace.Length} solve steps.";
