@@ -33,6 +33,13 @@ namespace qp {
 
             transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => SceneManager.LoadScene("Lobby"));
 
+            // interactable=false (CanvasGroup) only blocks clicks — no gray-out on our buttons
+            foreach (var btn in GetComponentsInChildren<Button>(true)) {
+                var colors = btn.colors;
+                colors.disabledColor = colors.normalColor;
+                btn.colors = colors;
+            }
+
             // Bones = lives. Collect them under the "Bones" container, rightmost lost first.
             var bonesRoot = transform.RecursiveFindChild("Bones");
             var bones = new List<Transform>();

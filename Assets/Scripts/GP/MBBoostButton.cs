@@ -28,6 +28,11 @@ namespace qp {
 
         private void Awake() {
             _amountText = transform.RecursiveFindChild<TMPro.TMP_Text>("$AmountText");
+
+            // interactable=false only blocks clicks — no gray-out (disabled looks like normal)
+            var colors = GetButton().colors;
+            colors.disabledColor = colors.normalColor;
+            GetButton().colors = colors;
         }
 
         private void Update() {
