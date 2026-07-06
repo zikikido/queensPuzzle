@@ -1,6 +1,13 @@
 {
   "dependencies": {
     "com.coffee.ui-particle": "https://github.com/mob-sakai/ParticleEffectForUGUI.git#4.9.0",
+    "com.google.firebase.app": "file:../GooglePackages/com.google.firebase.app-13.13.0.tgz",
+    "com.google.firebase.analytics": "file:../GooglePackages/com.google.firebase.analytics-13.13.0.tgz",
+    "com.google.firebase.crashlytics": "file:../GooglePackages/com.google.firebase.crashlytics-13.13.0.tgz",
+    "com.google.firebase.remote-config": "file:../GooglePackages/com.google.firebase.remote-config-13.13.0.tgz",
+    "com.ivanmurzak.unity.mcp": "0.82.4",
+    "com.ivanmurzak.unity.mcp.animation": "1.2.24",
+    "com.ivanmurzak.unity.mcp.particlesystem": "1.2.24",
     "com.unity.collab-proxy": "2.12.4",
     "com.unity.device-simulator.devices": "1.0.1",
     "com.unity.feature.2d": "2.0.1",
@@ -45,9 +52,8 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0",
-    "com.ivanmurzak.unity.mcp": "0.82.4",
-    "com.ivanmurzak.unity.mcp.particlesystem": "1.2.24",
-    "com.ivanmurzak.unity.mcp.animation": "1.2.24"
+    "com.google.play.review": "1.8.4"
+    
   },
   "scopedRegistries": [
     {
@@ -55,7 +61,11 @@
       "url": "https://package.openupm.com",
       "scopes": [
         "com.ivanmurzak",
-        "extensions.unity"
+        "extensions.unity",
+        "com.google.external-dependency-manager",
+        "com.google.play.common",
+        "com.google.play.core",
+        "com.google.play.review"
       ]
     }
   ]

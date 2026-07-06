@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBGMxGwrzoUCWelqf-nK6u4ImyvLrYmTT0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>883906417093</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.puzzby.pawdoku</string>
+	<key>PROJECT_ID</key>
+	<string>pawdoku---brain-puzzle-games</string>
+	<key>STORAGE_BUCKET</key>
+	<string>pawdoku---brain-puzzle-games.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:883906417093:ios:c1389c9438559ff5153bac</string>
+</dict>
+</plist>

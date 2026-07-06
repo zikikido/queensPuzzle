@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "883906417093",
+    "project_id": "pawdoku---brain-puzzle-games",
+    "storage_bucket": "pawdoku---brain-puzzle-games.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:883906417093:android:f2e03c4dbaa2d71d153bac",
+        "android_client_info": {
+          "package_name": "com.puzzby.pawdoku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBiWpYMhSa0C9vMxJakLT4HReKVo0kVQ_c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@string/gcm_defaultSenderId,@string/google_storage_bucket,@string/project_id,@string/google_api_key,@string/google_crash_reporting_api_key,@string/google_app_id">
+  <string name="gcm_defaultSenderId" translatable="false">883906417093</string>
+  <string name="google_storage_bucket" translatable="false">pawdoku---brain-puzzle-games.firebasestorage.app</string>
+  <string name="project_id" translatable="false">pawdoku---brain-puzzle-games</string>
+  <string name="google_api_key" translatable="false">AIzaSyBiWpYMhSa0C9vMxJakLT4HReKVo0kVQ_c</string>
+  <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBiWpYMhSa0C9vMxJakLT4HReKVo0kVQ_c</string>
+  <string name="google_app_id" translatable="false">1:883906417093:android:f2e03c4dbaa2d71d153bac</string>
+</resources>
