@@ -33,6 +33,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        MBFailPopup _failPopup;      // same pattern as the win popup — shows when the bones run out
         MBTopBar _topBar;            // "queens placed / total" HUD
         Coroutine _shake;            // board shake on a wrong queen
         float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
@@ -65,6 +66,12 @@ namespace qp {
             _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             if (_winPopup != null && !_winPopup.gameObject.activeSelf) {
                 _winPopup.gameObject.SetActive(true);
+            }
+
+            // Fail popup: same wake-for-layout trick as the win popup (it hides itself after).
+            _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
+            if (_failPopup != null && !_failPopup.gameObject.activeSelf) {
+                _failPopup.gameObject.SetActive(true);
             }
 
             _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
@@ -221,16 +228,11 @@ namespace qp {
         }
 
         // Re-run while already in play mode (win → next level, or Play hit again from the
-        // Level Builder): reset the overlays, then rebuild the board from the current level.
+        // Level Builder): rebuild the board from the current level. The win/fail popups close
+        // themselves when their buttons are pressed — Replay never touches them.
         public void Replay() {
             StopAllCoroutines();
-
-            // Overlays reset ONLY here — never on the first build: there they manage their own
-            // SetActive true/false themselves (the invisible layout pass), and hiding them
-            // mid-pass kills their Start() coroutines (the bug that froze the win popup).
-            if (_winPopup != null) _winPopup.gameObject.SetActive(false);
             MBToturial.instance?.Hide();
-
             StartCoroutine(BuildBoard());
         }
 
@@ -288,7 +290,10 @@ namespace qp {
                 }
             }
 
-            RestoreBoard();   // same level reopened → back to the exact last state (wrong queens too)
+            // same level reopened → back to the exact last state (wrong queens too);
+            // a fresh board starts with all bones back
+            if (!RestoreBoard()) AppData.BonesLost.Value = 0;
+            _topBar.SetWrongMoves(AppData.BonesLost.Value);
 
             // board size = grid + gaps + margin border on every side
             float boardSize = cellSize * (n + (n - 1) * _spacing + 2f * _margin);
@@ -390,10 +395,10 @@ namespace qp {
         }
 
         // Re-apply the saved marks (wrong queens included) when the same level reopens.
-        void RestoreBoard() {
-            if (AppData.BoardStateLevelIdx.Value != AppData.LevelIdx.Value) return;
+        bool RestoreBoard() {
+            if (AppData.BoardStateLevelIdx.Value != AppData.LevelIdx.Value) return false;
             string s = AppData.BoardState.Value;
-            if (string.IsNullOrEmpty(s) || s.Length != _n * _n) return;
+            if (string.IsNullOrEmpty(s) || s.Length != _n * _n) return false;
 
             int i = 0;
             foreach (var cell in _cells) {
@@ -401,7 +406,7 @@ namespace qp {
                 if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
             }
             _topBar.SetProgress(CountQueens());
-            _topBar.SetWrongMoves(CountWrongQueens());
+            return true;
         }
 
         static char StateChar(MBCell.ECellType t) {
@@ -478,10 +483,12 @@ namespace qp {
                     if (placed == _n) Win();
                     else Haptics.Play(GameHaptic.Happy);
                 } else {
-                    _topBar?.SetWrongMoves(CountWrongQueens());   // a bone is lost
+                    AppData.BonesLost.Value++;   // a bone is lost (saved next to the board)
+                    _topBar?.SetWrongMoves(AppData.BonesLost.Value);
                     Haptics.Play(GameHaptic.Wrong);
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
+                    if (AppData.BonesLost.Value >= _topBar.MaxWrongMoves) Fail();   // last bone gone
                 }
             }
             else if (_stroke != null) {
@@ -491,14 +498,6 @@ namespace qp {
             }
 
             _drag = DragMode.None;
-        }
-
-        // Wrong queens currently on the board — each one costs a bone in the top bar.
-        int CountWrongQueens() {
-            int wrong = 0;
-            foreach (var cell in _cells)
-                if (cell.State == MBCell.ECellType.WRONG_QUEEN) wrong++;
-            return wrong;
         }
 
         // Queens correctly placed (they only ever land on solution cells).
@@ -521,6 +520,28 @@ namespace qp {
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
             if (_winPopup != null) _winPopup.Show();
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
+        }
+
+        void Fail() {
+            _ready = false;   // stop input; Continue or Reset decides what's next
+
+            // Failed → the saved board is history: quitting now restarts the level fresh.
+            // Only Continue brings it back — ContinueAfterFail saves again.
+            AppData.BoardStateLevelIdx.Value = -1;
+
+            if (_failPopup == null)
+                _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
+            Debug.Log($"[MBGameplay] Fail — popup {(_failPopup != null ? "found" : "MISSING")}");
+            if (_failPopup != null) _failPopup.Show();
+        }
+
+        // Fail-continue: every bone returns, but the wrong queens stay on the board — they're
+        // permanent X's now. Re-saves the board that Fail() invalidated.
+        public void ContinueAfterFail() {
+            AppData.BonesLost.Value = 0;
+            SaveBoard();
+            _topBar?.SetWrongMoves(0);
+            _ready = true;
         }
 
         // Quick decaying horizontal shake of the board — feedback for a wrong queen.

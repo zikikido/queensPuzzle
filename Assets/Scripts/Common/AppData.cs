@@ -31,6 +31,11 @@ namespace qp {
         public static readonly PlayerPrefsHelper.StringHolder BoardState = new PlayerPrefsHelper.StringHolder("qp_board_state", "");
         public static readonly PlayerPrefsHelper.IntHolder BoardStateLevelIdx = new PlayerPrefsHelper.IntHolder("qp_board_state_level", -1);
 
+        // Bones lost on the CURRENT level's board (valid together with BoardState). Not derivable
+        // from the cells: after a fail-continue the wrong queens stay on the board as permanent
+        // X's but the bones come back, so the count must be stored separately.
+        public static readonly PlayerPrefsHelper.IntHolder BonesLost = new PlayerPrefsHelper.IntHolder("qp_bones_lost", 0);
+
         // Haptics (vibration) on/off.
         public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);
 
