@@ -1,5 +1,6 @@
 using Common;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -16,6 +17,10 @@ namespace qp {
         private CanvasGroup _canvasGroup;
         private Button _settingsBtn;
         private MBSettingsPopup _settings;   // inactive in the scene by default (its OUT state)
+        private GameObject[] _bones;         // lives — ordered so [0] is the first to disappear
+
+        // How many wrong moves end the level (one bone each).
+        public int MaxWrongMoves => _bones.Length;
 
         private void Awake() {
             transform.RecursiveFindChild("$QueensProgressText", out _queensProgressText);
@@ -27,6 +32,14 @@ namespace qp {
             _settingsBtn.onClick.AddListener(OpenSettings);
 
             transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => SceneManager.LoadScene("Lobby"));
+
+            // Bones = lives. Collect them under the "Bones" container, rightmost lost first.
+            var bonesRoot = transform.RecursiveFindChild("Bones");
+            var bones = new List<Transform>();
+            foreach (Transform child in bonesRoot)
+                if (child.name.StartsWith("Bone")) bones.Add(child);
+            bones.Sort((a, b) => b.localPosition.x.CompareTo(a.localPosition.x));
+            _bones = bones.ConvertAll(t => t.gameObject).ToArray();
         }
 
         void OpenSettings() {
@@ -47,6 +60,12 @@ namespace qp {
 
         // How many queens are correctly placed right now.
         public void SetProgress(int done) => _setQueensProgress(done);
+
+        // One bone gone per wrong move — called on every wrong move AND on level load/restore.
+        public void SetWrongMoves(int wrong) {
+            for (int i = 0; i < _bones.Length; i++)
+                _bones[i].SetActive(i >= wrong);
+        }
 
 
         private void _setQueensProgress(int done) {

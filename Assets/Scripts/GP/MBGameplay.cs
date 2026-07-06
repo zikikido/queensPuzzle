@@ -401,6 +401,7 @@ namespace qp {
                 if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
             }
             _topBar.SetProgress(CountQueens());
+            _topBar.SetWrongMoves(CountWrongQueens());
         }
 
         static char StateChar(MBCell.ECellType t) {
@@ -456,6 +457,12 @@ namespace qp {
                 _prevTapCell = null;   // consume it so a third quick tap can't re-trigger
                 var cell = _lastTapCell;
 
+                // already holds a queen (right or wrong) — re-tapping must not cost another bone
+                if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) {
+                    _drag = DragMode.None;
+                    return;
+                }
+
                 // This gesture is a queen, not X edits — drop the two taps' X toggles from undo.
                 _stroke = null;
                 int qidx = cell.Y * _n + cell.X;
@@ -471,6 +478,7 @@ namespace qp {
                     if (placed == _n) Win();
                     else Haptics.Play(GameHaptic.Happy);
                 } else {
+                    _topBar?.SetWrongMoves(CountWrongQueens());   // a bone is lost
                     Haptics.Play(GameHaptic.Wrong);
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
@@ -483,6 +491,14 @@ namespace qp {
             }
 
             _drag = DragMode.None;
+        }
+
+        // Wrong queens currently on the board — each one costs a bone in the top bar.
+        int CountWrongQueens() {
+            int wrong = 0;
+            foreach (var cell in _cells)
+                if (cell.State == MBCell.ECellType.WRONG_QUEEN) wrong++;
+            return wrong;
         }
 
         // Queens correctly placed (they only ever land on solution cells).
