@@ -10,6 +10,37 @@
       },
       "hash": "4dfcb9075e166fa53fee5decc51975bdc247cdad"
     },
+    "com.ivanmurzak.unity.mcp": {
+      "version": "0.82.4",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.test-framework": "1.1.33",
+        "com.unity.modules.uielements": "1.0.0",
+        "extensions.unity.playerprefsex": "2.1.5"
+      },
+      "url": "https://package.openupm.com"
+    },
+    "com.ivanmurzak.unity.mcp.animation": {
+      "version": "1.2.24",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.ivanmurzak.unity.mcp": "0.82.4",
+        "com.unity.modules.animation": "1.0.0"
+      },
+      "url": "https://package.openupm.com"
+    },
+    "com.ivanmurzak.unity.mcp.particlesystem": {
+      "version": "1.2.24",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.ivanmurzak.unity.mcp": "0.82.4",
+        "com.unity.modules.particlesystem": "1.0.0"
+      },
+      "url": "https://package.openupm.com"
+    },
     "com.puzzby.haptics": {
       "version": "file:com.puzzby.haptics",
       "depth": 0,
@@ -324,6 +355,13 @@
         "com.unity.modules.jsonserialize": "1.0.0"
       },
       "url": "https://packages.unity.com"
+    },
+    "extensions.unity.playerprefsex": {
+      "version": "2.1.5",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://package.openupm.com"
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
