@@ -1,5 +1,6 @@
 using Common;
 using Puzzby;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,6 +17,9 @@ namespace qp {
 
         const float InDur = 0.3f, OutDur = 0.15f, FadeDur = 0.2f;
         const float BgAlpha = 0.8f;   // the dark cover's resting alpha
+
+        /// <summary>Fired after the out animation finished and the popup deactivated itself.</summary>
+        public event Action Closed;
 
         MBSwitch _sound, _vibration;
         Button _bg;              // $BG — fades
@@ -133,6 +137,7 @@ namespace qp {
             bgImage.SetAlpha(BgAlpha);
             _anim = null;
             gameObject.SetActive(false);
+            Closed?.Invoke();
         }
 
         static float EaseOutBack(float x) {

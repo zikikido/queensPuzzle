@@ -46,6 +46,10 @@ namespace qp {
         readonly List<List<CellEdit>> _undo = new List<List<CellEdit>>();
         List<CellEdit> _stroke;             // the stroke being recorded now (null between strokes)
 
+        // Board input lock counter — overlays (settings popup, ...) do InputLocks++ on open and
+        // InputLocks-- on close; any value > 0 blocks all board touches. Int so locks can nest.
+        public int InputLocks;
+
         // read-only board access for the tutorial (spotlights need real cells)
         public bool Ready => _ready;
         public int N => _n;
@@ -338,7 +342,7 @@ namespace qp {
         // ---- touch input: paint X / erase on drag, double-click to place a queen ----------
 
         public void TouchDown(MBTouches.TouchData touch, bool firstTime) {
-            if (!_ready || !firstTime) return;
+            if (!_ready || InputLocks > 0 || !firstTime) return;
             var cell = HitTest(touch.WorldPoint);
             _lastDragWorld = touch.WorldPoint;   // start of the drag path
             _prevTapCell = _lastTapCell;   // remember the last two taps so we can require same-cell double-clicks
@@ -428,7 +432,7 @@ namespace qp {
         }
 
         public void TouchDrag(MBTouches.TouchData touch, bool samePoint) {
-            if (!_ready || samePoint || _drag == DragMode.None) return;
+            if (!_ready || InputLocks > 0 || samePoint || _drag == DragMode.None) return;
 
             // Walk from the previous sample to this one and paint every cell along the way, so a
             // fast drag (finger moving several cells per frame) doesn't leave gaps in the row.
@@ -456,7 +460,7 @@ namespace qp {
         }
 
         public void TouchUp(MBTouches.TouchData touch, bool clicked, bool doubleClick) {
-            if (!_ready) return;
+            if (!_ready || InputLocks > 0) return;
             // a real double-click means both taps landed on the SAME cell — otherwise it's just two quick taps
             if (doubleClick && _lastTapCell != null && _lastTapCell == _prevTapCell && TutorialAllows(_lastTapCell, MBCell.ECellType.QUEEN)) {
                 _prevTapCell = null;   // consume it so a third quick tap can't re-trigger

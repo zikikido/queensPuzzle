@@ -45,8 +45,10 @@ namespace qp {
         void OpenSettings() {
             if (_settings == null) {
                 _settings = FindAnyObjectByType<MBSettingsPopup>(FindObjectsInactive.Include);
+                _settings.Closed += () => MBGameplay.instance.InputLocks--;   // once, with the find
             }
 
+            MBGameplay.instance.InputLocks++;   // board untouchable while the popup is up
             _settings.Open();   // plays the in animation (plain SetActive would skip it)
         }
 

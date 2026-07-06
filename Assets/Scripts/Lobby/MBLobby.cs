@@ -1,15 +1,29 @@
 using Common;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace qp {
     public class MBLobby : MonoBehaviour {
 
         const string GameplayScene = "Gameplay";
 
+        MBSettingsPopup _settings;   // inactive in the scene by default (its OUT state)
+
         private void Awake() {
             var lvlBtn = transform.RecursiveFindChild<MBLevelButton>("$LvlButton");
             if (lvlBtn != null) lvlBtn.GetButton().onClick.AddListener(PlayCurrentLevel);
+
+            transform.RecursiveFindChild<Button>("$SettingsBtn").onClick.AddListener(OpenSettings);
+        }
+
+        // Open plays the in animation; the popup closes itself (X / BG tap → out animation).
+        void OpenSettings() {
+            if (_settings == null) {
+                _settings = FindAnyObjectByType<MBSettingsPopup>(FindObjectsInactive.Include);
+            }
+
+            _settings.Open();
         }
 
         // Start the player's current level (AppData.LevelIdx). LevelLoader reads that index.
