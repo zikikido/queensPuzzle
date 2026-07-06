@@ -16,6 +16,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-config-unity:13.13.0' // Packages/com.google.firebase.remote-config/Firebase/Editor/RemoteConfigDependencies.xml:23
     implementation 'com.google.firebase:firebase-crashlytics-ndk:20.0.6' // Packages/com.google.firebase.crashlytics/Firebase/Editor/CrashlyticsDependencies.xml:16
     implementation 'com.google.firebase:firebase-crashlytics-unity:13.13.0' // Packages/com.google.firebase.crashlytics/Firebase/Editor/CrashlyticsDependencies.xml:23
+    implementation 'com.singular.sdk:singular_sdk:12.14.0' // Packages/singular-unity-package/SingularSDK/Editor/SingularSDKDependencies.xml:7
 // Android Resolver Dependencies End
 **DEPS**}
 

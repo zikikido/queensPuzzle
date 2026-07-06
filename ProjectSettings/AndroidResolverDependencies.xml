@@ -11,6 +11,7 @@
     <package>com.google.firebase:firebase-config-unity:13.13.0</package>
     <package>com.google.firebase:firebase-crashlytics-ndk:20.0.6</package>
     <package>com.google.firebase:firebase-crashlytics-unity:13.13.0</package>
+    <package>com.singular.sdk:singular_sdk:12.14.0</package>
   </packages>
   <files>
     <file>Assets/GeneratedLocalRepo/Firebase/m2repository/com/google/firebase/firebase-analytics-unity/13.13.0/firebase-analytics-unity-13.13.0.aar</file>

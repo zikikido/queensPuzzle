@@ -1532,7 +1532,6 @@ MonoBehaviour:
   Listeners:
   - {fileID: 1584504506}
   - {fileID: 1916992852}
-  - {fileID: 0}
   ListneresMethod: 0
 --- !u!114 &1728165585
 MonoBehaviour:
