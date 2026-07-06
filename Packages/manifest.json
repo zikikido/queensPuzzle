@@ -6,6 +6,7 @@
     "com.google.firebase.analytics": "file:../GooglePackages/com.google.firebase.analytics-13.13.0.tgz",
     "com.google.firebase.crashlytics": "file:../GooglePackages/com.google.firebase.crashlytics-13.13.0.tgz",
     "com.google.firebase.remote-config": "file:../GooglePackages/com.google.firebase.remote-config-13.13.0.tgz",
+      "com.unity.mobile.android-logcat": "1.4.7",
     "com.ivanmurzak.unity.mcp": "0.82.4",
     "com.ivanmurzak.unity.mcp.animation": "1.2.24",
     "com.ivanmurzak.unity.mcp.particlesystem": "1.2.24",

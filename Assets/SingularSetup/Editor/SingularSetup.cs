@@ -20,7 +20,45 @@ namespace Common {
     ///   - iOS: UnityAppController-conflict detection; when found, asks to apply Singular's
     ///     swizzle fix (optional in the doc, so it always asks — never silent).
     /// </summary>
+    [InitializeOnLoad]
     public static class SingularSetup {
+
+        // Runs on every editor load: keeps the Singular defines and the appset aar in sync
+        // with the project state (generatedConfig flags or the UPM package).
+        static SingularSetup() {
+            EditorApplication.delayCall += SyncDefinesAndAppset;
+        }
+
+        static void SyncDefinesAndAppset() {
+            if (Common.generatedConfig.HasSingualarForAndroid) {
+                DefinesController.AddDefines(UnityEditor.Build.NamedBuildTarget.Android, "SINGULAR_SDK_IAP_ENABLED", "KIDO_HAS_SINGUALR");
+            } else {
+                DefinesController.RemoveDefines(UnityEditor.Build.NamedBuildTarget.Android, "SINGULAR_SDK_IAP_ENABLED", "KIDO_HAS_SINGUALR");
+            }
+
+            // Singular can come from generatedConfig OR from the UPM package (this setup) —
+            // either way its Android SDK ships play-services-appset, so ours must go.
+            HandleAppSet(Common.generatedConfig.HasSingualarForAndroid || InstalledUrl() != null);
+        }
+
+        // Singular's Android SDK brings its own play-services-appset — Common's bundled copy
+        // must be removed then (duplicate classes), or restored when Singular is gone.
+        public static void HandleAppSet(bool hasSingular) {
+            string basePath = "Assets/kidogamesCode/Common/Plugins/Android/Common.AndroidSetId/play-services-appset-16.0.2.aar";
+            string gitPath  = "Assets/kidogamesCode/Common/Plugins/Android/Common.AndroidSetId/GitManaged/play-services-appset-16.0.2.gitManaged";
+
+            if (hasSingular) {
+                if (File.Exists(basePath)) {
+                    AssetDatabase.DeleteAsset(basePath);
+                    AssetDatabase.Refresh();
+                }
+            } else {
+                try {
+                    if (File.Exists(gitPath) && !File.Exists(basePath))
+                        File.Copy(gitPath, basePath, true);
+                } catch {}
+            }
+        }
 
         // ---- package -------------------------------------------------------------------
         const string PackageName = "singular-unity-package";
@@ -130,6 +168,7 @@ namespace Common {
         static void Install(string url) {
             AddPackage(url);
             EnsureProguardRules();
+            HandleAppSet(true);   // drop Common's appset aar — Singular ships its own
             Done(resolve: true);
         }
 
