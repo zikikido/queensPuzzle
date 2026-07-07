@@ -1200,7 +1200,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1319018884719755472, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: 0.000053100477
       objectReference: {fileID: 0}
     - target: {fileID: 1319018884719755472, guid: f3eb9f36fcd1d9846ab0049f8471a1a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1264,7 +1264,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 580.91, y: 159.7}
+  m_SizeDelta: {x: 956.91, y: 159.7}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &951162461
 GameObject:
@@ -1357,8 +1357,8 @@ MonoBehaviour:
   RT: {fileID: 951162462}
   Listeners: []
   ListneresMethod: 0
-  PhoneBannerDp: 50
-  TabletBannerDp: 90
+  PhoneBannerDp: 90
+  TabletBannerDp: 60
 --- !u!1 &955639037
 GameObject:
   m_ObjectHideFlags: 0
@@ -1591,17 +1591,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1005806397}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e35f090964941909224bf0327e8606e, type: 3}
+  m_Script: {fileID: 11500000, guid: d38c83a5b4d94b8ab78f530fd43dde3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   RT: {fileID: 1005806398}
   Listeners:
   - {fileID: 360512161}
   ListneresMethod: 0
-  TopNormal: 0.91466844
-  BottomNormal: -0.000006038321
-  LeftNormal: 0
-  RightNormal: -0
 --- !u!1 &1161072511
 GameObject:
   m_ObjectHideFlags: 0
@@ -1818,6 +1814,7 @@ MonoBehaviour:
   _margin: 0.35
   _bloomPop: 0.35
   _bloomStagger: 0.05
+  InputLocks: 0
 --- !u!114 &1244334126
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1893,7 +1890,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1263706375}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 145cc62a09605314e8aef1f074fa897f, type: 3}
+  m_Script: {fileID: 11500000, guid: d38c83a5b4d94b8ab78f530fd43dde3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   RT: {fileID: 1263706376}
@@ -2304,7 +2301,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2938664968036413064, guid: 3df94e9f8d778474793fc3f908524686, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: 0.000053100477
       objectReference: {fileID: 0}
     - target: {fileID: 2938664968036413064, guid: 3df94e9f8d778474793fc3f908524686, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2825,7 +2822,7 @@ GameObject:
   - component: {fileID: 1849066609}
   - component: {fileID: 1849066610}
   m_Layer: 0
-  m_Name: TopOnBannerMargin
+  m_Name: GameLayout
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2862,26 +2859,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 1849066608}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 32ac9bddd2a760e44b9a00ea7ca771f2, type: 3}
+  m_Script: {fileID: 11500000, guid: c810708da7eaa934693a81b0c1cae114, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   RT: {fileID: 1849066609}
-  Listeners:
-  - {fileID: 1892043229}
-  - {fileID: 1005806399}
+  Listeners: []
   ListneresMethod: 0
-  _minRatioSize:
-    screenRatio: 0.74
-    TopNormal: 0.038403034
-    BottomNormal: 0.080628484
-    LeftNormal: 0.020381866
-    RightNormal: 0.020381866
-  _maxRatioSize:
-    screenRatio: 0.75
-    TopNormal: 0.038403034
-    BottomNormal: 0.080628484
-    LeftNormal: 0.020381866
-    RightNormal: 0.020381866
+  TopBar: {fileID: 1892043228}
+  Board: {fileID: 1263706376}
+  BottomBar: {fileID: 1005806398}
+  Ratio: 1
+  TopNormal: 0.2460237
+  BottomNormal: 0.0853316
+  LeftNormal: 0
+  RightNormal: 0
 --- !u!1 &1882869832
 GameObject:
   m_ObjectHideFlags: 0
@@ -3003,17 +2994,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1892043227}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e35f090964941909224bf0327e8606e, type: 3}
+  m_Script: {fileID: 11500000, guid: d38c83a5b4d94b8ab78f530fd43dde3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   RT: {fileID: 1892043228}
   Listeners:
   - {fileID: 761443780}
   ListneresMethod: 0
-  TopNormal: 0
-  BottomNormal: 0.7539763
-  LeftNormal: 0
-  RightNormal: -0
 --- !u!1 &1944902288
 GameObject:
   m_ObjectHideFlags: 0
@@ -3401,7 +3388,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: 0.000053100477
       objectReference: {fileID: 0}
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
