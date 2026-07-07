@@ -140,6 +140,7 @@ namespace qp {
 
             int placed = CountQueens();
             _topBar.SetProgress(placed);
+            MaybePrepareReview(placed);
             if (placed == _n) Win();
             else Haptics.Play(GameHaptic.Happy);
         }
@@ -261,6 +262,7 @@ namespace qp {
                 AppData.LevelAttempts.Value++;
             }
             Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            _reviewPrepareStarted = false;   // each board build may pre-fetch the review flow once
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
             var cellPrefab = MBCell.LoadFromResource();
@@ -411,6 +413,7 @@ namespace qp {
                 if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
             }
             _topBar.SetProgress(CountQueens());
+            MaybePrepareReview(CountQueens());   // resuming a board that's already 2-from-win
             return true;
         }
 
@@ -485,6 +488,7 @@ namespace qp {
                 if (correct) {
                     int placed = CountQueens();
                     _topBar?.SetProgress(placed);
+                    MaybePrepareReview(placed);
                     if (placed == _n) Win();
                     else Haptics.Play(GameHaptic.Happy);
                 } else {
@@ -516,6 +520,26 @@ namespace qp {
         // Solved when every solution queen is on the board.
         bool IsSolved() => CountQueens() == _n;
 
+        // ---- in-app review: pre-fetch the flow 2 dogs before the win, show it with the win popup.
+        // The platform (day period + store quota, handled in Common.ReviewManager) decides if the
+        // dialog actually appears — we just ask on every qualifying win (level > 5).
+
+        bool _reviewPrepareStarted;   // once per board build
+
+        void MaybePrepareReview(int placed) {
+            if (_reviewPrepareStarted || placed < _n - 2 || placed >= _n) return;
+            if (AppData.LevelIdx.Value + 1 <= 5) return;   // asks only from level 6 (1-based)
+            _reviewPrepareStarted = true;
+            StartCoroutine(PrepareReview());
+        }
+
+        IEnumerator PrepareReview() {
+            float t0 = Time.realtimeSinceStartup;
+            yield return ReviewManager.Instance.Preapre();
+            int ms = Mathf.RoundToInt((Time.realtimeSinceStartup - t0) * 1000f);
+            Analytics.ReviewPrepareTime(ms, ReviewManager.Instance.Preapred);
+        }
+
         void Win() {
             _ready = false;              // stop input
             Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
@@ -525,6 +549,7 @@ namespace qp {
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
             if (_winPopup != null) _winPopup.Show();
+            StartCoroutine(ReviewManager.Instance.TryReview());   // no-op unless Preapre finished
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
         }
 

@@ -25,6 +25,15 @@ namespace qp {
         public static void GameWin(int levelIdx, int attempts)   => GameEvent("game_win",   levelIdx, attempts);
         public static void GameLose(int levelIdx, int attempts)  => GameEvent("game_lose",  levelIdx, attempts);
 
+        // TEMP — review prepare timing probe, read via BigQuery. REMOVE after the measurement.
+        public static void ReviewPrepareTime(int ms, bool prepared) {
+            CrashLog($"[review] prepare took {ms} ms (prepared={prepared})");
+#if !IGNORE_FIREBASE
+            CDebug.Log("review_prepare_time", new Firebase.Analytics.Parameter("ms", ms),
+                                              new Firebase.Analytics.Parameter("prepared", prepared ? 1 : 0));
+#endif
+        }
+
         static void GameEvent(string name, int levelIdx, int attempts) {
 
 #if !IGNORE_FIREBASE

@@ -680,7 +680,7 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols:
-    Android: IGNORE_COMMON_REVIEW;RemovePermissionsInjector_IGNORE;UNITY_MCP_READY
+    Android: RemovePermissionsInjector_IGNORE;UNITY_MCP_READY
     EmbeddedLinux: UNITY_MCP_READY
     GameCoreScarlett: UNITY_MCP_READY
     GameCoreXboxOne: UNITY_MCP_READY
