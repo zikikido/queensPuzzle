@@ -47,11 +47,14 @@ namespace qp {
             float availH = h * (1f - TopNormal - BottomNormal);
             if (Ratio <= 0f || availW <= 0f || availH <= 0f) return;
 
-            // the board: largest Ratio rect in the free area, centered in it
+            // the board: the largest Ratio rect that fits the free area
             float boardW = Mathf.Min(availW, availH * Ratio);
             float boardH = boardW / Ratio;
-            float cx = (LeftNormal - RightNormal) * 0.5f * w;
-            float cy = (BottomNormal - TopNormal) * 0.5f * h;
+
+            // position: centered in the PARENT; a min margin moves it only when violated,
+            // so a non-binding margin has zero effect (0 and 0.01 look identical)
+            float cx = Mathf.Clamp(0f, LeftNormal * w - (w - boardW) * 0.5f, (w - boardW) * 0.5f - RightNormal * w);
+            float cy = Mathf.Clamp(0f, BottomNormal * h - (h - boardH) * 0.5f, (h - boardH) * 0.5f - TopNormal * h);
 
             // the bars: everything above / below the board, at the board's width
             float boardTop = cy + boardH * 0.5f, parentTop = h * 0.5f;
