@@ -108,7 +108,11 @@ namespace qp {
                     MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
                     MBToturial.instance?.SetApplyVisible(true);
                     // count only here (player's boost) — the tutorial calls OpenHint directly
-                    if (OpenHint()) { AppData.LastPlayData.hintsUsed++; AppData.LastPlayData.Save(); }
+                    if (OpenHint()) {
+                        AppData.LastPlayData.hintsUsed++;
+                        AppData.LastPlayData.Save();
+                        Analytics.BoostUsed("hint", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                    }
                     break;
                 case EBoostType.UNDO:  Undo();      break;
             }
@@ -121,14 +125,19 @@ namespace qp {
             GatherBoard(out var queens, out var xs);
 
             if (SolveTracer.TryQueenBoost(_n, _level.regions, _level.solutionColumns, queens, xs, out int target)) {
-                AppData.LastPlayData.queenBoostsUsed++;   // before the place — its SaveBoard persists it
+                CountQueenBoost();   // before the place — its SaveBoard persists it, and the event precedes a possible game_win
                 PlaceBoostQueen(target);
                 return;
             }
 
             int fallback = FirstUnplacedSolutionQueen();
-            if (fallback >= 0) { AppData.LastPlayData.queenBoostsUsed++; PlaceBoostQueen(fallback); }
+            if (fallback >= 0) { CountQueenBoost(); PlaceBoostQueen(fallback); }
             else Debug.Log("[MBGameplay] Queen boost: nothing to place.");
+        }
+
+        void CountQueenBoost() {
+            AppData.LastPlayData.queenBoostsUsed++;
+            Analytics.BoostUsed("queen", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
         }
 
         // Place a correct queen from a boost and advance the game (as a manual correct placement).
@@ -190,6 +199,7 @@ namespace qp {
             if (any) {
                 AppData.LastPlayData.undosUsed++;   // before SaveBoard — it persists the counter too
                 SaveBoard();
+                Analytics.BoostUsed("undo", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
                 Haptics.Play(GameHaptic.Tap);
             }
         }
@@ -588,6 +598,7 @@ namespace qp {
             AppData.LastPlayData.bonesLost = 0;
             AppData.LastPlayData.livesAdded += 3;   // the continue grant (later: video/coins)
             SaveBoard();
+            Analytics.LivesAdded(3, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _topBar?.SetWrongMoves(0);
             _ready = true;
         }

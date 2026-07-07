@@ -25,6 +25,14 @@ namespace qp {
         public static void GameWin(int levelIdx, int attempts)   => GameEvent("game_win",   levelIdx, attempts);
         public static void GameLose(int levelIdx, int attempts)  => GameEvent("game_lose",  levelIdx, attempts);
 
+        /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>
+        public static void BoostUsed(string boost, int levelIdx, int attempts) =>
+            GameEvent("boost_used", levelIdx, attempts, "boost", boost);
+
+        /// <summary>The fail-continue grant (later: video/coins) — its own event stream, not a boost.</summary>
+        public static void LivesAdded(int amount, int levelIdx, int attempts) =>
+            GameEvent("lives_added", levelIdx, attempts, "amount", amount);
+
         // TEMP — review prepare timing probe, read via BigQuery. REMOVE after the measurement.
         public static void ReviewPrepareTime(int ms, bool prepared) {
             CrashLog($"[review] prepare took {ms} ms (prepared={prepared})");
@@ -34,15 +42,21 @@ namespace qp {
 #endif
         }
 
-        static void GameEvent(string name, int levelIdx, int attempts) {
+        // every game event carries the level, the attempt and the attempt's counters;
+        // extraKey/extraVal (optional) adds the event's own parameter (boost name, amount, ...)
+        static void GameEvent(string name, int levelIdx, int attempts, string extraKey = null, object extraVal = null) {
             var d = AppData.LastPlayData;
-            CrashLog($"[game] {name} level {levelIdx} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
+            var extra = extraKey != null ? $" {extraKey}={extraVal}" : "";
+            CrashLog($"[game] {name}{extra} level {levelIdx} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
 #if !IGNORE_FIREBASE
             var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
                 new Firebase.Analytics.Parameter("level_idx", levelIdx),
                 new Firebase.Analytics.Parameter("attempts", attempts),
             };
             ps.AddRange(d.ToParams());
+            if (extraKey != null)
+                ps.Add(extraVal is int i ? new Firebase.Analytics.Parameter(extraKey, i)
+                                         : new Firebase.Analytics.Parameter(extraKey, extraVal.ToString()));
             CDebug.Log(name, ps.ToArray());
 #else
             CDebug.Log(name);
