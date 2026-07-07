@@ -107,7 +107,8 @@ namespace qp {
                 case EBoostType.HINT:
                     MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
                     MBToturial.instance?.SetApplyVisible(true);
-                    OpenHint();
+                    // count only here (player's boost) — the tutorial calls OpenHint directly
+                    if (OpenHint()) { AppData.LastPlayData.hintsUsed++; AppData.LastPlayData.Save(); }
                     break;
                 case EBoostType.UNDO:  Undo();      break;
             }
@@ -120,12 +121,13 @@ namespace qp {
             GatherBoard(out var queens, out var xs);
 
             if (SolveTracer.TryQueenBoost(_n, _level.regions, _level.solutionColumns, queens, xs, out int target)) {
+                AppData.LastPlayData.queenBoostsUsed++;   // before the place — its SaveBoard persists it
                 PlaceBoostQueen(target);
                 return;
             }
 
             int fallback = FirstUnplacedSolutionQueen();
-            if (fallback >= 0) PlaceBoostQueen(fallback);
+            if (fallback >= 0) { AppData.LastPlayData.queenBoostsUsed++; PlaceBoostQueen(fallback); }
             else Debug.Log("[MBGameplay] Queen boost: nothing to place.");
         }
 
@@ -185,19 +187,24 @@ namespace qp {
                 cell.MarkCell(e.from);
                 any = true;
             }
-            if (any) { SaveBoard(); Haptics.Play(GameHaptic.Tap); }
+            if (any) {
+                AppData.LastPlayData.undosUsed++;   // before SaveBoard — it persists the counter too
+                SaveBoard();
+                Haptics.Play(GameHaptic.Tap);
+            }
         }
 
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
         // Public: the first-play tutorial drives the same flow, step by step.
-        public void OpenHint() {
-            if (!_ready || _cells == null || _level == null) return;
+        // Returns true when a hint was actually presented (the boost counts only those).
+        public bool OpenHint() {
+            if (!_ready || _cells == null || _level == null) return false;
             GatherBoard(out var queens, out var xs);
 
             // 1) the next real deduction
             if (SolveTracer.TryHint(_n, _level.regions, _level.solutionColumns, queens, xs, out var hint, RegionRichName, PieceName, PieceNamePlural)) {
                 PresentHint(hint);
-                return;
+                return true;
             }
 
             // 2) last resort — a wrong X is hiding a forced queen (strong spoiler, only when stuck)
@@ -205,10 +212,11 @@ namespace qp {
                 if (cell.State == MBCell.ECellType.X && cell.IsSolutionQueen) {
                     PresentHint(new Hint { kind = HintKind.WrongX, cells = new[] { cell.Y * _n + cell.X },
                                            note = $"a {PieceName} belongs here — clear this X" });
-                    return;
+                    return true;
                 }
 
             Debug.Log("[MBGameplay] Hint: no simple next step (would need a guess).");
+            return false;
         }
 
         // What hint texts call the piece — this game's queens are puppies (another skin: cats).
@@ -261,7 +269,6 @@ namespace qp {
             } else {
                 AppData.LevelAttempts.Value++;
             }
-            Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _reviewPrepareStarted = false;   // each board build may pre-fetch the review flow once
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
@@ -297,10 +304,13 @@ namespace qp {
                 }
             }
 
-            // same level reopened → back to the exact last state (wrong queens too);
-            // a fresh board starts with all bones back
-            if (!RestoreBoard()) AppData.BonesLost.Value = 0;
-            _topBar.SetWrongMoves(AppData.BonesLost.Value);
+            // same level reopened → back to the exact last state (wrong queens, boost counters);
+            // a fresh board starts a fresh attempt (all counters zeroed, all bones back)
+            if (!RestoreBoard()) AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
+            _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
+
+            // after the attempt data exists, so the event carries the restored/zeroed counters
+            Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
             // board size = grid + gaps + margin border on every side
             float boardSize = cellSize * (n + (n - 1) * _spacing + 2f * _margin);
@@ -397,14 +407,16 @@ namespace qp {
             if (_cells == null) return;
             var sb = new System.Text.StringBuilder(_n * _n);
             foreach (var cell in _cells) sb.Append(StateChar(cell.State));
-            AppData.BoardState.Value = sb.ToString();
-            AppData.BoardStateLevelIdx.Value = AppData.LevelIdx.Value;
+            var data = AppData.LastPlayData;
+            data.forLevelIdx = AppData.LevelIdx.Value;
+            data.board = sb.ToString();
+            data.Save();   // one write: board + the attempt's counters
         }
 
         // Re-apply the saved marks (wrong queens included) when the same level reopens.
         bool RestoreBoard() {
-            if (AppData.BoardStateLevelIdx.Value != AppData.LevelIdx.Value) return false;
-            string s = AppData.BoardState.Value;
+            if (AppData.LastPlayData.forLevelIdx != AppData.LevelIdx.Value) return false;
+            string s = AppData.LastPlayData.board;
             if (string.IsNullOrEmpty(s) || s.Length != _n * _n) return false;
 
             int i = 0;
@@ -492,12 +504,13 @@ namespace qp {
                     if (placed == _n) Win();
                     else Haptics.Play(GameHaptic.Happy);
                 } else {
-                    AppData.BonesLost.Value++;   // a bone is lost (saved next to the board)
-                    _topBar?.SetWrongMoves(AppData.BonesLost.Value);
+                    AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
+                    AppData.LastPlayData.Save();
+                    _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
                     Haptics.Play(GameHaptic.Wrong);
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
-                    if (AppData.BonesLost.Value >= _topBar.MaxWrongMoves) Fail();   // last bone gone
+                    if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
                 }
             }
             else if (_stroke != null) {
@@ -543,7 +556,7 @@ namespace qp {
         void Win() {
             _ready = false;              // stop input
             Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
-            AppData.BoardStateLevelIdx.Value = -1;   // level done — the saved board is history
+            AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             AppData.LevelIdx.Value++;    // advance progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
@@ -557,9 +570,10 @@ namespace qp {
             _ready = false;   // stop input; Continue or Reset decides what's next
             Analytics.GameLose(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
-            // Failed → the saved board is history: quitting now restarts the level fresh.
-            // Only Continue brings it back — ContinueAfterFail saves again.
-            AppData.BoardStateLevelIdx.Value = -1;
+            // Failed → the attempt is over: quitting now restarts the level fresh.
+            // But Continue may revive it — it waits in the stash until the popup decides.
+            AppData.LastPlayData.Stash();
+            AppData.LastPlayData.Invalidate();
 
             if (_failPopup == null)
                 _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
@@ -570,7 +584,9 @@ namespace qp {
         // Fail-continue: every bone returns, but the wrong queens stay on the board — they're
         // permanent X's now. Re-saves the board that Fail() invalidated.
         public void ContinueAfterFail() {
-            AppData.BonesLost.Value = 0;
+            AppData.LastPlayData = LastPlayData.Unstash();   // the attempt Fail() invalidated is alive again
+            AppData.LastPlayData.bonesLost = 0;
+            AppData.LastPlayData.livesAdded += 3;   // the continue grant (later: video/coins)
             SaveBoard();
             _topBar?.SetWrongMoves(0);
             _ready = true;

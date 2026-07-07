@@ -871,7 +871,7 @@ namespace QueensPuzzle.EditorTools
             SessionState.SetString(qp.LevelLoader.PlayLevelGuidKey, PersistPlayLevel());
 
             // a playtest always starts fresh — never restore the saved board of the real progression
-            qp.AppData.BoardStateLevelIdx.Value = -1;
+            qp.AppData.LastPlayData.Invalidate();
 
             // already running? just rebuild the live board with the new level — no scene reload
             if (EditorApplication.isPlaying)

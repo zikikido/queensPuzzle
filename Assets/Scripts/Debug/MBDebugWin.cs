@@ -48,7 +48,7 @@ namespace qp {
             float w = Screen.width / _scale, h = Screen.height / _scale;
 
             GUILayout.BeginArea(new Rect(10, 10, w - 20, h - 20), GUI.skin.box);
-            GUILayout.Label($"DEBUG | level {AppData.LevelIdx + 1}/{SOLevelsData.Count} | attempts {AppData.LevelAttempts.Value} | bones lost {AppData.BonesLost.Value} | firebase {FirebaseState()}");
+            GUILayout.Label($"DEBUG | level {AppData.LevelIdx + 1}/{SOLevelsData.Count} | attempts {AppData.LevelAttempts.Value} | bones lost {AppData.LastPlayData.bonesLost} | firebase {FirebaseState()}");
             _scroll = GUILayout.BeginScrollView(_scroll);
 
             GUILayout.Label("Crashlytics");
@@ -69,8 +69,8 @@ namespace qp {
             if (Button($"Set level (1-{SOLevelsData.Count})") && int.TryParse(_levelInput, out int lvl))
                 AppData.LevelIdx.Value = Mathf.Clamp(lvl - 1, 0, Mathf.Max(0, SOLevelsData.Count - 1));
             GUILayout.EndHorizontal();
-            if (Button("Clear saved board")) AppData.BoardStateLevelIdx.Value = -1;
-            if (Button("Restore bones")) AppData.BonesLost.Value = 0;
+            if (Button("Clear saved board")) AppData.LastPlayData.Invalidate();
+            if (Button("Restore bones")) { AppData.LastPlayData.bonesLost = 0; AppData.LastPlayData.Save(); }
 
             GUILayout.Space(16);
             GUILayout.Label("Overlays");
@@ -84,8 +84,8 @@ namespace qp {
             GUILayout.EndArea();
         }
 
-        // A jump only moves the pointer — the stale saved board is ignored anyway because
-        // BoardStateLevelIdx no longer matches.
+        // A jump only moves the pointer — the stale saved attempt is ignored anyway because
+        // LastPlayData.forLevelIdx no longer matches.
         static void JumpLevel(int delta) =>
             AppData.LevelIdx.Value = Mathf.Clamp(AppData.LevelIdx.Value + delta, 0, Mathf.Max(0, SOLevelsData.Count - 1));
 

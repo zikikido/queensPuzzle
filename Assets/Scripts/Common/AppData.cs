@@ -25,16 +25,9 @@ namespace qp {
         public static readonly PlayerPrefsHelper.IntHolder LevelAttempts = new PlayerPrefsHelper.IntHolder("qp_level_attempts", 0);
         public static readonly PlayerPrefsHelper.IntHolder AttemptsLevelIdx = new PlayerPrefsHelper.IntHolder("qp_attempts_level_idx", -1);
 
-        // The in-progress board of the CURRENT level, one char per cell (0/X/Q/W — including
-        // wrong queens), so reopening the app lands exactly where the player stopped.
-        // Valid only while BoardStateLevelIdx matches LevelIdx; invalidated on win.
-        public static readonly PlayerPrefsHelper.StringHolder BoardState = new PlayerPrefsHelper.StringHolder("qp_board_state", "");
-        public static readonly PlayerPrefsHelper.IntHolder BoardStateLevelIdx = new PlayerPrefsHelper.IntHolder("qp_board_state_level", -1);
-
-        // Bones lost on the CURRENT level's board (valid together with BoardState). Not derivable
-        // from the cells: after a fail-continue the wrong queens stay on the board as permanent
-        // X's but the bones come back, so the count must be stored separately.
-        public static readonly PlayerPrefsHelper.IntHolder BonesLost = new PlayerPrefsHelper.IntHolder("qp_bones_lost", 0);
+        // The CURRENT attempt as one saved blob: the in-progress board plus the attempt's meta
+        // (boost uses, added lives, bones lost) — see LastPlayData. Mutate fields then Save().
+        public static LastPlayData LastPlayData = qp.LastPlayData.Load();
 
         // Haptics (vibration) on/off.
         public static readonly PlayerPrefsHelper.BoolHolder Haptics = new PlayerPrefsHelper.BoolHolder("qp_haptics", true);

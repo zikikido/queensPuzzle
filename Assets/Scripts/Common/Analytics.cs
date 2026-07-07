@@ -35,10 +35,15 @@ namespace qp {
         }
 
         static void GameEvent(string name, int levelIdx, int attempts) {
-
+            var d = AppData.LastPlayData;
+            CrashLog($"[game] {name} level {levelIdx} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
 #if !IGNORE_FIREBASE
-            CDebug.Log(name, new Firebase.Analytics.Parameter("level_idx", levelIdx),
-                             new Firebase.Analytics.Parameter("attempts", attempts));
+            var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
+                new Firebase.Analytics.Parameter("level_idx", levelIdx),
+                new Firebase.Analytics.Parameter("attempts", attempts),
+            };
+            ps.AddRange(d.ToParams());
+            CDebug.Log(name, ps.ToArray());
 #else
             CDebug.Log(name);
 #endif
