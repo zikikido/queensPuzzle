@@ -260,6 +260,7 @@ namespace qp {
             } else {
                 AppData.LevelAttempts.Value++;
             }
+            Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
             var cellPrefab = MBCell.LoadFromResource();
@@ -517,6 +518,7 @@ namespace qp {
 
         void Win() {
             _ready = false;              // stop input
+            Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
             AppData.BoardStateLevelIdx.Value = -1;   // level done — the saved board is history
             AppData.LevelIdx.Value++;    // advance progress (persisted)
             if (_winPopup == null)
@@ -528,6 +530,7 @@ namespace qp {
 
         void Fail() {
             _ready = false;   // stop input; Continue or Reset decides what's next
+            Analytics.GameLose(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
             // Failed → the saved board is history: quitting now restarts the level fresh.
             // Only Continue brings it back — ContinueAfterFail saves again.

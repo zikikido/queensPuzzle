@@ -1,12 +1,9 @@
 using Common;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace qp {
     public class MBLobby : MonoBehaviour {
-
-        const string GameplayScene = "Gameplay";
 
         MBSettingsPopup _settings;   // inactive in the scene by default (its OUT state)
 
@@ -32,7 +29,7 @@ namespace qp {
             // the lobby launches by index — drop any Level Builder playtest token so it isn't reused
             UnityEditor.SessionState.EraseString(LevelLoader.PlayLevelGuidKey);
 #endif
-            SceneManager.LoadScene(GameplayScene);
+            Navigator.Go(Navigator.Gameplay);
         }
     }
 }

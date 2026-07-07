@@ -42,7 +42,7 @@ namespace qp {
 
         // Reset — abandon the attempt, back to the lobby.
         void ResetToLobby() {
-            SceneManager.LoadScene("Lobby");
+            Navigator.Go(Navigator.Lobby);
         }
 
         // Continue — every bone returns (the wrong queens stay as permanent X's), resume play.

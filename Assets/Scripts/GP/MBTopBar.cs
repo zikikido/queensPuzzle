@@ -31,7 +31,7 @@ namespace qp {
             _settingsBtn = transform.RecursiveFindChild<Button>("$SettingsBtn");
             _settingsBtn.onClick.AddListener(OpenSettings);
 
-            transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => SceneManager.LoadScene("Lobby"));
+            transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => Navigator.Go(Navigator.Lobby));
 
             // interactable=false (CanvasGroup) only blocks clicks — no gray-out on our buttons
             foreach (var btn in GetComponentsInChildren<Button>(true)) {

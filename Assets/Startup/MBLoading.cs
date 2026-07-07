@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace qp {
@@ -23,7 +22,7 @@ namespace qp {
             }
 
             _bar.value = _bar.maxValue;
-            SceneManager.LoadScene("Lobby");
+            Navigator.Go(Navigator.Lobby);
         }
     }
 }
