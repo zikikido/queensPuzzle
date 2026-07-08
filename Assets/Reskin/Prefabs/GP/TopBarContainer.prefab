@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: c24cbc83ba1e1b94e83e2ed78d12f10f, type: 3}
+  m_Sprite: {fileID: 5904627132653970092, guid: c7757dd59eab2074d93169de997507f9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -140,7 +140,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: ee98604a430dd9c4a837eaa2429300c5, type: 3}
+  m_Sprite: {fileID: 3429283669767331398, guid: ae408ac856c8bec4b9e7f0da0acde76f, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -390,7 +390,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 48993c3d80c0ef645b9ea2d9ca425998, type: 3}
+  m_Sprite: {fileID: -4575529157160494265, guid: 5f3dc6cb41978134cbacbe13b74c4bdb, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -413,7 +413,7 @@ GameObject:
   - component: {fileID: 7121023833894240762}
   - component: {fileID: 2176350165963409647}
   m_Layer: 0
-  m_Name: $Settings
+  m_Name: $SettingsBtn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1303,7 +1303,7 @@ GameObject:
   - component: {fileID: 3995900219596827067}
   - component: {fileID: 5678798159153152112}
   m_Layer: 0
-  m_Name: $Back
+  m_Name: $BackBtn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1476,7 +1476,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 5b75b8aa076df794bb81b7e3f9d8402c, type: 3}
+  m_Sprite: {fileID: 1897732312107532449, guid: 1461675ebab2c0e4a9a7dc10e273386d, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2615,7 +2615,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 39eec1627da179e46a62be5edd734850, type: 3}
+  m_Sprite: {fileID: -4575529157160494265, guid: 5f3dc6cb41978134cbacbe13b74c4bdb, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

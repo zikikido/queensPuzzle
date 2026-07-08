@@ -1500,13 +1500,25 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 761443779}
     m_Modifications:
-    - target: {fileID: 1191786705348004960, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
-      propertyPath: m_Name
-      value: $SettingsBtn
+    - target: {fileID: 3276505112386264787, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
+      propertyPath: m_text
+      value: <color=#EE57B7>11</color>/22
       objectReference: {fileID: 0}
-    - target: {fileID: 3157793613251490323, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
-      propertyPath: m_Name
-      value: $BackBtn
+    - target: {fileID: 3276505112386264787, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
+      propertyPath: m_fontColor.b
+      value: 0.28235295
+      objectReference: {fileID: 0}
+    - target: {fileID: 3276505112386264787, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
+      propertyPath: m_fontColor.g
+      value: 0.5372549
+      objectReference: {fileID: 0}
+    - target: {fileID: 3276505112386264787, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
+      propertyPath: m_fontColor.r
+      value: 0.45882356
+      objectReference: {fileID: 0}
+    - target: {fileID: 3276505112386264787, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4290205678
       objectReference: {fileID: 0}
     - target: {fileID: 7945461107691372750, guid: 7d7f4c2b19215c6449e780e7f3409003, type: 3}
       propertyPath: m_Pivot.x
@@ -2418,7 +2430,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.93725497, g: 0.95294124, b: 0.7254902, a: 1}
+  m_BackGroundColor: {r: 0.8745099, g: 0.94117653, b: 0.9607844, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -2454,7 +2466,7 @@ Camera:
   m_TargetEye: 3
   m_HDR: 1
   m_AllowMSAA: 1
-  m_AllowDynamicResolution: 1
+  m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
   m_OcclusionCulling: 1
   m_StereoConvergence: 10

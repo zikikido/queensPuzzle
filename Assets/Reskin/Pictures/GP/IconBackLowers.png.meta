@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: ee98604a430dd9c4a837eaa2429300c5
+guid: 7bffbc1b979415d49ac7607bc5904bc9
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -863079330769955085
-    second: ArrowBack_0
+      213: -4656082294851046515
+    second: IconBackLowers_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: ArrowBack_0
+      name: IconBackLowers_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 56
-        height: 56
+        y: 1
+        width: 187
+        height: 187
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3f69974ebe9b504f0800000000000000
-      internalID: -863079330769955085
+      spriteID: d83fa6262d5426fb0800000000000000
+      internalID: -4656082294851046515
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      ArrowBack_0: -863079330769955085
+      IconBackLowers_0: -4656082294851046515
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

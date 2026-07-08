@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 39eec1627da179e46a62be5edd734850
+guid: 1461675ebab2c0e4a9a7dc10e273386d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6496189996052926798
-    second: IconHelp1__0
+      213: 1897732312107532449
+    second: Help2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: IconHelp1__0
+      name: Help2_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
+        y: 1
         width: 80
-        height: 80
+        height: 83
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2bea1dbed95e8d5a0800000000000000
-      internalID: -6496189996052926798
+      spriteID: 1a043f5bb79165a10800000000000000
+      internalID: 1897732312107532449
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      IconHelp1__0: -6496189996052926798
+      Help2_0: 1897732312107532449
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
