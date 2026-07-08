@@ -3,29 +3,17 @@ using UnityEngine;
 namespace Common
 {
     /// <summary>
-    /// A bottom-banner placeholder: full width (p_w) × banner height, pinned to the bottom of the safe
-    /// area in world space — the same technique RTSafeArea uses, so its X / Y / size all track the
-    /// parent and re-fit whenever the screen changes. Drop a placeholder Image on it to preview where
-    /// the real banner will sit.
-    ///
-    /// Setup: just make it a child of the safe-area invoker (RTAutoSafeArea / RTSafeArea). It positions
-    /// itself — no scene anchoring needed.
-    ///
-    /// Decoupled from the MAX SDK on purpose: the ads/MAX manager pushes the real banner height via
-    /// <see cref="SetBannerHeightPixels"/> (e.g. from the OnAdLoaded callback) and calls
-    /// <see cref="HideBanner"/> when it's gone — so this compiles with no SDK present. In the editor
-    /// (and until a height is pushed) it shows the standard banner dp for the previewed device.
+    /// Reserves a fixed strip at the bottom of the safe area so the native MAX banner overlay never
+    /// covers game content. The strip is set ONCE at the device banner height and never changes
+    /// during play (stable layout); only a future "remove ads" purchase releases it. The banner
+    /// ad's VISIBILITY is driven by MBGameplay (qp.Ads.ShowBanner/HideBanner), not here — this
+    /// component only owns the reserved layout space. The overlay is hidden by whoever leaves play
+    /// (win/fail/back), so it never leaks into another scene.
     /// </summary>
     [ExecuteInEditMode]
     public class RTAppLovinMaxBottomBanner : Core.RTResizeInvoker.ABSMBListener
     {
-        [Tooltip("Standard MAX banner height in dp — auto-picked by device (phone vs tablet). Drives " +
-                 "the editor preview and the reserve before the ad loads; at runtime the real pushed " +
-                 "height takes over.")]
-        public float PhoneBannerDp = 50f;
-        public float TabletBannerDp = 90f;
-
-        float _bannerPx;          // real banner height in screen pixels, pushed at runtime
+        float _bannerPx;          // reserved strip height in screen pixels
         bool _hasRuntimeHeight;
 
         protected override void Awake()
@@ -39,18 +27,17 @@ namespace Common
             var dt = new DrivenRectTransformTracker();
             dt.Clear();
             dt.Add(this, RT, DrivenTransformProperties.All);
+
+            // Reserve the strip at the device banner height — permanent (stable layout).
+            SetBannerHeightPixels(qp.Ads.GetBannerHeightPixels());
         }
 
-        /// <summary>Push the loaded banner's height (in screen pixels) from your ads/MAX manager —
-        /// e.g. <c>MaxSdkUtils.GetAdaptiveBannerHeight() * (Screen.dpi / 160f)</c>. Re-lays out.</summary>
+        /// <summary>Push the reserved strip height (screen pixels). Re-lays out.</summary>
         public void SetBannerHeightPixels(float pixels)
         {
             _bannerPx = Mathf.Max(0f, pixels);
             _hasRuntimeHeight = true;
         }
-
-        /// <summary>Banner removed (no fill / interstitial showing) — release the reserved strip.</summary>
-        public void HideBanner() => SetBannerHeightPixels(0f);
 
         // Full width (p_w) × banner height, pinned to the parent's bottom-left in world space — the
         // same technique RTSafeArea uses, so X, Y, width and on-resize all track the parent. Recomputed
@@ -62,7 +49,7 @@ namespace Common
             var parent = transform.parent as RectTransform;
             if (cam == null || parent == null) return;
 
-            float bannerPx = _hasRuntimeHeight ? _bannerPx : EstimatedBannerPixels();
+            float bannerPx = _hasRuntimeHeight ? _bannerPx : qp.Ads.GetBannerHeightPixels();
             float z = transform.position.z + -(cam.transform.position.z);
             float bannerH = Mathf.Abs(cam.ScreenToWorldPoint(new Vector3(0f, bannerPx, z)).y
                                     - cam.ScreenToWorldPoint(new Vector3(0f, 0f, z)).y);
@@ -76,16 +63,6 @@ namespace Common
             RT.position = c[0]; // pivot (0,0) → banner bottom-left at the parent's bottom-left
 
             ReporteSize();
-        }
-
-        // Real banner height for the CURRENT screen: standard MAX 50dp phone / 90dp tablet → pixels.
-        // The device simulator drives Screen.* in the editor, so this matches the previewed device.
-        float EstimatedBannerPixels()
-        {
-            float density = Screen.dpi > 0f ? Screen.dpi / 160f : 2.625f; // ~xxhdpi fallback
-            float minSideDp = Mathf.Min(Screen.width, Screen.height) / density;
-            float dp = minSideDp >= 600f ? TabletBannerDp : PhoneBannerDp; // 600dp = Android tablet cutoff
-            return dp * density;
         }
     }
 }

@@ -127,6 +127,20 @@ namespace qp {
         public static void ShowBanner() { if (_bannerCreated) { MaxSdk.ShowBanner(BannerId); BannerVisible = true; } }
         public static void HideBanner() { if (_bannerCreated) { MaxSdk.HideBanner(BannerId); BannerVisible = false; } }
 
+        // Standard MAX banner height for THIS device in screen pixels (50dp phone / 90dp tablet).
+        // Known up front — no ad load needed. MAX's own IsTablet() at runtime; screen heuristic in
+        // the editor (device simulator drives Screen.*, the native call isn't available).
+        public static float GetBannerHeightPixels() {
+            const float PhoneDp = 50f, TabletDp = 90f;
+            float density = Screen.dpi > 0f ? Screen.dpi / 160f : 2.625f;   // ~xxhdpi fallback
+#if UNITY_EDITOR
+            bool tablet = Mathf.Min(Screen.width, Screen.height) / density >= 600f;   // 600dp = tablet cutoff
+#else
+            bool tablet = MaxSdkUtils.IsTablet();
+#endif
+            return (tablet ? TabletDp : PhoneDp) * density;
+        }
+
         // ================== revenue → Singular (+ Firebase) ==================
 
         static void OnRevenuePaid(string adUnitId, MaxSdkBase.AdInfo info) {

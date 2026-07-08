@@ -345,6 +345,11 @@ namespace qp {
             _ready = true;
             SetChromeInteractable(true);   // bloom done — bars usable again
 
+            // banner shows from GameConfig.StartShowBannerAtLevel onward (the strip is always reserved)
+            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowBannerAtLevel) {
+                Ads.ShowBanner();
+            }
+
             MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
         }
 
@@ -551,7 +556,7 @@ namespace qp {
 
         void MaybePrepareReview(int placed) {
             if (_reviewPrepareStarted || placed < _n - 2 || placed >= _n) return;
-            if (AppData.LevelIdx.Value + 1 <= 5) return;   // asks only from level 6 (1-based)
+            if (AppData.LevelIdx.Value + 1 <= 9) return;  
             _reviewPrepareStarted = true;
             StartCoroutine(PrepareReview());
         }
@@ -565,6 +570,7 @@ namespace qp {
 
         void Win() {
             _ready = false;              // stop input
+            Ads.HideBanner();            // banner off while the win popup is up
             Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             AppData.LevelIdx.Value++;    // advance progress (persisted)
@@ -578,6 +584,7 @@ namespace qp {
 
         void Fail() {
             _ready = false;   // stop input; Continue or Reset decides what's next
+            Ads.HideBanner();            // banner off while the fail popup is up
             Analytics.GameLose(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
             // Failed → the attempt is over: quitting now restarts the level fresh.
