@@ -9,12 +9,14 @@ namespace qp {
 
         CanvasGroup _group;
         bool _showing;   // a real fail is on screen (guards the layout pass from hiding it)
+        GameObject _btnContinue;   // rewarded revive — only offered when a rewarded ad is ready
 
         /// <summary>The one way to open the popup (MBGameplay.Fail).</summary>
         public void Show() {
             _showing = true;
             _group.alpha = 1f;   // whatever the layout pass left behind, a real show is opaque
             gameObject.SetActive(true);
+            UpdateContinueButton();
         }
 
         // Same trick as the win popup: stay ACTIVE but invisible for the first frames so the UI
@@ -26,6 +28,7 @@ namespace qp {
 
             var btnContinue = transform.RecursiveFindChild<Button>("$BtnContinue");
             btnContinue.onClick.AddListener(Continue);
+            _btnContinue = btnContinue.gameObject;
 
             _group = GetComponent<CanvasGroup>();
             if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();
@@ -50,11 +53,24 @@ namespace qp {
                 MBGameplay.instance?.Replay();
         }
 
-        // Continue — every bone returns (the wrong queens stay as permanent X's), resume play.
+        // Continue is a rewarded revive — only shown when a rewarded ad is ready.
+        void Update() {
+            if (_showing) UpdateContinueButton();
+        }
+
+        void UpdateContinueButton() {
+            if (_btnContinue == null) return;
+            bool ready = Ads.IsRewardedReady;
+            if (_btnContinue.activeSelf != ready) _btnContinue.SetActive(ready);
+        }
+
+        // Continue — watch a rewarded ad; only revive (bones refill) if the reward is granted.
         void Continue() {
-            _showing = false;
-            gameObject.SetActive(false);
-            MBGameplay.instance?.ContinueAfterFail();
+            Ads.WatchToEarn(() => {
+                _showing = false;
+                gameObject.SetActive(false);
+                MBGameplay.instance?.ContinueAfterFail();
+            });
         }
     }
 }
