@@ -47,6 +47,16 @@ namespace qp {
         void Next() {
             _showing = false;
             gameObject.SetActive(false);
+
+            // Interstitial between levels, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
+            // Show it first, then rebuild the next level when it closes.
+            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
+                Ads.ShowInterstitial(Replay);
+            else
+                Replay();
+        }
+
+        void Replay() {
             var gp = FindAnyObjectByType<MBGameplay>();
             if (gp != null) gp.Replay();
         }

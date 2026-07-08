@@ -42,7 +42,12 @@ namespace qp {
 
         // Reset — abandon the attempt, back to the lobby.
         void ResetToLobby() {
-            Navigator.Go(Navigator.Lobby);
+            // Interstitial on restart, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
+            // Show it first, then go to the lobby when it closes.
+            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
+                Ads.ShowInterstitial(() => MBGameplay.instance?.Replay());
+            else
+                MBGameplay.instance?.Replay();
         }
 
         // Continue — every bone returns (the wrong queens stay as permanent X's), resume play.
