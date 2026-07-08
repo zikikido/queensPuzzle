@@ -70,6 +70,10 @@ namespace qp {
 #endif
                 Task("singular", SingularBoot.Begin, () => SingularBoot.Done)
             );
+
+            // Stage 3: start loading ads. Instant-done — ad loading runs in the background, so
+            // the loading screen never waits on it.
+            Register("ads", Ads.Init, () => true);
         }
 
         /// <summary>

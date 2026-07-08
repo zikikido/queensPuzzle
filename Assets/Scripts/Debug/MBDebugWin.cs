@@ -73,6 +73,17 @@ namespace qp {
             if (Button("Restore bones")) { AppData.LastPlayData.bonesLost = 0; AppData.LastPlayData.Save(); }
 
             GUILayout.Space(16);
+            GUILayout.Label("Ads (AppLovin MAX)");
+            if (Button("Mediation Debugger")) MaxSdk.ShowMediationDebugger();
+            if (Button($"Show Rewarded  (ready: {Ads.IsRewardedReady})"))
+                Ads.ShowRewarded(earned => Debug.Log($"[Debug] rewarded closed — earned: {earned}"));
+            if (Button($"Show Interstitial  (ready: {Ads.IsInterstitialReady})"))
+                Ads.ShowInterstitial(() => Debug.Log("[Debug] interstitial closed"));
+            if (Button($"Banner: {(Ads.BannerVisible ? "HIDE" : "SHOW")}")) {
+                if (Ads.BannerVisible) Ads.HideBanner(); else Ads.ShowBanner();
+            }
+
+            GUILayout.Space(16);
             GUILayout.Label("Overlays");
             if (Button($"FPS overlay: {(AppData.ShowFps.Value ? "ON" : "OFF")}")) MBFpsOverlay.Toggle();
 
