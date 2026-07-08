@@ -4455,9 +4455,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   RT: {fileID: 1347263343}
-  Listeners:
-  - {fileID: 0}
-  - {fileID: 0}
+  Listeners: []
   ListneresMethod: 0
   TopNormal: 0
   BottomNormal: 0
@@ -5040,6 +5038,10 @@ PrefabInstance:
     - target: {fileID: 2938664968036413064, guid: 3df94e9f8d778474793fc3f908524686, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9095278357980668153, guid: 3df94e9f8d778474793fc3f908524686, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -9
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -6719,7 +6721,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.15
+  m_fontSize: 0.1
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -7192,6 +7194,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 948147880}
     m_Modifications:
+    - target: {fileID: 3803229042335576278, guid: d437f9090b5644442af654f571300695, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -8
+      objectReference: {fileID: 0}
     - target: {fileID: 5578795322279050859, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_Name
       value: BoostQueen
@@ -7275,6 +7281,10 @@ PrefabInstance:
     - target: {fileID: 7077160404938522279, guid: d437f9090b5644442af654f571300695, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7807003396959013796, guid: d437f9090b5644442af654f571300695, type: 3}
+      propertyPath: m_PreserveAspect
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
