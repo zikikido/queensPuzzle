@@ -1407,8 +1407,6 @@ MonoBehaviour:
   RT: {fileID: 951162462}
   Listeners: []
   ListneresMethod: 0
-  PhoneBannerDp: 0
-  TabletBannerDp: 0
 --- !u!1 &955639037
 GameObject:
   m_ObjectHideFlags: 0

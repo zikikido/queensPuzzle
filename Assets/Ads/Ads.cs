@@ -76,6 +76,11 @@ namespace qp {
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent       += (id, info) => FinishRewarded();
         }
 
+        /// <summary>Reusable "watch to earn": show a rewarded ad and run onEarned only if the
+        /// reward was actually granted. Use anywhere a rewarded video grants something (boosters,
+        /// bones, …).</summary>
+        public static void WatchToEarn(Action onEarned) => ShowRewarded(earned => { if (earned) onEarned?.Invoke(); });
+
         /// <summary>Show a rewarded ad. onDone(true) if the reward was earned, else onDone(false).</summary>
         public static void ShowRewarded(Action<bool> onDone) {
             if (!IsRewardedReady) { onDone?.Invoke(false); return; }

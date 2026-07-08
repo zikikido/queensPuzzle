@@ -91,19 +91,19 @@ namespace qp {
             yield return BuildBoard();
         }
 
-        // Collect every boost button under us and route its click to the boost for its type.
+        // Give each boost button its effect. The button owns the click: it spends a boost (and
+        // decrements) when there's one, or watches a rewarded ad to earn one when there isn't.
         void WireBoostButtons() {
             foreach (var boost in GetComponentsInChildren<MBBoostButton>(true)) {
-                var btn = boost.GetButton();
-                if (btn == null) continue;
                 var type = boost.BoostType;
-                btn.onClick.AddListener(() => RunBoost(type));
+                boost.UseAction = () => UseBoost(type);
             }
         }
 
-        void RunBoost(EBoostType type) {
+        // Run a boost's effect; true when it actually did something (so the button spends one).
+        bool UseBoost(EBoostType type) {
             switch (type) {
-                case EBoostType.QUEEN: OpenQueen(); break;
+                case EBoostType.QUEEN: return OpenQueen();
                 case EBoostType.HINT:
                     MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
                     MBToturial.instance?.SetApplyVisible(true);
@@ -112,27 +112,30 @@ namespace qp {
                         AppData.LastPlayData.hintsUsed++;
                         AppData.LastPlayData.Save();
                         Analytics.BoostUsed("hint", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                        return true;
                     }
-                    break;
-                case EBoostType.UNDO:  Undo();      break;
+                    return false;
+                case EBoostType.UNDO: return Undo();
             }
+            return false;
         }
 
         // Queen boost: place the most trivial forced queen; if none is strictly forced (the board
         // would need a guess) still reveal a correct, unplaced solution queen.
-        void OpenQueen() {
-            if (!_ready || _cells == null || _level == null) return;
+        bool OpenQueen() {
+            if (!_ready || _cells == null || _level == null) return false;
             GatherBoard(out var queens, out var xs);
 
             if (SolveTracer.TryQueenBoost(_n, _level.regions, _level.solutionColumns, queens, xs, out int target)) {
                 CountQueenBoost();   // before the place — its SaveBoard persists it, and the event precedes a possible game_win
                 PlaceBoostQueen(target);
-                return;
+                return true;
             }
 
             int fallback = FirstUnplacedSolutionQueen();
-            if (fallback >= 0) { CountQueenBoost(); PlaceBoostQueen(fallback); }
-            else Debug.Log("[MBGameplay] Queen boost: nothing to place.");
+            if (fallback >= 0) { CountQueenBoost(); PlaceBoostQueen(fallback); return true; }
+            Debug.Log("[MBGameplay] Queen boost: nothing to place.");
+            return false;
         }
 
         void CountQueenBoost() {
@@ -183,8 +186,8 @@ namespace qp {
 
         // Undo boost: revert the most recent stroke of X edits (a whole drag counts as one).
         // Never touches a queen / wrong-queen cell.
-        void Undo() {
-            if (!_ready || _undo.Count == 0) return;
+        bool Undo() {
+            if (!_ready || _undo.Count == 0) return false;
 
             var stroke = _undo[_undo.Count - 1];
             _undo.RemoveAt(_undo.Count - 1);
@@ -202,6 +205,7 @@ namespace qp {
                 Analytics.BoostUsed("undo", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
                 Haptics.Play(GameHaptic.Tap);
             }
+            return any;
         }
 
         // Hint: fix a mistake first (cheapest + necessary), else the next deduction from the board.
