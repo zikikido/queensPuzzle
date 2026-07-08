@@ -1,5 +1,14 @@
 {
   "dependencies": {
+    "com.applovin.mediation.ads": {
+      "version": "8.6.4",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.182"
+      },
+      "url": "https://unity.packages.applovin.com"
+    },
     "com.coffee.ui-particle": {
       "version": "https://github.com/mob-sakai/ParticleEffectForUGUI.git#4.9.0",
       "depth": 0,
