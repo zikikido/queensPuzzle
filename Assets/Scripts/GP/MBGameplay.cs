@@ -327,7 +327,10 @@ namespace qp {
 
             // same level reopened → back to the exact last state (wrong queens, boost counters);
             // a fresh board starts a fresh attempt (all counters zeroed, all bones back)
-            if (!RestoreBoard()) AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
+            if (!RestoreBoard()) {
+                AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
+                RevealQueens(level);
+            }
             _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
 
             // after the attempt data exists, so the event carries the restored/zeroed counters
@@ -437,6 +440,18 @@ namespace qp {
             data.forLevelIdx = AppData.LevelIdx.Value;
             data.board = sb.ToString();
             data.Save();   // one write: board + the attempt's counters
+        }
+
+        // Early-level help: the level can ship with some solution queens already on the board.
+        // Fresh starts only — a restored board already contains them (SaveBoard saves everything).
+        void RevealQueens(LevelData level) {
+            if (level.revealedRows == null || level.revealedRows.Length == 0) return;
+            foreach (int r in level.revealedRows) {
+                var cell = CellAt(r, level.solutionColumns[r]);
+                if (cell != null && cell.State != MBCell.ECellType.QUEEN) cell.MarkCell(MBCell.ECellType.QUEEN);
+            }
+            SaveBoard();
+            _topBar.SetProgress(CountQueens());
         }
 
         // Re-apply the saved marks (wrong queens included) when the same level reopens.

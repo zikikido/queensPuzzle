@@ -25,10 +25,16 @@ namespace QueensPuzzle
         [Tooltip("RNG seed that produced this level — lets us reproduce it exactly.")]
         public int seed;
 
+        [Tooltip("Rows whose solution queen starts revealed on the board (early-level help). Empty = none. The column derives from solutionColumns, so a revealed queen can never contradict the solution.")]
+        public int[] revealedRows;
+
         /// <summary>Region id at the given cell.</summary>
         public int RegionAt(int row, int col) => regions[row * size + col];
 
         /// <summary>True if the queen in the solution sits at this cell.</summary>
         public bool IsSolutionQueen(int row, int col) => solutionColumns[row] == col;
+
+        /// <summary>True if this row's solution queen starts revealed on the board.</summary>
+        public bool IsRevealedRow(int row) => revealedRows != null && System.Array.IndexOf(revealedRows, row) >= 0;
     }
 }

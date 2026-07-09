@@ -474,10 +474,35 @@ namespace QueensPuzzle.EditorTools
                     }
                     else if (_level.IsSolutionQueen(r, c))
                     {
-                        DrawGlyph(cell, _queenTex, new Color(0.13f, 0.13f, 0.17f), 0.78f);
+                        bool revealed = _level.IsRevealedRow(r);
+                        DrawGlyph(cell, _queenTex,
+                            revealed ? new Color(0.95f, 0.6f, 0.1f) : new Color(0.13f, 0.13f, 0.17f), 0.78f);
+                        if (revealed) DrawOutline(cell, new Color(0.95f, 0.6f, 0.1f), 2f);
                     }
                 }
             }
+
+            // click a solution queen to toggle "revealed at start" (the orange ones open pre-placed)
+            var e = Event.current;
+            if (!stepMode && e.type == EventType.MouseDown && board.Contains(e.mousePosition))
+            {
+                int cc = Mathf.Clamp((int)((e.mousePosition.x - board.x) / cs), 0, n - 1);
+                int rr = Mathf.Clamp((int)((e.mousePosition.y - board.y) / cs), 0, n - 1);
+                if (_level.IsSolutionQueen(rr, cc)) { ToggleRevealed(rr); e.Use(); }
+            }
+            if (!stepMode)
+                EditorGUILayout.LabelField("Click a queen to toggle revealed-at-start (orange)",
+                    EditorStyles.centeredGreyMiniLabel);
+        }
+
+        void ToggleRevealed(int row)
+        {
+            var list = new List<int>(_level.revealedRows ?? new int[0]);
+            if (!list.Remove(row)) list.Add(row);
+            list.Sort();
+            _level.revealedRows = list.ToArray();
+            if (EditorUtility.IsPersistent(_level)) EditorUtility.SetDirty(_level);
+            Repaint();
         }
 
         void DrawGlyph(Rect cell, Texture2D tex, Color tint, float scale)
