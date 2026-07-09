@@ -5630,10 +5630,10 @@ MonoBehaviour:
     RightNormal: 0.02132509
   _maxRatioSize:
     screenRatio: 0.75
-    TopNormal: -0
-    BottomNormal: 0
-    LeftNormal: 0.09064
-    RightNormal: 0.09064
+    TopNormal: 0.08824
+    BottomNormal: 0.08824
+    LeftNormal: 0.09063811
+    RightNormal: 0.09063811
 --- !u!1 &4299764658636645740
 GameObject:
   m_ObjectHideFlags: 0

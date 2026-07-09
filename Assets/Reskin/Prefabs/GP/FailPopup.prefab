@@ -978,8 +978,8 @@ MonoBehaviour:
     RightNormal: 0.02134964
   _maxRatioSize:
     screenRatio: 0.75
-    TopNormal: 0.04570498
-    BottomNormal: 0.022845024
+    TopNormal: 0.01427502
+    BottomNormal: 0.054274984
     LeftNormal: 0.09064
     RightNormal: 0.09064
 --- !u!1 &4314245941488204067
@@ -1031,7 +1031,7 @@ GameObject:
   - component: {fileID: 2392590966074378089}
   - component: {fileID: 1506627192229391609}
   m_Layer: 0
-  m_Name: Text (TMP)
+  m_Name: $RemainingText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1910,6 +1910,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff00695750f5bc04f93a73feba6a2dd8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _queenFoundCLR: {r: 0.93333334, g: 0.34117648, b: 0.7176471, a: 1}
 --- !u!114 &4019035151285439513
 MonoBehaviour:
   m_ObjectHideFlags: 0
