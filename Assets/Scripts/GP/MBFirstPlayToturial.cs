@@ -1,5 +1,7 @@
+using Common;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace qp {
     /// <summary>
@@ -14,6 +16,8 @@ namespace qp {
 
         const int GuidedQueens = 3;
         const bool ForceRun = false;   // testing: run even when progress is past level 1
+
+        static Button _hintForFree = null;
 
         /// <summary>Called by MBGameplay once the board is ready. First level only.</summary>
         public static void TryBegin(MBGameplay gp) {
@@ -30,26 +34,28 @@ namespace qp {
             tut.SetApplyVisible(false);  // …and the player must do it — no Apply shortcut
 
             // guide hint-by-hint (X steps included) until the first queens stand
-            while (QueensPlaced(gp) < GuidedQueens) {
+            while (gp.CountQueens() < GuidedQueens) {
                 gp.OpenHint();
                 yield return null;                                    // let the step open
-                if (!tut.gameObject.activeSelf) break;                // no hint available — bail out
                 while (tut.gameObject.activeSelf) yield return null;  // closes when the player did it
+            }
+
+            var btn = MBGameplay.instance.transform.RecursiveFindChild<Button>("$HintForFree");
+
+            btn.gameObject.SetActive(true);
+            btn.onClick.AddListener(() => {
+                gp.OpenHint();
+            });
+
+            while (gp.Remaining > 0) {
+                yield return null;
             }
 
             tut.SetHandVisible(false);   // back to normal hint behaviour (Apply, no hand)
             tut.SetApplyVisible(true);
-            ShowChrome(true);            // from here the player is on their own
-        }
 
-        static int QueensPlaced(MBGameplay gp) {
-            int count = 0;
-            for (int r = 0; r < gp.N; r++)
-                for (int c = 0; c < gp.N; c++) {
-                    var cell = gp.CellAt(r, c);
-                    if (cell != null && cell.State == MBCell.ECellType.QUEEN) count++;
-                }
-            return count;
+            btn.gameObject.SetActive(false);
+            ShowChrome(true);            
         }
 
         static void ShowChrome(bool on) {
