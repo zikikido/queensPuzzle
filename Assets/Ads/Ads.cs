@@ -38,8 +38,13 @@ namespace qp {
         static Action _onInterstitialClosed;
         static bool _bannerCreated;
 
-        public static bool IsRewardedReady => Usable(RewardedId) && MaxSdk.IsRewardedAdReady(RewardedId);
-        public static bool IsInterstitialReady => Usable(InterstitialId) && MaxSdk.IsInterstitialReady(InterstitialId);
+        // Loaded-state tracked by us (OnAdLoaded sets, show/load-fail clears) so ready polls
+        // never call into the SDK — MaxSdk.Is*Ready logs when nothing was loaded, and it's a
+        // JNI hop that UI code tends to poll every frame.
+        static bool _rewardedLoaded, _interstitialLoaded;
+
+        public static bool IsRewardedReady => Usable(RewardedId) && _rewardedLoaded;
+        public static bool IsInterstitialReady => Usable(InterstitialId) && _interstitialLoaded;
 
         // Boot task (stage after MAX): subscribe callbacks and kick off loading. Returns
         // immediately — ad loading happens in the background, the boot never waits on it.
@@ -69,8 +74,8 @@ namespace qp {
         // ================== rewarded ==================
 
         static void WireRewarded() {
-            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent       += (id, info) => _rewardedRetry = 0;
-            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent   += (id, err)  => RetryLoad(ref _rewardedRetry, () => MaxSdk.LoadRewardedAd(RewardedId));
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent       += (id, info) => { _rewardedLoaded = true; _rewardedRetry = 0; };
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent   += (id, err)  => { _rewardedLoaded = false; RetryLoad(ref _rewardedRetry, () => MaxSdk.LoadRewardedAd(RewardedId)); };
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += (id, reward, info) => _rewardedEarned = true;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += (id, err, info) => FinishRewarded();
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent       += (id, info) => FinishRewarded();
@@ -84,8 +89,19 @@ namespace qp {
         /// <summary>Show a rewarded ad. onDone(true) if the reward was earned, else onDone(false).</summary>
         public static void ShowRewarded(Action<bool> onDone) {
             if (!IsRewardedReady) { onDone?.Invoke(false); return; }
+
+            // our flag can't see expiry — one SDK check right before the show (a load was
+            // definitely requested by now, so MAX won't log the "no load" warning)
+            if (!MaxSdk.IsRewardedAdReady(RewardedId)) {
+                _rewardedLoaded = false;
+                MaxSdk.LoadRewardedAd(RewardedId);
+                onDone?.Invoke(false);
+                return;
+            }
+
             _onRewardedDone = onDone;
             _rewardedEarned = false;
+            _rewardedLoaded = false;   // consumed — the next OnAdLoaded flips it back
             MaxSdk.ShowRewardedAd(RewardedId);
         }
 
@@ -107,8 +123,8 @@ namespace qp {
             IsInterstitialReady && Time.realtimeSinceStartup - _lastInterClosedAt >= InterCooldownSec;
 
         static void WireInterstitial() {
-            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent        += (id, info) => _interstitialRetry = 0;
-            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent    += (id, err)  => RetryLoad(ref _interstitialRetry, () => MaxSdk.LoadInterstitial(InterstitialId));
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent        += (id, info) => { _interstitialLoaded = true; _interstitialRetry = 0; };
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent    += (id, err)  => { _interstitialLoaded = false; RetryLoad(ref _interstitialRetry, () => MaxSdk.LoadInterstitial(InterstitialId)); };
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += (id, err, info) => FinishInterstitial();
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent        += (id, info) => FinishInterstitial();
         }
@@ -116,7 +132,17 @@ namespace qp {
         /// <summary>Show an interstitial; onClosed fires when it's dismissed (or immediately if none ready).</summary>
         public static void ShowInterstitial(Action onClosed = null) {
             if (!IsInterstitialReady) { onClosed?.Invoke(); return; }
+
+            // same expiry guard as ShowRewarded
+            if (!MaxSdk.IsInterstitialReady(InterstitialId)) {
+                _interstitialLoaded = false;
+                MaxSdk.LoadInterstitial(InterstitialId);
+                onClosed?.Invoke();
+                return;
+            }
+
             _onInterstitialClosed = onClosed;
+            _interstitialLoaded = false;   // consumed — the next OnAdLoaded flips it back
             MaxSdk.ShowInterstitial(InterstitialId);
         }
 
