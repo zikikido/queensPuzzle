@@ -567,19 +567,21 @@ namespace qp {
         bool _reviewPrepareStarted;   // once per board build
 
         void MaybePrepareReview(int placed) {
+#if !IGNORE_COMMON_REVIEW
             if (_reviewPrepareStarted || placed < _n - 2 || placed >= _n) return;
             if (AppData.LevelIdx.Value + 1 <= 9) return;  
             _reviewPrepareStarted = true;
             StartCoroutine(PrepareReview());
+#endif
         }
-
+#if !IGNORE_COMMON_REVIEW
         IEnumerator PrepareReview() {
             float t0 = Time.realtimeSinceStartup;
             yield return ReviewManager.Instance.Preapre();
             int ms = Mathf.RoundToInt((Time.realtimeSinceStartup - t0) * 1000f);
             Analytics.ReviewPrepareTime(ms, ReviewManager.Instance.Preapred);
         }
-
+#endif
         void Win() {
             _ready = false;              // stop input
             Ads.HideBanner();            // banner off while the win popup is up
@@ -590,7 +592,9 @@ namespace qp {
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
             if (_winPopup != null) _winPopup.Show();
+#if !IGNORE_COMMON_REVIEW
             StartCoroutine(ReviewManager.Instance.TryReview());   // no-op unless Preapre finished
+#endif
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
             CommonSFX.Play(GPSFX.Instance.Win);
         }
