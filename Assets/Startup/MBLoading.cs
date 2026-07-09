@@ -10,7 +10,7 @@ namespace qp {
 
         IEnumerator Start() {
             // so it will show in first noraml and not sqeeze
-            _bar.minValue = 10;
+            _bar.minValue = 0;
             _bar.maxValue = MBStartup.TasksTotal;
             _bar.value = MBStartup.TasksDone;
 
