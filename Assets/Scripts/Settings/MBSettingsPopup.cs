@@ -19,6 +19,9 @@ namespace qp {
         const float InDur = 0.3f, OutDur = 0.15f, FadeDur = 0.2f;
         const float BgAlpha = 0.8f;   // the dark cover's resting alpha
 
+        const string TermsUrl = "https://puzzby.com/terms/";
+        const string PrivacyUrl = "https://puzzby.com/privacy/";
+
         /// <summary>Fired after the out animation finished and the popup deactivated itself.</summary>
         public event Action Closed;
 
@@ -68,6 +71,10 @@ namespace qp {
             _bg = transform.RecursiveFindChild<Button>("$BG");
             transform.RecursiveFindChild<Button>("$XButton").onClick.AddListener(Close);
             _bg.onClick.AddListener(Close);
+
+            // legal links — open in the device browser
+            transform.RecursiveFindChild<Button>("$TermBtn")?.onClick.AddListener(() => Application.OpenURL(TermsUrl));
+            transform.RecursiveFindChild<Button>("$PrivacyBtn")?.onClick.AddListener(() => Application.OpenURL(PrivacyUrl));
 
             _popup = transform.RecursiveFindChild("$Popup");
             _popupScale = _popup.localScale;
