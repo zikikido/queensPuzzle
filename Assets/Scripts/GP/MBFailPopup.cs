@@ -10,6 +10,10 @@ namespace qp {
         CanvasGroup _group;
         bool _showing;   // a real fail is on screen (guards the layout pass from hiding it)
         GameObject _btnContinue;   // rewarded revive — only offered when a rewarded ad is ready
+        TMPro.TMP_Text _remainingText;
+
+        [SerializeField]
+        Color _queenFoundCLR;
 
         /// <summary>The one way to open the popup (MBGameplay.Fail).</summary>
         public void Show() {
@@ -17,6 +21,13 @@ namespace qp {
             _group.alpha = 1f;   // whatever the layout pass left behind, a real show is opaque
             gameObject.SetActive(true);
             UpdateContinueButton();
+
+            // "Remaining: X" — puppies still to place, X tinted like the top bar's found count
+            if (_remainingText != null) {
+                string hex = ColorUtility.ToHtmlStringRGB(_queenFoundCLR);
+                int remaining = MBGameplay.instance != null ? MBGameplay.instance.Remaining : 0;
+                _remainingText.text = $"Remaining: <color=#{hex}>{remaining}</color>";
+            }
         }
 
         // Same trick as the win popup: stay ACTIVE but invisible for the first frames so the UI
@@ -29,6 +40,8 @@ namespace qp {
             var btnContinue = transform.RecursiveFindChild<Button>("$BtnContinue");
             btnContinue.onClick.AddListener(Continue);
             _btnContinue = btnContinue.gameObject;
+
+            _remainingText = transform.RecursiveFindChild<TMPro.TMP_Text>("$RemainingText");
 
             _group = GetComponent<CanvasGroup>();
             if (_group == null) _group = gameObject.AddComponent<CanvasGroup>();

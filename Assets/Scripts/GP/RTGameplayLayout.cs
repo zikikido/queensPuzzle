@@ -19,6 +19,10 @@ namespace qp {
         public RectTransform Board;
         public RectTransform BottomBar;
 
+        [Tooltip("Overlays sized to the WHOLE area (top + board + bottom), so they match the full " +
+                 "gameplay screen — e.g. the tutorial, which mirrors the game layout.")]
+        public RectTransform[] FullLayout;
+
         [Header("Board fit (like RTAspectFitMax)")]
         public float Ratio = 1f;      // width / height of the board (1 = square)
 
@@ -65,6 +69,11 @@ namespace qp {
             Apply(Board, boardW, boardH, cx, cy);
             Apply(TopBar, boardW, parentTop - boardTop, cx, (parentTop + boardTop) * 0.5f);
             Apply(BottomBar, boardW, boardBottom - parentBottom, cx, (boardBottom + parentBottom) * 0.5f);
+
+            // full-area overlays: full height, but the board/bars' width (aligned with them)
+            if (FullLayout != null)
+                foreach (var rt in FullLayout)
+                    if (rt != null) Apply(rt, boardW, h, cx, 0f);
         }
 
         // Place one child (anchors/pivot centered) and let it report its new size to ITS children.

@@ -53,6 +53,7 @@ namespace qp {
         // read-only board access for the tutorial (spotlights need real cells)
         public bool Ready => _ready;
         public int N => _n;
+        public int Remaining => _cells == null ? 0 : _n - CountQueens();   // puppies still to place
         public LevelData Level => _level;
         public MBCell CellAt(int row, int col) =>
             _cells != null && row >= 0 && row < _n && col >= 0 && col < _n ? _cells[row, col] : null;
