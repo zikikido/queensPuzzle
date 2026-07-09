@@ -31,15 +31,16 @@ namespace qp {
             var tut = MBToturial.instance;
 
             ShowChrome(false);           // no boosts, no top bar — just the board and the guide
-            tut.SetHandVisible(true);    // first play: the hand demonstrates…
             tut.SetApplyVisible(false);  // …and the player must do it — no Apply shortcut
             tut.AutoHide = false;        // curtain stays up between steps — we lift it ourselves
 
             // guide hint-by-hint (X steps included) until the first queens stand
             while (gp.CountQueens() < GuidedQueens) {
+                tut.SetHandVisible(true);
                 if (!gp.OpenHint()) break;                            // no simple step — bail out
                 yield return null;                                    // let the step open
                 while (!tut.StepDone()) yield return null;            // the player does the move
+                tut.SetHandVisible(false);
                 yield return new WaitForSecondsRealtime(StepPause);   // let it sink in before the next step
             }
 
