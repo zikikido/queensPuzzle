@@ -24,7 +24,7 @@ namespace qp {
         // active in the scene — this script turns it off by itself.
         private void Awake() {
             var back = transform.RecursiveFindChild<Button>("$BtnBack");
-            back.onClick.AddListener(ResetToLobby);
+            back.onClick.AddListener(Replay);
 
             var btnContinue = transform.RecursiveFindChild<Button>("$BtnContinue");
             btnContinue.onClick.AddListener(Continue);
@@ -44,13 +44,22 @@ namespace qp {
         }
 
         // Reset — abandon the attempt, back to the lobby.
-        void ResetToLobby() {
+        void Replay() {
+
+            void _replay() {
+                _showing = false;
+                gameObject.SetActive(false);
+                MBGameplay.instance?.Replay();
+            }
+
             // Interstitial on restart, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
             // Show it first, then go to the lobby when it closes.
-            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
-                Ads.ShowInterstitial(() => MBGameplay.instance?.Replay());
-            else
-                MBGameplay.instance?.Replay();
+            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial) {
+                Ads.ShowInterstitial(() => _replay());
+            }
+            else {
+                _replay();
+            }
         }
 
         // Continue is a rewarded revive — only shown when a rewarded ad is ready.

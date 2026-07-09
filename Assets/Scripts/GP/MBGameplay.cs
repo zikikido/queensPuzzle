@@ -549,9 +549,6 @@ namespace qp {
             return placed;
         }
 
-        // Solved when every solution queen is on the board.
-        bool IsSolved() => CountQueens() == _n;
-
         // ---- in-app review: pre-fetch the flow 2 dogs before the win, show it with the win popup.
         // The platform (day period + store quota, handled in Common.ReviewManager) decides if the
         // dialog actually appears — we just ask on every qualifying win (level > 5).
@@ -612,6 +609,9 @@ namespace qp {
             Analytics.LivesAdded(3, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _topBar?.SetWrongMoves(0);
             _ready = true;
+
+            // resume without a bloom → re-show the banner ourselves (same level gate as BuildBoard)
+            if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowBannerAtLevel) Ads.ShowBanner();
         }
 
         // Quick decaying horizontal shake of the board — feedback for a wrong queen.

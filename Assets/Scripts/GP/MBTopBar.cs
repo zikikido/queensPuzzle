@@ -44,7 +44,7 @@ namespace qp {
             var bonesRoot = transform.RecursiveFindChild("Bones");
             var bones = new List<Transform>();
             foreach (Transform child in bonesRoot)
-                if (child.name.StartsWith("Bone")) bones.Add(child);
+                if (child.name.StartsWith("$Bone")) bones.Add(child);
             bones.Sort((a, b) => b.localPosition.x.CompareTo(a.localPosition.x));
             _bones = bones.ConvertAll(t => t.gameObject).ToArray();
         }
