@@ -1,3 +1,17 @@
+# App-level rules only. Firebase/AppLovin ship their own consumer rules inside their
+# AARs and Gradle applies those automatically — do not duplicate them here.
+
+# ---- Kido Common's own Java plugin (AndroidAppSetId calls it via JNI) ----
+-keep class common.unityappsetid.* {*;}
+
+# ---- Google Play In-App Review (ReviewManager drives it via JNI) ----
+-keep class com.google.android.play.core.** { *; }
+
+# ---- Singular (Unity SDK integration docs — must be added manually) ----
 -keep class com.singular.sdk.** { *; }
 -keep public class com.android.installreferrer.** { *; }
 -keep public class com.singular.unitybridge.** { *; }
+
+# ---- Crashlytics readable Java stack traces (firebase.google.com/docs/crashlytics/get-deobfuscated-reports) ----
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends java.lang.Exception

@@ -2434,6 +2434,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SettingsPopup
       objectReference: {fileID: 0}
+    - target: {fileID: 7932887595852150522, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -7164,7 +7168,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.1
+  m_fontSize: 0.15
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -7509,7 +7513,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.05
+  m_fontSize: 0.1
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
