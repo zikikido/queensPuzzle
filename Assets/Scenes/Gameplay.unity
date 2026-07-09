@@ -2158,17 +2158,37 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1482419335300695139, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+    - target: {fileID: 163814342524685248, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1482419335300695139, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+    - target: {fileID: 163814342524685248, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1482419335300695139, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+    - target: {fileID: 163814342524685248, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 163814342524685248, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 175
+      objectReference: {fileID: 0}
+    - target: {fileID: 644555665209964208, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 644555665209964208, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 644555665209964208, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 644555665209964208, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 27
       objectReference: {fileID: 0}
     - target: {fileID: 2177466141629501736, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
       propertyPath: m_LocalScale.x
@@ -2262,6 +2282,30 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5479809890362461432, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_Type
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5479809890362461432, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 888111ccab4166d4a9057ddd093688cf, type: 3}
+    - target: {fileID: 6192151582305559284, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 52
+      objectReference: {fileID: 0}
+    - target: {fileID: 6192151582305559284, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 52
+      objectReference: {fileID: 0}
+    - target: {fileID: 6192151582305559284, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 347
+      objectReference: {fileID: 0}
+    - target: {fileID: 6192151582305559284, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 443
+      objectReference: {fileID: 0}
     - target: {fileID: 6523419400015482811, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -2306,12 +2350,9 @@ PrefabInstance:
       propertyPath: m_Name
       value: SettingsPopup
       objectReference: {fileID: 0}
-    - target: {fileID: 7932887595852150522, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 5369034862220061862, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a9b56385df763754ca4afe842dc2f275, type: 3}
