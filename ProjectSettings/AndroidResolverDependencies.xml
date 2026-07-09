@@ -1,5 +1,6 @@
 <dependencies>
   <packages>
+    <package>com.applovin.mediation:google-adapter:[25.4.0.0]</package>
     <package>com.applovin:applovin-sdk:13.6.3</package>
     <package>com.google.android.gms:play-services-base:18.10.0</package>
     <package>com.google.android.play:core-common:2.0.4</package>

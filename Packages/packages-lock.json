@@ -1,5 +1,19 @@
 {
   "dependencies": {
+    "com.applovin.mediation.adapters.google.android": {
+      "version": "25040000.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.applovin.mediation.adapters.google.ios": {
+      "version": "13060000.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
     "com.applovin.mediation.ads": {
       "version": "8.6.4",
       "depth": 0,
