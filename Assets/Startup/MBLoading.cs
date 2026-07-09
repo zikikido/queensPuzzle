@@ -9,7 +9,8 @@ namespace qp {
         [SerializeField] Slider _bar;
 
         IEnumerator Start() {
-            _bar.minValue = 0;
+            // so it will show in first noraml and not sqeeze
+            _bar.minValue = 10;
             _bar.maxValue = MBStartup.TasksTotal;
             _bar.value = MBStartup.TasksDone;
 
@@ -22,7 +23,12 @@ namespace qp {
             }
 
             _bar.value = _bar.maxValue;
-            Navigator.Go(Navigator.Lobby);
+
+            if (AppData.LevelIdx == 0) {
+                Navigator.Go(Navigator.Gameplay);
+            } else {
+                Navigator.Go(Navigator.Lobby);
+            }
         }
     }
 }
