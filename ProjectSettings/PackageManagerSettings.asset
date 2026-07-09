@@ -59,11 +59,11 @@ MonoBehaviour:
     m_Compliance:
       m_Status: 0
       m_Violations: []
-  m_UserSelectedRegistryName: AppLovin MAX Unity
+  m_UserSelectedRegistryName: package.openupm.com
   m_UserAddingNewScopedRegistry: 0
   m_RegistryInfoDraft:
     m_Modified: 0
     m_ErrorMessage: 
-    m_UserModificationsInstanceId: -868
-    m_OriginalInstanceId: -870
+    m_UserModificationsInstanceId: -864
+    m_OriginalInstanceId: -866
   m_LoadAssets: 0
