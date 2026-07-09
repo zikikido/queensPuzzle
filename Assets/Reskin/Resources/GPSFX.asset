@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 832c3e3763dd51343b2ea8a5d481662d, type: 3}
+  m_Name: GPSFX
+  m_EditorClassIdentifier: 
+  PlaceQueen: {fileID: 8300000, guid: a8d25e7b745749c5b98d5895ea184a12, type: 3}
+  XMark: {fileID: 8300000, guid: 3fb5a678816447338e3bcf6e68da79a1, type: 3}
+  Erase: {fileID: 8300000, guid: 8eb4954d1da0495081573a78627b37c9, type: 3}
+  Happy: {fileID: 8300000, guid: d680b6abc69947cf8bd9838212021d8b, type: 3}
+  Error: {fileID: 8300000, guid: 5444e1d2c2d64f1bbe0c9c12e5cab590, type: 3}
+  Win: {fileID: 8300000, guid: 9f54c7e4c3244ab1a212b71ee2203b1e, type: 3}
+  Fail: {fileID: 8300000, guid: b069a826f7894785ab1a043f4c5629cf, type: 3}
+  Hint: {fileID: 8300000, guid: 5ea035e25cdb45d3838ad366bf86f67a, type: 3}

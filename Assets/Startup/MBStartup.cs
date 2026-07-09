@@ -59,6 +59,8 @@ namespace qp {
             Haptics.Enabled = AppData.Haptics.Value;
             DefineHaptics();
 
+            new GameObject("SFX").AddComponent<MBSFX>();   // registers itself as MBSFX.Instance
+
             // ---- boot stages (registered here so TasksTotal is known up front) ----
             // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
             Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);

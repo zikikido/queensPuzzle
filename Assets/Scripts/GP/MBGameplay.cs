@@ -60,6 +60,7 @@ namespace qp {
 
         void Awake() {
             instance = this;
+            GPSFX.Load();   // pull the GP clips in now, not on the first sound
 
             // The tutorial object may be left disabled in the scene; wake it so its Awake runs and
             // registers MBToturial.instance (it puts itself back to sleep after its layout pass).
@@ -84,6 +85,7 @@ namespace qp {
 
         void OnDestroy() {
             instance = null;
+            GPSFX.Release();   // next scene load frees the GP clips; reloads lazily if needed
         }
 
 
@@ -157,7 +159,10 @@ namespace qp {
             _topBar.SetProgress(placed);
             MaybePrepareReview(placed);
             if (placed == _n) Win();
-            else Haptics.Play(GameHaptic.Happy);
+            else {
+                Haptics.Play(GameHaptic.Happy);
+                CommonSFX.Play(GPSFX.Instance.PlaceQueen);
+            }
         }
 
         // A solution queen not yet on the board (row-major), or -1 when they're all placed.
@@ -247,6 +252,7 @@ namespace qp {
 
         void PresentHint(Hint hint) {
             Debug.Log($"[MBGameplay] Hint ({hint.kind}): {hint.note}");
+            CommonSFX.Play(GPSFX.Instance.Hint);
             if (hint.cells == null) return;
             foreach (int idx in hint.cells) {
                 int r = idx / _n, c = idx % _n;
@@ -522,12 +528,16 @@ namespace qp {
                     _topBar?.SetProgress(placed);
                     MaybePrepareReview(placed);
                     if (placed == _n) Win();
-                    else Haptics.Play(GameHaptic.Happy);
+                    else {
+                        Haptics.Play(GameHaptic.Happy);
+                        CommonSFX.Play(GPSFX.Instance.PlaceQueen);
+                    }
                 } else {
                     AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
                     AppData.LastPlayData.Save();
                     _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
                     Haptics.Play(GameHaptic.Wrong);
+                    CommonSFX.Play(GPSFX.Instance.Error);
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
                     if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
@@ -543,7 +553,7 @@ namespace qp {
         }
 
         // Queens correctly placed (they only ever land on solution cells).
-        int CountQueens() {
+        public int CountQueens() {
             int placed = 0;
             foreach (var cell in _cells)
                 if (cell.State == MBCell.ECellType.QUEEN) placed++;
@@ -582,6 +592,7 @@ namespace qp {
             if (_winPopup != null) _winPopup.Show();
             StartCoroutine(ReviewManager.Instance.TryReview());   // no-op unless Preapre finished
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
+            CommonSFX.Play(GPSFX.Instance.Win);
         }
 
         void Fail() {
@@ -598,6 +609,7 @@ namespace qp {
                 _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Fail — popup {(_failPopup != null ? "found" : "MISSING")}");
             if (_failPopup != null) _failPopup.Show();
+            CommonSFX.Play(GPSFX.Instance.Fail);
         }
 
         // Fail-continue: every bone returns, but the wrong queens stay on the board — they're
@@ -628,7 +640,12 @@ namespace qp {
             _board.localPosition = Vector3.zero;
         }
 
-        void Tick() { _lastTick = Time.unscaledTime; Haptics.Play(GameHaptic.Tap); }
+        void Tick() {
+            _lastTick = Time.unscaledTime;
+            Haptics.Play(GameHaptic.Tap);
+            // same throttle as the haptic — one tick per painted cell, XMark or Erase by drag mode
+            CommonSFX.Play(_drag == DragMode.Erase ? GPSFX.Instance.Erase : GPSFX.Instance.XMark);
+        }
         void DragTick() { if (Time.unscaledTime - _lastTick >= TickInterval) Tick(); }
 
         // World point -> cell, by mapping into $Board local space and rounding to the grid.
