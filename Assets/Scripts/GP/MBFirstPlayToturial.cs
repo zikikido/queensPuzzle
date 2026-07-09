@@ -15,6 +15,7 @@ namespace qp {
     public static class MBFirstPlayToturial {
 
         const int GuidedQueens = 3;
+        const float StepPause = 0.8f;  // linger on a done step so the player sees what he did
         const bool ForceRun = false;   // testing: run even when progress is past level 1
 
         static Button _hintForFree = null;
@@ -32,13 +33,18 @@ namespace qp {
             ShowChrome(false);           // no boosts, no top bar — just the board and the guide
             tut.SetHandVisible(true);    // first play: the hand demonstrates…
             tut.SetApplyVisible(false);  // …and the player must do it — no Apply shortcut
+            tut.AutoHide = false;        // curtain stays up between steps — we lift it ourselves
 
             // guide hint-by-hint (X steps included) until the first queens stand
             while (gp.CountQueens() < GuidedQueens) {
-                gp.OpenHint();
+                if (!gp.OpenHint()) break;                            // no simple step — bail out
                 yield return null;                                    // let the step open
-                while (tut.gameObject.activeSelf) yield return null;  // closes when the player did it
+                while (!tut.StepDone()) yield return null;            // the player does the move
+                yield return new WaitForSecondsRealtime(StepPause);   // let it sink in before the next step
             }
+
+            tut.Hide();                  // guided phase over — lift the curtain
+            tut.AutoHide = true;         // hints close on their own again
 
             var btn = MBGameplay.instance.transform.RecursiveFindChild<Button>("$HintForFree");
 

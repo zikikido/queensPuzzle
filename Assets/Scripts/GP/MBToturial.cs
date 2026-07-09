@@ -86,12 +86,21 @@ namespace qp {
             SetOpacity(0f);   // invisible, but alive for the layout pass
         }
 
+        /// <summary>When true (default) a step hides itself the moment it's done; turn off to
+        /// keep the curtain up between steps and call Hide() yourself.</summary>
+        public bool AutoHide = true;
+
+        /// <summary>True when every target cell of the current step holds the right mark.</summary>
+        public bool StepDone() {
+            if (_targets.Count == 0) return false;   // no step (or plain spotlight — never "done")
+            foreach (var kv in _targets)
+                if (kv.Key.State != kv.Value) return false;
+            return true;
+        }
+
         // the step completes itself the moment every target cell holds the right mark
         void Update() {
-            if (_targets.Count == 0) return;
-            foreach (var kv in _targets)
-                if (kv.Key.State != kv.Value) return;
-            Hide();
+            if (AutoHide && StepDone()) Hide();
         }
 
         void OnDestroy() { if (instance == this) instance = null; }
