@@ -283,13 +283,6 @@ namespace qp {
             _level = level;   // keep for hints
 
 
-            // attempts counter: fresh level → 1; same level again (retry / app restart) → +1
-            if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
-                AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
-                AppData.LevelAttempts.Value = 1;
-            } else {
-                AppData.LevelAttempts.Value++;
-            }
             _reviewPrepareStarted = false;   // each board build may pre-fetch the review flow once
 
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
@@ -328,6 +321,14 @@ namespace qp {
             // same level reopened → back to the exact last state (wrong queens, boost counters);
             // a fresh board starts a fresh attempt (all counters zeroed, all bones back)
             if (!RestoreBoard()) {
+                // attempts counter: fresh level → 1; a new attempt on the same level (retry) → +1.
+                // A restored board is the SAME attempt — resuming the app never counts.
+                if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
+                    AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
+                    AppData.LevelAttempts.Value = 1;
+                } else {
+                    AppData.LevelAttempts.Value++;
+                }
                 AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
                 RevealQueens(level);
             }
