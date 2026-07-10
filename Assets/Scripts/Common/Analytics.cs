@@ -37,8 +37,8 @@ namespace qp {
         public static void ReviewPrepareTime(int ms, bool prepared) {
             CrashLog($"[review] prepare took {ms} ms (prepared={prepared})");
 #if !IGNORE_FIREBASE
-            CDebug.Log("review_prepare_time", new Firebase.Analytics.Parameter("ms", ms),
-                                              new Firebase.Analytics.Parameter("prepared", prepared ? 1 : 0));
+            CDebug.Log("review_prepare_time", new Firebase.Analytics.Parameter("gr_ms", ms),
+                                              new Firebase.Analytics.Parameter("gr_prepared", prepared ? 1 : 0));
 #endif
         }
 
@@ -50,8 +50,8 @@ namespace qp {
             CrashLog($"[game] {name}{extra} level {levelIdx} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
 #if !IGNORE_FIREBASE
             var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
-                new Firebase.Analytics.Parameter("level_idx", levelIdx),
-                new Firebase.Analytics.Parameter("attempts", attempts),
+                new Firebase.Analytics.Parameter("lvl_idx", levelIdx),
+                new Firebase.Analytics.Parameter("lvl_attempts", attempts),
             };
             ps.AddRange(d.ToParams());
             if (extraKey != null)
