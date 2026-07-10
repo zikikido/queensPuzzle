@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: cb2d4f6129e90a640a4632573d086d8c
+guid: 678420d075383ca46baef213449f828a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 9212275650587600386
-    second: Light_0
+      213: 4231062289463042779
+    second: Radiance_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Light_0
+      name: Radiance_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 860
-        height: 980
+        y: 1
+        width: 19
+        height: 19
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 206214e35e398df70800000000000000
-      internalID: 9212275650587600386
+      spriteID: bd2eef13cb0c7ba30800000000000000
+      internalID: 4231062289463042779
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Light_0: 9212275650587600386
+      Radiance_0: 4231062289463042779
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

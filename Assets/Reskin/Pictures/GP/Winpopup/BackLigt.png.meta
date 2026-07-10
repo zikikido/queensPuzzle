@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 14b1fc2e38ad56a42b79dfb4e752b5c0
+guid: 53dff5e54e941c04591aa79838c26565
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8349053243284381493
-    second: Spark2_0
+      213: 4367311894353508403
+    second: BackLigt_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -72,7 +72,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 256
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Spark2_0
+      name: BackLigt_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 40
-        height: 40
+        width: 860
+        height: 980
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc026377f44322c80800000000000000
-      internalID: -8349053243284381493
+      spriteID: 3387746670fcb9c30800000000000000
+      internalID: 4367311894353508403
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Spark2_0: -8349053243284381493
+      BackLigt_0: 4367311894353508403
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
