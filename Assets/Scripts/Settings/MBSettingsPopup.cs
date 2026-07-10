@@ -64,7 +64,7 @@ namespace qp {
             _anim = StartCoroutine(In());
         }
 
-        void Awake() {
+        protected virtual void Awake() {
             _sound = transform.RecursiveFindChild("$Sounds").GetComponentInChildren<MBSwitch>();
             _vibration = transform.RecursiveFindChild("$Vibration").GetComponentInChildren<MBSwitch>();
 
