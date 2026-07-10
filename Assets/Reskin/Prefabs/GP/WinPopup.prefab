@@ -13,8 +13,9 @@ GameObject:
   - component: {fileID: 601878281659667153}
   - component: {fileID: 7810618026860665685}
   - component: {fileID: 6711045359483937565}
+  - component: {fileID: 3338709798489941988}
   m_Layer: 0
-  m_Name: ConfityParticleSystem
+  m_Name: $ConfityParticleSystem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -54,7 +55,7 @@ ParticleSystem:
   ringBufferMode: 0
   ringBufferLoopRange: {x: 0, y: 1}
   emitterVelocityMode: 1
-  looping: 1
+  looping: 0
   prewarm: 0
   playOnAwake: 1
   useUnscaledTime: 0
@@ -122,7 +123,7 @@ ParticleSystem:
     startLifetime:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 3
+      scalar: 4
       minScalar: 2
       maxCurve:
         serializedVersion: 2
@@ -293,8 +294,8 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 0.225
-      minScalar: 0.15
+      scalar: 0.4
+      minScalar: 0.2
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -678,7 +679,7 @@ ParticleSystem:
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
     m_Rotation: {x: 0, y: 0, z: 0}
-    m_Scale: {x: 8, y: 0.5, z: 1}
+    m_Scale: {x: 5, y: 0.5, z: 1}
     placementMode: 1
     m_MeshMaterialIndex: 0
     m_MeshNormalOffset: 0
@@ -876,7 +877,7 @@ ParticleSystem:
     rateOverTime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 60
+      scalar: 40
       minScalar: 10
       maxCurve:
         serializedVersion: 2
@@ -982,7 +983,7 @@ ParticleSystem:
     m_BurstCount: 0
     m_Bursts: []
   SizeModule:
-    enabled: 1
+    enabled: 0
     curve:
       serializedVersion: 2
       minMaxState: 1
@@ -1324,8 +1325,8 @@ ParticleSystem:
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
-        key1: {r: 1, g: 1, b: 1, a: 0.41960785}
-        key2: {r: 0, g: 0, b: 0, a: 0}
+        key1: {r: 1, g: 1, b: 1, a: 1}
+        key2: {r: 0, g: 0, b: 0, a: 0.41960785}
         key3: {r: 0, g: 0, b: 0, a: 0}
         key4: {r: 0, g: 0, b: 0, a: 0}
         key5: {r: 0, g: 0, b: 0, a: 0}
@@ -1340,8 +1341,8 @@ ParticleSystem:
         ctime6: 0
         ctime7: 0
         atime0: 0
-        atime1: 65535
-        atime2: 0
+        atime1: 51505
+        atime2: 65535
         atime3: 0
         atime4: 0
         atime5: 0
@@ -1350,7 +1351,7 @@ ParticleSystem:
         m_Mode: 0
         m_ColorSpace: 0
         m_NumColorKeys: 2
-        m_NumAlphaKeys: 2
+        m_NumAlphaKeys: 3
       minGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -4900,6 +4901,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 767249370585416810}
   m_CullTransparentMesh: 1
+--- !u!223 &3338709798489941988
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767249370585416810}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 1
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 2
+  m_TargetDisplay: 0
 --- !u!1 &891504154945901272
 GameObject:
   m_ObjectHideFlags: 0

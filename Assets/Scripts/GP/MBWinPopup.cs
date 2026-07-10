@@ -32,6 +32,8 @@ namespace qp {
         void OnEnable() {
             var firstTry = transform.RecursiveFindChild("$FirstTry");
             if (firstTry != null) firstTry.gameObject.SetActive(AppData.LevelAttempts.Value <= 1);
+
+            transform.RecursiveFindChild<ParticleSystem>("$ConfityParticleSystem").Play();
         }
 
         IEnumerator Start() {
