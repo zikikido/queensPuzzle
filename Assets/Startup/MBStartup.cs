@@ -9,7 +9,7 @@ namespace qp {
 
     // The game's own haptic vocabulary. The Puzzby.Haptics package is game-agnostic; these effects
     // are defined here at boot and then triggered by id from gameplay.
-    public enum GameHaptic { Tap, Happy, Win, Wrong }
+    public enum GameHaptic { Tap, Happy, Win, Wrong, XMark }
 
     public static class MBStartup {
 
@@ -152,6 +152,7 @@ namespace qp {
                                                           .Transient(0.6f, 0.7f, 0.12f));           // rising celebration
             Haptics.Define(GameHaptic.Wrong, Haptics.New().Transient(1.0f, 0.4f)
                                                           .Transient(0.7f, 0.3f, 0.08f));           // heavy double thud
+            Haptics.Define(GameHaptic.XMark, Haptics.New().Transient(1.0f, 0.7f));                  // fuller "thunk" — a notch above Tap
         }
     }
 }

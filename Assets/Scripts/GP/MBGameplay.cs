@@ -756,8 +756,8 @@ namespace qp {
 
         void Tick() {
             _lastTick = Time.unscaledTime;
-            Haptics.Play(GameHaptic.Tap);
-            // same throttle as the haptic — one tick per painted cell, XMark or Erase by drag mode
+            // one tick per painted cell, XMark or Erase by drag mode (same throttle for both)
+            Haptics.Play(_drag == DragMode.Erase ? GameHaptic.Tap : GameHaptic.XMark);
             CommonSFX.Play(_drag == DragMode.Erase ? GPSFX.Instance.Erase : GPSFX.Instance.XMark);
         }
         void DragTick() { if (Time.unscaledTime - _lastTick >= TickInterval) Tick(); }
