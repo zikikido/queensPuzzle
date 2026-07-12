@@ -677,12 +677,21 @@ namespace qp {
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
+
+            // hold the popup for exactly one happy dance — a won board always has queens on screen
+            float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
+            StartCoroutine(ShowWinPopupAfter(happyLen > 0f ? happyLen : 3f));
+
+            Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
+            CommonSFX.Play(GPSFX.Instance.Win);
+        }
+
+        IEnumerator ShowWinPopupAfter(float seconds) {
+            yield return new WaitForSecondsRealtime(seconds);
             if (_winPopup != null) _winPopup.Show();
 #if !IGNORE_COMMON_REVIEW
             StartCoroutine(ReviewManager.Instance.TryReview());   // no-op unless Preapre finished
 #endif
-            Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
-            CommonSFX.Play(GPSFX.Instance.Win);
         }
 
         void Fail() {
@@ -706,7 +715,7 @@ namespace qp {
             // an empty board (all bones lost on wrong queens) gets the popup right away
             float wait = 0f;
             if (CountQueens() > 0) {
-                float cryLen = _cells[0, 0] != null ? _cells[0, 0].GetCryLength() : 0f;
+                float cryLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.CRY) : 0f;
                 wait = cryLen > 0f ? cryLen : 3f;
             }
             StartCoroutine(ShowFailPopupAfter(wait));

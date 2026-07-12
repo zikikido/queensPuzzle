@@ -66,9 +66,9 @@ namespace qp {
             _queen.Play(state.ToString());
         }
 
-        /// <summary>Length of the cry clip in seconds (for timing the fail popup).</summary>
-        public float GetCryLength() =>
-            _queen != null ? _queen.StateLength(QueenState.CRY.ToString()) : 0f;
+        /// <summary>Length of a state's clip in seconds (for timing the win/fail popups).</summary>
+        public float GetStateLength(QueenState state) =>
+            _queen != null ? _queen.StateLength(state.ToString()) : 0f;
 
         public void MarkCell(ECellType type) {
             var prev = State;
