@@ -37,6 +37,8 @@ namespace qp {
         MBFailPopup _failPopup;      // same pattern as the win popup — shows when the bones run out
         MBTopBar _topBar;            // "queens placed / total" HUD
         Coroutine _shake;            // board shake on a wrong queen
+        public PSPool QueenMarkPS;         // burst on every placed queen ($QueenMarkPS under the anims object)
+        public PSPool WrongQueenMarkPS;    // burst on every wrong queen ($WorngQueenMarkPS — scene name has the typo)
         float _lastTick;             // throttle so drag-paint haptics are distinct ticks, not a buzz
         const float TickInterval = 0.12f;   // gap must be well over the pulse length or ticks merge
         MBCell _lastTapCell, _prevTapCell;  // last two tapped cells — a double-click must be the same cell
@@ -99,6 +101,27 @@ namespace qp {
             }
 
             _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
+
+            // queen-mark bursts: the scene holds one template PS per effect; the pools clone
+            // more when placements overlap faster than one effect lasts
+            QueenMarkPS = MakePSPool("$QueenMarkPS");
+            WrongQueenMarkPS = MakePSPool("$WorngQueenMarkPS", "$WrongQueenMarkPS");
+        }
+
+        // A pooled scene PS template found by name — extra names cover a later rename (typo fix).
+        // The template lives under the anims container, wherever that sits in the scene —
+        // search every root so moving it never breaks the lookup.
+        PSPool MakePSPool(params string[] names) {
+            foreach (var root in gameObject.scene.GetRootGameObjects()) {
+                foreach (var name in names) {
+                    var t = root.transform.name == name
+                        ? root.transform : root.transform.RecursiveFindChild(name);
+                    var ps = t != null ? t.GetComponentInChildren<ParticleSystem>(true) : null;
+                    if (ps != null) return new PSPool(ps);
+                }
+            }
+            Debug.LogError($"[MBGameplay] PS template '{names[0]}' not found in scene.");
+            return null;
         }
 
         void OnDestroy() {
@@ -678,7 +701,7 @@ namespace qp {
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
 
-            // hold the popup for exactly one happy dance — a won board always has queens on screen
+            
             float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
             StartCoroutine(ShowWinPopupAfter(happyLen > 0f ? happyLen : 3f));
 

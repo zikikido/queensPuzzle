@@ -8,7 +8,7 @@ namespace qp {
         public enum GP {
             BOARD_BG,
             BOARD_CELLS,
-
+            BOARD_ANIMS,
             TOUTURIAL
         }
 
