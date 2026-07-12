@@ -56,10 +56,15 @@ namespace qp {
             if (!_showing) gameObject.SetActive(false);   // layout pass only — hidden until Show()
         }
 
+        bool _replaying;   // re-entry guard — a second tap during the interstitial gap must not double-restart
+
         // Reset — abandon the attempt, back to the lobby.
         void Replay() {
+            if (_replaying) return;
+            _replaying = true;
 
             void _replay() {
+                _replaying = false;
                 _showing = false;
                 gameObject.SetActive(false);
                 MBGameplay.instance?.Replay();

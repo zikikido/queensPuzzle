@@ -88,7 +88,9 @@ namespace qp {
             
         }
 
-        void OnEnable() {
+        protected virtual void OnEnable() {
+            _closing = false;   // fresh open — Close usable again
+
             _sound?.Init(MBSFX.Instance == null || !MBSFX.Instance.Mute, on => {
                 RegisterCodeTap(1);
                 if (MBSFX.Instance != null) MBSFX.Instance.Mute = !on;
@@ -151,8 +153,16 @@ namespace qp {
             GUI.Label(new Rect(0, 10, Screen.width, style.fontSize * 2), "DEBUG MODE", style);
         }
 
+        // Re-entry guard (same pattern as the in-game Restart): a second Close would RESTART Out()
+        // and the half-faded popup snaps back to alpha 1 — visible flash on X/BG mashing.
+        // Armed on the first Close, released on the next open (OnEnable).
+        bool _closing;
+
         /// <summary>Play the out animation, then deactivate the popup.</summary>
         public void Close() {
+            if (_closing) return;
+            if (!gameObject.activeInHierarchy) return;   // never opened / parent off — no coroutine on an inactive object
+            _closing = true;
             if (_anim != null) StopCoroutine(_anim);
             _anim = StartCoroutine(Out());
         }

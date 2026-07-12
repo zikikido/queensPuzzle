@@ -9,14 +9,27 @@ namespace qp {
     /// </summary>
     public class MBSettingsPopupInInGame : MBSettingsPopup {
 
+        // Re-entry guard: the popup stays raycastable through the out animation and the
+        // interstitial gap, so mashing Restart must not trigger a second restart. Armed on the
+        // first press, released only when the popup opens again.
+        bool _restarting;
+
         protected override void Awake() {
             base.Awake();
             transform.RecursiveFindChild<Button>("$RestartButton").onClick.AddListener(OnRestart);
         }
 
+        protected override void OnEnable() {
+            base.OnEnable();
+            _restarting = false;   // fresh open — Restart usable again
+        }
+
         // Interstitial on restart, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
         // Show it first, then restart when it closes.
         void OnRestart() {
+            if (_restarting) return;
+            _restarting = true;
+
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
                 Ads.ShowInterstitial(Restart);
             else

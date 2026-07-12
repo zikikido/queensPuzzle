@@ -49,13 +49,19 @@ namespace qp {
             _bones = bones.ConvertAll(t => t.gameObject).ToArray();
         }
 
+        bool _settingsLockHeld;   // pairs the ++/-- exactly once per open, whatever the popup does
+
         void OpenSettings() {
             if (_settings == null) {
                 _settings = FindAnyObjectByType<MBSettingsPopup>(FindObjectsInactive.Include);
-                _settings.Closed += () => MBGameplay.instance.InputLocks--;   // once, with the find
+                _settings.Closed += () => {   // once, with the find
+                    if (_settingsLockHeld) { _settingsLockHeld = false; MBGameplay.instance.InputLocks--; }
+                };
             }
 
-            MBGameplay.instance.InputLocks++;   // board untouchable while the popup is up
+            // board untouchable while the popup is up — the held flag makes a double Open (or a
+            // double Closed) unable to leak the lock or drive it negative
+            if (!_settingsLockHeld) { _settingsLockHeld = true; MBGameplay.instance.InputLocks++; }
             _settings.Open();   // plays the in animation (plain SetActive would skip it)
         }
 
