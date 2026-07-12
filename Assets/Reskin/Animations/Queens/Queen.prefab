@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2000000000000000003}
   - component: {fileID: 2000000000000000004}
   m_Layer: 0
-  m_Name: QueenIdle
+  m_Name: Queen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -100,5 +100,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ee116ff0e9748fe90f9269ce04bef60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _animations:
-  - {fileID: 11400000, guid: 587059fecb6a45ebaa2bc3abd9b73506, type: 2}
+  _controller: {fileID: 11400000, guid: efd5829ee384498284ffba2d738fe29b, type: 2}

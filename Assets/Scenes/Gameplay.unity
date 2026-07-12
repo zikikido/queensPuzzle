@@ -1662,7 +1662,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.1
+  m_fontSize: 0.15
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -4437,7 +4437,6 @@ MonoBehaviour:
   _margin: 0.35
   _bloomPop: 0.35
   _bloomStagger: 0.05
-  InputLocks: 0
 --- !u!114 &1244334126
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7136,7 +7135,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.1
+  m_fontSize: 0.15
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -7481,7 +7480,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.1
+  m_fontSize: 0.15
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -8138,10 +8137,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 601878281659667153, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 787619954648341803, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -8278,14 +8273,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3038925015690367704, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3338709798489941988, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
-      propertyPath: m_SortingOrder
-      value: 2
-      objectReference: {fileID: 0}
     - target: {fileID: 4925732777709881215, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -8336,10 +8323,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7147849849796489106, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7509214190494887234, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
-      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7745009920083085086, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
@@ -8365,10 +8348,6 @@ PrefabInstance:
     - target: {fileID: 7932887595852150522, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
       propertyPath: m_Name
       value: WinPopup
-      objectReference: {fileID: 0}
-    - target: {fileID: 7932887595852150522, guid: cbd5dc07a9ad3e044a2b9f1cba4962df, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
