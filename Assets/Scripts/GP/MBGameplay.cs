@@ -25,6 +25,7 @@ namespace qp {
 
         MBCell[,] _cells;            // [row, col]
         LevelData _level;            // the level currently on the board (for hints)
+        int _levelHash;              // _level.ContentHash() — stamps saves, gates restores
         RectTransform _board;
         int _n;
         float _step, _cellSize;
@@ -48,7 +49,24 @@ namespace qp {
 
         // Board input lock counter — overlays (settings popup, ...) do InputLocks++ on open and
         // InputLocks-- on close; any value > 0 blocks all board touches. Int so locks can nest.
-        public int InputLocks;
+        // Locking mid-drag also cancels the gesture: the TouchUp that arrives while locked is
+        // swallowed, so without this the half-open stroke would leak (lost undo, stale drag).
+        int _inputLocks;
+        public int InputLocks {
+            get => _inputLocks;
+            set {
+                _inputLocks = value;
+                if (_inputLocks > 0) CancelGesture();
+            }
+        }
+
+        // Close the in-progress gesture the same way TouchUp would: commit the stroke to undo,
+        // stop painting. Safe to call when nothing is in progress.
+        void CancelGesture() {
+            if (_stroke != null && _stroke.Count > 0) _undo.Add(_stroke);
+            _stroke = null;
+            _drag = DragMode.None;
+        }
 
         // read-only board access for the tutorial (spotlights need real cells)
         public bool Ready => _ready;
@@ -279,8 +297,10 @@ namespace qp {
             }
 
             _ready = false;   // no input while we (re)build and bloom
+            _saveQueued = false;   // a write queued on the OLD board must not land on this one
             SetChromeInteractable(false);   // top/bottom bars locked until the bloom finishes
             _level = level;   // keep for hints
+            _levelHash = level.ContentHash();   // saves are stamped with it; restore requires a match
 
 
             _reviewPrepareStarted = false;   // each board build may pre-fetch the review flow once
@@ -331,11 +351,11 @@ namespace qp {
                 }
                 AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
                 RevealQueens(level);
-            }
-            _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
 
-            // after the attempt data exists, so the event carries the restored/zeroed counters
-            Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            }
+
+            _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
 
             // board size = grid + gaps + margin border on every side
             float boardSize = cellSize * (n + (n - 1) * _spacing + 2f * _margin);
@@ -347,7 +367,13 @@ namespace qp {
             // start listening for touches (needs an MBTouches on a scene root)
             if (_touches == null) {
                 _touches = this.RegisterToRoot();
-                if (_touches != null) _touches.DoubleClickDelteTime = 0.3f;   // default 1.5s is far too long
+                if (_touches != null) {
+                    _touches.DoubleClickDelteTime = 0.3f;   // default 1.5s is far too long
+                    _touches.TrackFingerId = true;   // a second finger must not hijack a paint drag
+                    // default ~1cm rejects sloppy same-cell double-taps; TouchUp's same-cell rule
+                    // does the real gating, so the screen-distance gate can be generous (~3cm)
+                    _touches.DoubleClickTreshold = _touches.ClickTreshold * 6f;
+                }
             }
 
             // wait for UI to refresh our layout
@@ -359,6 +385,14 @@ namespace qp {
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
             SetChromeInteractable(true);   // bloom done — bars usable again
+
+            // Safety net — should be IMPOSSIBLE: Win()/Fail() call LastPlayData.Invalidate() (and
+            // clear the queued save) before anything else can persist, so a finished board should
+            // never exist in a save. But if one ever slips through (crash on the exact win/fail
+            // frame, a future code path), restoring it would soft-lock forever: Win/Fail only run
+            // on a queen placement, and a finished board has none left to make. Re-check once.
+            if (CountQueens() == _n) { Win(); yield break; }
+            if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) { Fail(); yield break; }
 
             // banner shows from GameConfig.StartShowBannerAtLevel onward (the strip is always reserved)
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowBannerAtLevel) {
@@ -379,6 +413,7 @@ namespace qp {
 
 
         void OnDisable() {
+            if (_saveQueued) FlushBoardSave();   // leaving the scene — don't lose the last edits
             if (_touches != null) { this.UnRegister(_touches); _touches = null; }
         }
 
@@ -433,12 +468,26 @@ namespace qp {
 
         // ---- board persistence: every move is saved; reopening the same level restores it ----
 
+        // A drag can paint several cells in ONE frame and each PlayerPrefs.Save() is a synchronous
+        // disk flush — so SaveBoard only queues, and LateUpdate writes once per frame.
+        bool _saveQueued;
+
         void SaveBoard() {
+            if (_cells != null) _saveQueued = true;
+        }
+
+        void LateUpdate() {
+            if (_saveQueued) FlushBoardSave();
+        }
+
+        void FlushBoardSave() {
+            _saveQueued = false;
             if (_cells == null) return;
             var sb = new System.Text.StringBuilder(_n * _n);
             foreach (var cell in _cells) sb.Append(StateChar(cell.State));
             var data = AppData.LastPlayData;
             data.forLevelIdx = AppData.LevelIdx.Value;
+            data.levelHash = _levelHash;
             data.board = sb.ToString();
             data.Save();   // one write: board + the attempt's counters
         }
@@ -458,6 +507,9 @@ namespace qp {
         // Re-apply the saved marks (wrong queens included) when the same level reopens.
         bool RestoreBoard() {
             if (AppData.LastPlayData.forLevelIdx != AppData.LevelIdx.Value) return false;
+            // an app update can redesign a level at the same index and size — the save is for a
+            // DIFFERENT puzzle then (stale queens → false win / stuck board), so reject it
+            if (AppData.LastPlayData.levelHash != _levelHash) return false;
             string s = AppData.LastPlayData.board;
             if (string.IsNullOrEmpty(s) || s.Length != _n * _n) return false;
 
@@ -603,6 +655,7 @@ namespace qp {
             Ads.HideBanner();            // banner off while the win popup is up
             Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
+            _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
             AppData.LevelIdx.Value++;    // advance progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
@@ -624,6 +677,7 @@ namespace qp {
             // But Continue may revive it — it waits in the stash until the popup decides.
             AppData.LastPlayData.Stash();
             AppData.LastPlayData.Invalidate();
+            _saveQueued = false;   // a queued write would resurrect the invalidated attempt
 
             if (_failPopup == null)
                 _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
@@ -637,9 +691,9 @@ namespace qp {
         public void ContinueAfterFail() {
             AppData.LastPlayData = LastPlayData.Unstash();   // the attempt Fail() invalidated is alive again
             AppData.LastPlayData.bonesLost = 0;
-            AppData.LastPlayData.livesAdded += 3;   // the continue grant (later: video/coins)
+            AppData.LastPlayData.livesAdded += GameConfig.BonesAddedAfterRewarded;
             SaveBoard();
-            Analytics.LivesAdded(3, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _topBar?.SetWrongMoves(0);
             _ready = true;
 

@@ -36,5 +36,20 @@ namespace QueensPuzzle
 
         /// <summary>True if this row's solution queen starts revealed on the board.</summary>
         public bool IsRevealedRow(int row) => revealedRows != null && System.Array.IndexOf(revealedRows, row) >= 0;
+
+        /// <summary>Stable hash of the PLAYABLE content (size + regions + solution). A saved board
+        /// may only be restored onto the exact puzzle it was played on — if a level is redesigned
+        /// (even at the same size), the hash changes and the stale save is rejected.</summary>
+        public int ContentHash()
+        {
+            unchecked
+            {
+                int h = 17;
+                h = h * 31 + size;
+                if (regions != null) foreach (int r in regions) h = h * 31 + r;
+                if (solutionColumns != null) foreach (int c in solutionColumns) h = h * 31 + c;
+                return h;
+            }
+        }
     }
 }

@@ -18,6 +18,7 @@ namespace qp {
             = new PlayerPrefsHelper.ObjectHolder<LastPlayData>("qp_last_play");
 
         public int forLevelIdx = -1;   // which level this save belongs to; -1 = no valid save
+        public int levelHash;          // LevelData.ContentHash() of that level — a redesigned level rejects the stale save
         public string board = "";      // one char per cell (0/X/Q/W); "" = no saved board
 
         // the attempt's meta — reported on game_start/win/lose
