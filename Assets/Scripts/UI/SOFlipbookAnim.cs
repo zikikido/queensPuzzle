@@ -9,7 +9,7 @@ namespace qp {
     [CreateAssetMenu(fileName = "FlipbookAnim", menuName = "QueensPuzzle/Flipbook Animation")]
     public class SOFlipbookAnim : ScriptableObject {
 
-        const float FallbackDuration = 0.1f;   // for missing/zero entries — a frame must never be 0s
+        const float FallbackDuration = 1f / 30f;
 
         public Sprite[] frames;
         public float[] frameDurations;   // seconds per frame, one entry per frame (GIF timeline)
