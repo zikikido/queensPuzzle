@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bff5bde23b634c45ab87c7b3eafba1e5, type: 3}
   m_Name: QueenController
   m_EditorClassIdentifier: 
-  defaultState: Idle
+  defaultState: 
   states:
   - name: Idle
     anim: {fileID: 11400000, guid: 587059fecb6a45ebaa2bc3abd9b73506, type: 2}

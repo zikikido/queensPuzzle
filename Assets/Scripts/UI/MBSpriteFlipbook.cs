@@ -34,9 +34,16 @@ namespace qp {
 
         void OnEnable() => PlayDefault();
 
-        /// <summary>Enter the controller's default state.</summary>
+        /// <summary>Enter the controller's default state — a (none) default means: sit still
+        /// on the authored sprite until someone calls Play().</summary>
         public void PlayDefault() {
             if (_controller != null) Play(_controller.Default);
+        }
+
+        /// <summary>Total length (seconds) of a state's clip; 0 when the state is unknown.</summary>
+        public float StateLength(string stateName) {
+            var s = _controller != null ? _controller.Find(stateName) : null;
+            return s != null && s.anim != null ? s.anim.Length : 0f;
         }
 
         /// <summary>Play a state by name (case-insensitive), e.g. Play("Happy").</summary>

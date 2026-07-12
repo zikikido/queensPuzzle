@@ -5,6 +5,14 @@ using UnityEngine;
 namespace qp {
     public class MBCell : MonoBehaviour {
 
+        // Controller state names on QueenController — Play matches them case-insensitively.
+        public enum QueenState {
+            IDLE,
+            HAPPY,
+            CRY,
+            DISAPPOINTED
+        }
+
         public enum ECellType {
             EMPTY,
             QUEEN,
@@ -23,7 +31,8 @@ namespace qp {
         public ECellType State { get; private set; }
         public bool IsSolutionQueen { get; private set; }   // a queen belongs here in the solution
 
-        GameObject _xGo, _queenGo, _wrongQueenGo;
+        MBSpriteFlipbook _queen;
+        GameObject _xGo, _wrongQueenGo;
         SpriteRenderer _cellSprite;
         Coroutine _markAnim;
         Coroutine _pulseAnim;
@@ -42,14 +51,24 @@ namespace qp {
             _cellSprite = transform.RecursiveFindChild<SpriteRenderer>("$CellSprite");
             _cellSprite.color = SORegionsColors.ColorAt(clrindx);
             _xGo = transform.RecursiveFindChild("$X").gameObject;
-            _queenGo = transform.RecursiveFindChild("$Queen").gameObject;
+            _queen = transform.RecursiveFindChild<MBSpriteFlipbook>("$Queen");
             _wrongQueenGo = transform.RecursiveFindChild("$WrongQueen").gameObject;
 
             _xGo.SetActive(false);
-            _queenGo.SetActive(false);
+            _queen.gameObject.SetActive(false);
             _wrongQueenGo.SetActive(false);
             State = ECellType.EMPTY;
         }
+
+        /// <summary>Play a queen animation — only when this cell actually shows a queen.</summary>
+        public void PlayQueen(QueenState state) {
+            if (State != ECellType.QUEEN || !_queen.gameObject.activeSelf) return;
+            _queen.Play(state.ToString());
+        }
+
+        /// <summary>Length of the cry clip in seconds (for timing the fail popup).</summary>
+        public float GetCryLength() =>
+            _queen != null ? _queen.StateLength(QueenState.CRY.ToString()) : 0f;
 
         public void MarkCell(ECellType type) {
             var prev = State;
@@ -65,7 +84,7 @@ namespace qp {
             } else {
                 // show the new mark (hide the others) and stamp it in
                 _xGo.SetActive(target == _xGo);
-                _queenGo.SetActive(target == _queenGo);
+                _queen.gameObject.SetActive(target == _queen.gameObject);
                 _wrongQueenGo.SetActive(target == _wrongQueenGo);
                 _markAnim = StartCoroutine(PopIn(target.transform));
             }
@@ -74,7 +93,7 @@ namespace qp {
         GameObject OverlayFor(ECellType type) {
             switch (type) {
                 case ECellType.X:           return _xGo;
-                case ECellType.QUEEN:       return _queenGo;
+                case ECellType.QUEEN:       return _queen.gameObject;
                 case ECellType.WRONG_QUEEN: return _wrongQueenGo;
                 default:                    return null;   // EMPTY
             }

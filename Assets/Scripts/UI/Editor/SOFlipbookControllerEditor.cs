@@ -22,7 +22,7 @@ namespace qp {
             }
 
             var defProp = serializedObject.FindProperty("defaultState");
-            defProp.stringValue = NamePopup("Default State", defProp.stringValue, names, allowNone: false);
+            defProp.stringValue = NamePopup("Default State", defProp.stringValue, names, allowNone: true);
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("States", EditorStyles.boldLabel);

@@ -170,6 +170,7 @@ namespace qp {
             var cell = _cells[r, c];
             if (cell.State == MBCell.ECellType.QUEEN) return;
             cell.MarkCell(MBCell.ECellType.QUEEN);
+            PlayQueens(MBCell.QueenState.HAPPY);   // every opened queen (incl. this one) celebrates
             SaveBoard();
             cell.Pulse();
 
@@ -400,6 +401,19 @@ namespace qp {
             }
 
             MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
+
+            // restored/revealed queens hold their base pose through the bloom; a beat later the
+            // whole board starts idling together
+            yield return new WaitForSecondsRealtime(3f);
+            PlayQueens(MBCell.QueenState.IDLE);
+        }
+
+        // Play a queen animation on every OPENED queen (placed cells only) — all in the same
+        // frame, so the flipbooks stay in sync.
+        void PlayQueens(MBCell.QueenState state) {
+            if (_cells == null) return;
+            foreach (var cell in _cells)
+                if (cell != null && cell.State == MBCell.ECellType.QUEEN) cell.PlayQueen(state);
         }
 
         // Lock/unlock the whole chrome (top bar + boost buttons): visible but untouchable
@@ -592,6 +606,7 @@ namespace qp {
                 cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
                 SaveBoard();
                 if (correct) {
+                    PlayQueens(MBCell.QueenState.HAPPY);   // every opened queen (incl. this one) celebrates
                     int placed = CountQueens();
                     _topBar?.SetProgress(placed);
                     MaybePrepareReview(placed);
@@ -601,6 +616,7 @@ namespace qp {
                         CommonSFX.Play(GPSFX.Instance.PlaceQueen);
                     }
                 } else {
+                    PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
                     AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
                     AppData.LastPlayData.Save();
                     _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
@@ -652,6 +668,7 @@ namespace qp {
 #endif
         void Win() {
             _ready = false;              // stop input
+            PlayQueens(MBCell.QueenState.HAPPY);   // the whole board celebrates, in sync
             Ads.HideBanner();            // banner off while the win popup is up
             Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
@@ -670,6 +687,7 @@ namespace qp {
 
         void Fail() {
             _ready = false;   // stop input; Continue or Reset decides what's next
+            PlayQueens(MBCell.QueenState.CRY);   // the board mourns (overrides the disappointment)
             Ads.HideBanner();            // banner off while the fail popup is up
             Analytics.GameLose(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
 
@@ -682,8 +700,21 @@ namespace qp {
             if (_failPopup == null)
                 _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Fail — popup {(_failPopup != null ? "found" : "MISSING")}");
-            if (_failPopup != null) _failPopup.Show();
             CommonSFX.Play(GPSFX.Instance.Fail);
+
+            // hold the popup for exactly one cry — but only when a queen is on screen to cry;
+            // an empty board (all bones lost on wrong queens) gets the popup right away
+            float wait = 0f;
+            if (CountQueens() > 0) {
+                float cryLen = _cells[0, 0] != null ? _cells[0, 0].GetCryLength() : 0f;
+                wait = cryLen > 0f ? cryLen : 3f;
+            }
+            StartCoroutine(ShowFailPopupAfter(wait));
+        }
+
+        IEnumerator ShowFailPopupAfter(float seconds) {
+            yield return new WaitForSecondsRealtime(seconds);
+            if (_failPopup != null) _failPopup.Show();
         }
 
         // Fail-continue: every bone returns, but the wrong queens stay on the board — they're

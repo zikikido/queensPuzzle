@@ -21,7 +21,7 @@ namespace qp {
             public float nextDelay;       // extra wait on the last frame before entering next
         }
 
-        public string defaultState;       // entered on enable; empty = the first state
+        public string defaultState;       // entered on enable; empty = NONE (nothing auto-plays)
         public State[] states;
 
         public State Find(string stateName) {
@@ -32,9 +32,6 @@ namespace qp {
             return null;
         }
 
-        public State Default =>
-            !string.IsNullOrEmpty(defaultState) && Find(defaultState) != null
-                ? Find(defaultState)
-                : (states != null && states.Length > 0 ? states[0] : null);
+        public State Default => string.IsNullOrEmpty(defaultState) ? null : Find(defaultState);
     }
 }
