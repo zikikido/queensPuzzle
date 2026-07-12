@@ -33,6 +33,10 @@ namespace qp {
         public static void LivesAdded(int amount, int levelIdx, int attempts) =>
             GameEvent("lives_added", levelIdx, attempts, "amount", amount);
 
+        /// <summary>A booster earned by watching a rewarded ad (no boost left → video).</summary>
+        public static void BoostEarned(string boost, int levelIdx, int attempts) =>
+            GameEvent("boost_earned", levelIdx, attempts, "boost", boost);
+
         // TEMP — review prepare timing probe, read via BigQuery. REMOVE after the measurement.
         public static void ReviewPrepareTime(int ms, bool prepared) {
             CrashLog($"[review] prepare took {ms} ms (prepared={prepared})");

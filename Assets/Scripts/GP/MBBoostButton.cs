@@ -58,7 +58,10 @@ namespace qp {
             if (boost.Value > 0) {
                 if (UseAction != null && UseAction()) boost.Value--;
             } else {
-                Ads.WatchToEarn(() => boost.Value += GameConfig.BoosterAddedAfterRewarded);
+                Ads.WatchToEarn(() => {
+                    boost.Value += GameConfig.BoosterAddedAfterRewarded;
+                    Analytics.BoostEarned(BoostType.ToString().ToLower(), AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                });
             }
         }
 
