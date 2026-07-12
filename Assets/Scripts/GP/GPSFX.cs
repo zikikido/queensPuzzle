@@ -19,6 +19,7 @@ namespace qp {
         public AudioClip Win;
         public AudioClip Fail;
         public AudioClip Hint;
+        public AudioClip BoardStart;
 
         const string ResourcePath = "GPSFX";
         static GPSFX _instance;

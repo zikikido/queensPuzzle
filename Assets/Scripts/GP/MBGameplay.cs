@@ -128,8 +128,9 @@ namespace qp {
                 case EBoostType.HINT:
                     MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
                     MBToturial.instance?.SetApplyVisible(true);
-                    // count only here (player's boost) — the tutorial calls OpenHint directly
+                    // count + sound only here (player's boost) — the tutorial calls OpenHint directly
                     if (OpenHint()) {
+                        CommonSFX.Play(GPSFX.Instance.Hint);
                         AppData.LastPlayData.hintsUsed++;
                         AppData.LastPlayData.Save();
                         Analytics.BoostUsed("hint", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
@@ -271,7 +272,6 @@ namespace qp {
 
         void PresentHint(Hint hint) {
             Debug.Log($"[MBGameplay] Hint ({hint.kind}): {hint.note}");
-            CommonSFX.Play(GPSFX.Instance.Hint);
             if (hint.cells == null) return;
             foreach (int idx in hint.cells) {
                 int r = idx / _n, c = idx % _n;
@@ -775,6 +775,8 @@ namespace qp {
         // ---- start animation: cells pop in 0 -> overshoot -> 1, rippling out from the centre ----
 
         IEnumerator BloomReveal() {
+            CommonSFX.Play(GPSFX.Instance.BoardStart);
+
             float cc = (_n - 1) * 0.5f;
             var delay = new float[_n, _n];
             float maxDelay = 0f;

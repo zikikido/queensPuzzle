@@ -311,6 +311,7 @@ GameObject:
   - component: {fileID: 7077160404938522279}
   - component: {fileID: 279135980143855120}
   - component: {fileID: 4706241409750924548}
+  - component: {fileID: 4746709754422347246}
   - component: {fileID: 5007186065803768828}
   m_Layer: 0
   m_Name: BoostQueen
@@ -364,6 +365,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5578795322279050859}
   m_CullTransparentMesh: 1
+--- !u!114 &4746709754422347246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5578795322279050859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d5807d9ec4f3e7449673587f36b3787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &5007186065803768828
 MonoBehaviour:
   m_ObjectHideFlags: 0
