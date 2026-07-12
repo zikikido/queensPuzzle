@@ -125,8 +125,8 @@ namespace qp {
         static void WireInterstitial() {
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent        += (id, info) => { _interstitialLoaded = true; _interstitialRetry = 0; };
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent    += (id, err)  => { _interstitialLoaded = false; RetryLoad(ref _interstitialRetry, () => MaxSdk.LoadInterstitial(InterstitialId)); };
-            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += (id, err, info) => FinishInterstitial();
-            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent        += (id, info) => FinishInterstitial();
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += (id, err, info) => FinishInterstitial(displayed: false);
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent        += (id, info) => FinishInterstitial(displayed: true);
         }
 
         /// <summary>Show an interstitial; onClosed fires when it's dismissed (or immediately if none ready).</summary>
@@ -146,8 +146,9 @@ namespace qp {
             MaxSdk.ShowInterstitial(InterstitialId);
         }
 
-        static void FinishInterstitial() {
-            _lastInterClosedAt = Time.realtimeSinceStartup;   // cooldown counts from the close
+        static void FinishInterstitial(bool displayed) {
+            // cooldown only when an ad was actually SEEN — a failed show must not block the next try
+            if (displayed) _lastInterClosedAt = Time.realtimeSinceStartup;
             var cb = _onInterstitialClosed; _onInterstitialClosed = null;
             MaxSdk.LoadInterstitial(InterstitialId);   // preload the next one
             cb?.Invoke();
@@ -167,18 +168,20 @@ namespace qp {
         public static void ShowBanner() { if (_bannerCreated) { MaxSdk.ShowBanner(BannerId); BannerVisible = true; } }
         public static void HideBanner() { if (_bannerCreated) { MaxSdk.HideBanner(BannerId); BannerVisible = false; } }
 
-        // Standard MAX banner height for THIS device in screen pixels (50dp phone / 90dp tablet).
-        // Known up front — no ad load needed. MAX's own IsTablet() at runtime; screen heuristic in
-        // the editor (device simulator drives Screen.*, the native call isn't available).
+        // Banner strip height for THIS device in screen pixels. Banners are ADAPTIVE (the
+        // AdViewConfiguration default), so the reserved strip must match MAX's real adaptive
+        // height — the legacy 50dp/90dp is only the fallback (editor, or the native call failing).
         public static float GetBannerHeightPixels() {
             const float PhoneDp = 50f, TabletDp = 90f;
             float density = Screen.dpi > 0f ? Screen.dpi / 160f : 2.625f;   // ~xxhdpi fallback
 #if UNITY_EDITOR
             bool tablet = Mathf.Min(Screen.width, Screen.height) / density >= 600f;   // 600dp = tablet cutoff
-#else
-            bool tablet = MaxSdkUtils.IsTablet();
-#endif
             return (tablet ? TabletDp : PhoneDp) * density;
+#else
+            float dp = MaxSdkUtils.GetAdaptiveBannerHeight();   // -1 width = full screen, current orientation
+            if (dp <= 0f) dp = MaxSdkUtils.IsTablet() ? TabletDp : PhoneDp;
+            return dp * density;
+#endif
         }
 
         // ================== revenue → Singular (+ Firebase) ==================
