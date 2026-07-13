@@ -360,6 +360,10 @@ namespace qp {
                     float y = ((n - 1) * 0.5f - r) * step;
                     cell.transform.localPosition = new Vector3(x, y, 0f);
                     cell.Init(level.ColorOf(level.RegionAt(r, c)), c, r, level.IsSolutionQueen(r, c));
+                    // born invisible: the layout frames before BloomReveal must not flash the
+                    // finished board (incl. restored marks) — the bloom animates in from this state
+                    cell.transform.localScale = Vector3.zero;
+                    cell.SetAlpha(0f);
                     _cells[r, c] = cell;
                 }
             }
@@ -542,7 +546,7 @@ namespace qp {
             if (level.revealedRows == null || level.revealedRows.Length == 0) return;
             foreach (int r in level.revealedRows) {
                 var cell = CellAt(r, level.solutionColumns[r]);
-                if (cell != null && cell.State != MBCell.ECellType.QUEEN) cell.MarkCell(MBCell.ECellType.QUEEN);
+                if (cell != null && cell.State != MBCell.ECellType.QUEEN) cell.StartWithMark(MBCell.ECellType.QUEEN);
             }
             SaveBoard();
             _topBar.SetProgress(CountQueens());
@@ -560,7 +564,7 @@ namespace qp {
             int i = 0;
             foreach (var cell in _cells) {
                 var state = CharState(s[i++]);
-                if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
+                if (state != MBCell.ECellType.EMPTY) cell.StartWithMark(state);   // instant — no move anims/PS
             }
             _topBar.SetProgress(CountQueens());
             MaybePrepareReview(CountQueens());   // resuming a board that's already 2-from-win
