@@ -52,6 +52,44 @@ namespace QueensPuzzle
         }
 
         /// <summary>
+        /// Floods the unassigned (-1) cells of a partial region map outward from the regions in
+        /// <paramref name="growIds"/>, starting at the cells those regions already own. Used by the
+        /// stencil Fill: painted cells are already set and never change. Returns false when some
+        /// empty cell is unreachable by every growing region (a walled-off pocket).
+        /// </summary>
+        public static bool GrowPartial(int n, int[] region, List<int> growIds, Random rng)
+        {
+            var frontier = new List<int>[n];
+            foreach (int id in growIds) frontier[id] = new List<int>();
+
+            int unassigned = 0;
+            for (int i = 0; i < region.Length; i++)
+            {
+                if (region[i] == -1) { unassigned++; continue; }
+                if (frontier[region[i]] != null) AddNeighbors(i, n, region, frontier[region[i]]);
+            }
+
+            var active = new List<int>(growIds.Count);
+            while (unassigned > 0)
+            {
+                active.Clear();
+                foreach (int id in growIds)
+                    if (HasUnassigned(frontier[id], region)) active.Add(id);
+
+                if (active.Count == 0) return false; // pocket no growing region can reach
+
+                int k = active[rng.Next(active.Count)];
+                int cell = PopRandomUnassigned(frontier[k], region, rng);
+                if (cell < 0) continue;
+
+                region[cell] = k;
+                unassigned--;
+                AddNeighbors(cell, n, region, frontier[k]);
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Tries to edit the region map so the alternative solution <paramref name="alt"/> is no
         /// longer valid, while keeping the target <paramref name="solutionColumns"/> valid and all
         /// regions contiguous. Works by taking a cell where <paramref name="alt"/> places a queen but
@@ -59,8 +97,11 @@ namespace QueensPuzzle
         /// target queen (the target has its only queen in that row elsewhere), so the target is
         /// unaffected, but <paramref name="alt"/> now double-books one region and is broken.
         /// Returns false if no safe move exists (caller should re-grow from scratch).
+        /// <paramref name="locked"/> (optional) marks cells that must never change region — the
+        /// stencil Fill locks every painted cell so repairs only reshape the filled-in cells.
         /// </summary>
-        public static bool TryBreakAlternative(int n, int[] region, int[] solutionColumns, int[] alt, Random rng)
+        public static bool TryBreakAlternative(int n, int[] region, int[] solutionColumns, int[] alt, Random rng,
+            bool[] locked = null)
         {
             var wrongRows = new List<int>();
             for (int r = 0; r < n; r++)
@@ -70,6 +111,7 @@ namespace QueensPuzzle
             foreach (int r in wrongRows)
             {
                 int idx = r * n + alt[r];
+                if (locked != null && locked[idx]) continue;
                 int from = region[idx];
 
                 var targets = NeighborRegions(idx, n, region, from);

@@ -78,13 +78,17 @@ namespace QueensPuzzle.EditorTools
 
         bool _showSolution = true; // collapse the board when you don't want the answer visible
         bool _showSteps = true;    // collapse the solve-steps list
+        bool _showBreakdown;       // collapse the rating breakdown — the "Aimed …" status stays visible
         int _selectedStep = -1;    // -1 = show the full solution; otherwise the board state at that step
 
-        // paint-regions editor: draw a colour layout on the board, then Build solves it into a level
+        // paint-regions editor: draw a colour layout on the board, then Build solves it into a level.
+        // Cells may be left EMPTY (-1): Fill searches queens + completes the empty cells around the
+        // painted drawing, which stays pixel-exact.
         bool _paintMode;
         int[] _paintRegions;
         int _paintN;
-        int _paintColor;
+        int _paintColor;           // -1 = the "empty" colour (erase back to unpainted)
+        int _fillAttempts = 500;   // Fill re-rolls (solution + growth + repair) before giving up
 
         [MenuItem("QueensPuzzle/Level Builder")]
         public static void Open()
@@ -236,8 +240,10 @@ namespace QueensPuzzle.EditorTools
                 LevelGenerator.MinSize, LevelGenerator.MaxSize);
             EditorGUILayout.LabelField(" ", $"= {_requestedN} queens", EditorStyles.miniLabel);
 
-            string genLabel = _targetWeight <= 0 ? "Generate (random)" : $"Generate (weight ~{_targetWeight})";
-            if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
+            string genLabel = _genTask != null ? "Generating… (Cancel in the progress bar)"
+                : _targetWeight <= 0 ? "Generate (random)" : $"Generate (weight ~{_targetWeight})";
+            using (new EditorGUI.DisabledScope(_genTask != null))
+                if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
 
             DrawRangeGenerate();   // parallel "from N to M" regenerate, keeping each slot's size
 
@@ -351,7 +357,8 @@ namespace QueensPuzzle.EditorTools
         void NewPaintGrid(int n)
         {
             _paintN = Mathf.Clamp(n, LevelGenerator.MinSize, LevelGenerator.MaxSize);
-            _paintRegions = new int[_paintN * _paintN];   // all one colour to start
+            _paintRegions = new int[_paintN * _paintN];
+            for (int i = 0; i < _paintRegions.Length; i++) _paintRegions[i] = -1;   // all empty — draw, then Fill
             _paintColor = 0;
         }
 
@@ -366,7 +373,8 @@ namespace QueensPuzzle.EditorTools
                 for (int c = 0; c < n; c++)
                 {
                     var cell = new Rect(board.x + c * cs + 1, board.y + r * cs + 1, cs - 2, cs - 2);
-                    EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(_paintRegions[r * n + c], n));
+                    int id = _paintRegions[r * n + c];
+                    EditorGUI.DrawRect(cell, id < 0 ? EmptyCellColor : BoardVisuals.RegionColor(id, n));
                 }
 
             var e = Event.current;
@@ -385,9 +393,9 @@ namespace QueensPuzzle.EditorTools
             EnsurePaintGrid();
             int n = _paintN;
 
-            // colour palette — click to pick the active region
+            // colour palette (all n colours) + the "empty" colour — click to pick the brush
             var pr = GUILayoutUtility.GetRect(0, 28, GUILayout.ExpandWidth(true));
-            float sw = Mathf.Min(30f, pr.width / n);
+            float sw = Mathf.Min(30f, pr.width / (n + 1));
             for (int i = 0; i < n; i++)
             {
                 var cell = new Rect(pr.x + i * sw, pr.y, sw - 2, 26);
@@ -396,8 +404,15 @@ namespace QueensPuzzle.EditorTools
                 if (Event.current.type == EventType.MouseDown && cell.Contains(Event.current.mousePosition))
                 { _paintColor = i; Event.current.Use(); Repaint(); }
             }
+            var emptyCell = new Rect(pr.x + n * sw + 4, pr.y, sw - 2, 26);
+            EditorGUI.DrawRect(emptyCell, EmptyCellColor);
+            GUI.Label(emptyCell, "×", EditorStyles.centeredGreyMiniLabel);
+            if (_paintColor < 0) DrawOutline(emptyCell, Color.black, 2);
+            if (Event.current.type == EventType.MouseDown && emptyCell.Contains(Event.current.mousePosition))
+            { _paintColor = -1; Event.current.Use(); Repaint(); }
 
-            EditorGUILayout.LabelField($"{n}x{n} — use exactly {n} colours, then Build.", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField($"{n}x{n} — Build needs all {n} colours; or draw with SOME colours, " +
+                "leave the rest empty (×) and Fill completes them.", EditorStyles.miniLabel);
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -406,6 +421,35 @@ namespace QueensPuzzle.EditorTools
                     if (GUILayout.Button("From current", GUILayout.Height(22))) SeedPaintFromLevel();
                 if (GUILayout.Button("Build", GUILayout.Height(24))) BuildFromPaint();
             }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("attempts", EditorStyles.miniLabel, GUILayout.Width(54));
+                _fillAttempts = Mathf.Clamp(EditorGUILayout.IntField(_fillAttempts, GUILayout.Width(60)), 1, 100000);
+                if (GUILayout.Button("Fill — complete the empty cells", GUILayout.Height(24))) FillFromPaint();
+            }
+        }
+
+        // the unpainted look, on the board and in the palette
+        static readonly Color EmptyCellColor = new Color(0.16f, 0.16f, 0.18f);
+
+        void FillFromPaint()
+        {
+            LevelData data;
+            string error;
+            try
+            {
+                data = StencilFiller.Fill(_paintN, (int[])_paintRegions.Clone(), _fillAttempts, out error, p =>
+                    EditorUtility.DisplayProgressBar("Fill",
+                        $"completing the drawing — attempt {(int)(p * _fillAttempts) + 1}/{_fillAttempts}…", p));
+            }
+            finally { EditorUtility.ClearProgressBar(); }
+
+            if (data == null) { _status = "Build failed — " + error; Repaint(); return; }
+            SetLevel(data);
+            _paintMode = false;   // show the solved board
+            _status = $"Filled {data.size}x{data.size} — weight {data.weight}, unique ✓. Press Save to keep it.";
+            Repaint();
         }
 
         void BuildFromPaint()
@@ -694,8 +738,12 @@ namespace QueensPuzzle.EditorTools
                 if (_report.HasValue)
                 {
                     var rep = _report.Value;
+                    _showBreakdown = EditorGUILayout.Foldout(_showBreakdown, $"Rating breakdown — weight {rep.weight}", true);
+                }
+                if (_report.HasValue && _showBreakdown)
+                {
+                    var rep = _report.Value;
                     string shape = rep.evenness >= 0.7f ? "smooth grind" : rep.evenness <= 0.4f ? "peaky — has a wall" : "mixed";
-                    EditorGUILayout.LabelField($"Rating breakdown — weight {rep.weight}", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField($"find (scanning) {rep.findCost}   +   think (tricks) {rep.thinkCost}   +   guesses {rep.guessCost}");
                     EditorGUILayout.LabelField($"peak {rep.peak}   ·   evenness {rep.evenness:0.00}   ·   paid steps {rep.paidSteps}  —  {shape}");
                     EditorGUILayout.Space(4);
@@ -742,49 +790,115 @@ namespace QueensPuzzle.EditorTools
             tolStepsPct = _tolSteps,
         };
 
+        // Single-level Generate runs on a worker task so the editor never blocks; the cancelable
+        // progress bar is polled on the editor loop, and Cancel reaches the worker cooperatively —
+        // its progress callback throws on the next tick. Same pattern as the batch clone.
+        struct GenResult { public bool ok; public int[] region, sol; public int weight; }
+        System.Threading.Tasks.Task<GenResult> _genTask;
+        volatile float _genProgress;
+        volatile bool _genCancel;
+        int _genSeed, _genN;
+        bool _genWarm;
+        LevelFingerprint _genFp;
+        string _genMsg;
+        System.Diagnostics.Stopwatch _genSw;
+
         void Generate()
         {
+            if (_genTask != null) return;   // one at a time
+
             int seed = System.Environment.TickCount;
             var fp = TargetFingerprint();
             // warm start: anneal from the loaded board when it matches the requested size
             bool warm = _warmStart && _targetWeight > 0 && _level != null && _level.size == _requestedN;
-            LevelData lvl;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
+            int n = _requestedN;
+            int targetWeight = _targetWeight;
+            int[] warmRegion = warm ? (int[])_level.regions.Clone() : null;
+            int[] warmSol = warm ? (int[])_level.solutionColumns.Clone() : null;
+
+            _genSeed = seed; _genN = n; _genFp = fp; _genWarm = warm;
+            _genProgress = 0f; _genCancel = false;
+            _genMsg = targetWeight <= 0
+                ? $"{n}x{n} — finding a unique puzzle…"
+                : $"aiming for weight {fp.weight} — {(warm ? "mutating the loaded board" : "annealing the region map")}…";
+            _genSw = System.Diagnostics.Stopwatch.StartNew();
+
+            // worker-safe: only writes a field, and turns Cancel into a throw at the next tick
+            System.Action<float> progress = p =>
             {
-                if (_targetWeight <= 0)
-                    lvl = LevelGenerator.Generate(_requestedN, seed, 250, p =>
-                        EditorUtility.DisplayProgressBar("Generating level",
-                            $"{_requestedN}x{_requestedN} — finding a unique puzzle…", p));
-                else
-                    lvl = LevelSteerer.Generate(fp, _requestedN, seed,
-                        warm ? _level.regions : null, warm ? _level.solutionColumns : null, p =>
-                        EditorUtility.DisplayProgressBar("Generating level",
-                            $"aiming for weight {fp.weight} — {(warm ? "mutating the loaded board" : "annealing the region map")}…", p));
-            }
-            finally
+                _genProgress = p;
+                if (_genCancel) throw new System.OperationCanceledException();
+            };
+
+            _genTask = System.Threading.Tasks.Task.Run(() =>
             {
-                EditorUtility.ClearProgressBar();
-            }
-            sw.Stop();
-            if (lvl == null)
+                var res = new GenResult();
+                res.ok = targetWeight <= 0
+                    ? LevelGenerator.TryGenerateRaw(n, seed, 250, out res.region, out res.sol, out res.weight, progress)
+                    : LevelSteerer.TrySteerRaw(fp, n, seed, warmRegion, warmSol, out res.region, out res.sol, out res.weight, progress);
+                return res;
+            });
+            EditorApplication.update += PollGenerate;
+        }
+
+        void PollGenerate()
+        {
+            if (_genTask == null) { EditorApplication.update -= PollGenerate; return; }   // domain-reload safety
+
+            if (!_genTask.IsCompleted)
             {
-                _status = $"Generation failed for {_requestedN}x{_requestedN} — press Generate again.";
+                if (!_genCancel && EditorUtility.DisplayCancelableProgressBar("Generating level", _genMsg, _genProgress))
+                    _genCancel = true;   // the worker throws on its next progress tick
                 return;
             }
 
+            EditorApplication.update -= PollGenerate;
+            EditorUtility.ClearProgressBar();
+            var task = _genTask;
+            _genTask = null;
+            _genSw.Stop();
+
+            if (_genCancel)
+            {
+                _status = "Generation canceled.";
+                Repaint();
+                return;
+            }
+            if (task.IsFaulted)
+            {
+                _status = "Generation failed — " + (task.Exception?.InnerException?.Message ?? "unknown error");
+                Repaint();
+                return;
+            }
+            var res = task.Result;
+            if (!res.ok)
+            {
+                _status = $"Generation failed for {_genN}x{_genN} — press Generate again.";
+                Repaint();
+                return;
+            }
+
+            // back on the main thread: assemble the asset-side object and adopt it
+            var lvl = ScriptableObject.CreateInstance<LevelData>();
+            lvl.size = _genN;
+            lvl.regions = res.region;
+            lvl.solutionColumns = res.sol;
+            lvl.seed = _genSeed;
+            lvl.weight = res.weight;
+
             SetLevel(lvl);
-            if (_targetWeight <= 0)
-                _status = $"Generated {lvl.size}x{lvl.size} (seed {seed}) — weight {lvl.weight}, unique ✓";
+            if (_genFp.weight <= 0)
+                _status = $"Generated {lvl.size}x{lvl.size} (seed {_genSeed}) — weight {lvl.weight}, unique ✓";
             else
             {
                 var rep = _report.Value;
+                var fp = _genFp;
                 string hit = WeightAnnealer.OnTarget(rep, fp) ? "✓ on target" : "closest reachable";
                 string got = $"weight {rep.weight}"
                     + (fp.peak > 0 ? $" · peak {rep.peak}" : "")
                     + (fp.evenness > 0 ? $" · even {rep.evenness:0.00}" : "")
                     + (fp.steps > 0 ? $" · steps {rep.paidSteps}" : "");
-                _status = $"Aimed {fp.weight}/{(fp.peak > 0 ? fp.peak.ToString() : "-")}/{(fp.evenness > 0 ? fp.evenness.ToString("0.00") : "-")}/{(fp.steps > 0 ? fp.steps.ToString() : "-")} → {got} — {hit} ({(warm ? "warm" : "cold")}, {sw.Elapsed.TotalSeconds:0.0}s).";
+                _status = $"Aimed {fp.weight}/{(fp.peak > 0 ? fp.peak.ToString() : "-")}/{(fp.evenness > 0 ? fp.evenness.ToString("0.00") : "-")}/{(fp.steps > 0 ? fp.steps.ToString() : "-")} → {got} — {hit} ({(_genWarm ? "warm" : "cold")}, {_genSw.Elapsed.TotalSeconds:0.0}s).";
             }
             Repaint();
         }
