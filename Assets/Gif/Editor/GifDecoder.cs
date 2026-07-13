@@ -2,283 +2,298 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
 
-namespace Kido.SpriteTimeline.Editor
+namespace Kido.GifImporter.Editor
 {
-    internal sealed class DecodedGif
+    internal sealed class GifFrameData
     {
-        internal int Width;
-        internal int Height;
-        internal readonly List<DecodedGifFrame> Frames = new List<DecodedGifFrame>();
+        public int Width;
+        public int Height;
+        public byte[] Rgba;
+        public float DelaySeconds;
+        public int RawDelayCentiseconds;
     }
 
-    internal sealed class DecodedGifFrame
+    internal sealed class GifAnimationData
     {
-        internal Color32[] Pixels;
-        internal float Duration;
+        public int Width;
+        public int Height;
+        public readonly List<GifFrameData> Frames = new List<GifFrameData>();
     }
 
+    // Small, dependency-free GIF89a decoder for Unity Editor import use.
     internal static class GifDecoder
     {
         private sealed class Reader
         {
-            private readonly byte[] data;
-            private int p;
-            internal Reader(byte[] bytes) { data = bytes; }
-            internal bool End => p >= data.Length;
-            internal byte Byte() => p < data.Length ? data[p++] : throw new EndOfStreamException();
-            internal ushort U16() => (ushort)(Byte() | (Byte() << 8));
-            internal byte[] Bytes(int n)
-            {
-                if (p + n > data.Length) throw new EndOfStreamException();
-                var r = new byte[n]; Buffer.BlockCopy(data, p, r, 0, n); p += n; return r;
-            }
-            internal byte[] SubBlocks()
-            {
-                using (var ms = new MemoryStream())
-                {
-                    while (true)
-                    {
-                        int n = Byte();
-                        if (n == 0) break;
-                        var b = Bytes(n); ms.Write(b, 0, b.Length);
-                    }
-                    return ms.ToArray();
-                }
-            }
-            internal void SkipSubBlocks() { while (true) { int n = Byte(); if (n == 0) return; Bytes(n); } }
+            private readonly byte[] _data;
+            private int _p;
+            public Reader(byte[] data) { _data = data ?? throw new ArgumentNullException(nameof(data)); }
+            public int Position => _p;
+            public bool End => _p >= _data.Length;
+            public byte U8() { if (_p >= _data.Length) throw new EndOfStreamException(); return _data[_p++]; }
+            public ushort U16() { int a = U8(), b = U8(); return (ushort)(a | (b << 8)); }
+            public byte[] Bytes(int n) { if (_p + n > _data.Length) throw new EndOfStreamException(); var r = new byte[n]; Buffer.BlockCopy(_data, _p, r, 0, n); _p += n; return r; }
+            public string Ascii(int n) => System.Text.Encoding.ASCII.GetString(Bytes(n));
+            public void Skip(int n) { if (_p + n > _data.Length) throw new EndOfStreamException(); _p += n; }
         }
 
         private struct Gce
         {
-            internal int Disposal;
-            internal bool Transparent;
-            internal byte TransparentIndex;
-            internal float Duration;
+            public int Disposal;
+            public bool Transparent;
+            public byte TransparentIndex;
+            public int DelayCs;
         }
 
-        private struct PrevFrame
+        public static GifAnimationData Decode(string filePath)
         {
-            internal int Disposal, X, Y, W, H;
-            internal Color32[] Restore;
+            if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("GIF path is empty.");
+            return Decode(File.ReadAllBytes(filePath));
         }
 
-        internal static DecodedGif Decode(string filePath)
+        public static GifAnimationData Decode(byte[] bytes)
         {
-            var r = new Reader(File.ReadAllBytes(filePath));
-            string sig = System.Text.Encoding.ASCII.GetString(r.Bytes(6));
-            if (sig != "GIF87a" && sig != "GIF89a") throw new InvalidDataException("Not a valid GIF file.");
+            var r = new Reader(bytes);
+            string signature = r.Ascii(6);
+            if (signature != "GIF87a" && signature != "GIF89a") throw new InvalidDataException("Not a valid GIF87a/GIF89a file.");
 
-            int width = r.U16();
-            int height = r.U16();
-            byte packed = r.Byte();
-            r.Byte(); // background index
-            r.Byte(); // pixel aspect ratio
-            Color32[] globalPalette = null;
-            if ((packed & 0x80) != 0) globalPalette = ReadPalette(r, 1 << ((packed & 7) + 1));
+            int screenW = r.U16();
+            int screenH = r.U16();
+            byte packed = r.U8();
+            bool hasGlobal = (packed & 0x80) != 0;
+            int globalSize = 1 << ((packed & 0x07) + 1);
+            byte bgIndex = r.U8();
+            r.U8(); // pixel aspect
+            byte[] globalPalette = hasGlobal ? ReadPalette(r, globalSize) : null;
 
-            var result = new DecodedGif { Width = width, Height = height };
-            var canvas = new Color32[width * height];
-            var gce = new Gce { Duration = 0f };
-            PrevFrame prev = default;
-            bool hasPrev = false;
+            var result = new GifAnimationData { Width = screenW, Height = screenH };
+            var canvas = new byte[screenW * screenH * 4];
+            if (globalPalette != null && bgIndex < globalPalette.Length / 3)
+            {
+                byte br = globalPalette[bgIndex * 3], bg = globalPalette[bgIndex * 3 + 1], bb = globalPalette[bgIndex * 3 + 2];
+                for (int i = 0; i < screenW * screenH; i++) { int o = i * 4; canvas[o] = br; canvas[o + 1] = bg; canvas[o + 2] = bb; canvas[o + 3] = 0; }
+            }
+
+            Gce gce = default;
+            byte[] previousCanvas = null;
+            int previousDisposal = 0;
+            int prevLeft = 0, prevTop = 0, prevW = 0, prevH = 0;
 
             while (!r.End)
             {
-                byte marker = r.Byte();
-                if (marker == 0x3B) break;
-                if (marker == 0x21)
+                byte introducer = r.U8();
+                if (introducer == 0x3B) break; // trailer
+                if (introducer == 0x21)
                 {
-                    byte label = r.Byte();
+                    byte label = r.U8();
                     if (label == 0xF9)
                     {
-                        int blockSize = r.Byte();
-                        if (blockSize != 4) throw new InvalidDataException("Invalid GIF graphic control extension.");
-                        byte gp = r.Byte();
-                        ushort delayCs = r.U16();
-                        byte transparentIndex = r.Byte();
-                        r.Byte();
+                        int blockSize = r.U8();
+                        if (blockSize != 4) throw new InvalidDataException("Invalid graphic control extension.");
+                        byte gp = r.U8();
+                        int delay = r.U16();
+                        byte trans = r.U8();
+                        r.U8();
                         gce = new Gce
                         {
-                            Disposal = (gp >> 2) & 7,
-                            Transparent = (gp & 1) != 0,
-                            TransparentIndex = transparentIndex,
-                            Duration = delayCs / 100f
+                            Disposal = (gp >> 2) & 0x07,
+                            Transparent = (gp & 0x01) != 0,
+                            TransparentIndex = trans,
+                            DelayCs = delay
                         };
                     }
                     else
                     {
-                        r.SkipSubBlocks();
+                        SkipSubBlocks(r);
                     }
                     continue;
                 }
+                if (introducer != 0x2C) throw new InvalidDataException($"Unexpected GIF block 0x{introducer:X2} at {r.Position - 1}.");
 
-                if (marker != 0x2C) throw new InvalidDataException($"Unexpected GIF block 0x{marker:X2}.");
+                ApplyDisposal(canvas, previousCanvas, previousDisposal, prevLeft, prevTop, prevW, prevH, screenW, screenH);
 
-                if (hasPrev) ApplyDisposal(canvas, width, height, prev);
-
-                int x = r.U16();
-                int y = r.U16();
+                int left = r.U16();
+                int top = r.U16();
                 int w = r.U16();
                 int h = r.U16();
-                byte ip = r.Byte();
+                byte ip = r.U8();
                 bool localTable = (ip & 0x80) != 0;
                 bool interlaced = (ip & 0x40) != 0;
-                Color32[] palette = localTable ? ReadPalette(r, 1 << ((ip & 7) + 1)) : globalPalette;
-                if (palette == null) throw new InvalidDataException("GIF has no color table.");
+                int localSize = 1 << ((ip & 0x07) + 1);
+                byte[] palette = localTable ? ReadPalette(r, localSize) : globalPalette;
+                if (palette == null) throw new InvalidDataException("GIF frame has no color table.");
 
-                int minCodeSize = r.Byte();
-                byte[] compressed = r.SubBlocks();
-                byte[] indices = DecodeLzw(compressed, minCodeSize, w * h);
+                int lzwMin = r.U8();
+                byte[] compressed = ReadSubBlocks(r);
+                byte[] indices = LzwDecode(compressed, lzwMin, w * h);
+                if (interlaced) indices = Deinterlace(indices, w, h);
 
-                Color32[] restore = gce.Disposal == 3 ? (Color32[])canvas.Clone() : null;
-                DrawImage(canvas, width, height, x, y, w, h, palette, indices, interlaced, gce.Transparent, gce.TransparentIndex);
+                previousCanvas = gce.Disposal == 3 ? (byte[])canvas.Clone() : null;
+                DrawFrame(canvas, indices, palette, left, top, w, h, screenW, screenH, gce.Transparent, gce.TransparentIndex);
 
-                result.Frames.Add(new DecodedGifFrame
+                result.Frames.Add(new GifFrameData
                 {
-                    Pixels = (Color32[])canvas.Clone(),
-                    Duration = gce.Duration
+                    Width = screenW,
+                    Height = screenH,
+                    Rgba = (byte[])canvas.Clone(),
+                    RawDelayCentiseconds = gce.DelayCs,
+                    DelaySeconds = gce.DelayCs / 100f
                 });
 
-                prev = new PrevFrame { Disposal = gce.Disposal, X = x, Y = y, W = w, H = h, Restore = restore };
-                hasPrev = true;
-                gce = new Gce { Duration = 0f };
+                previousDisposal = gce.Disposal;
+                prevLeft = left; prevTop = top; prevW = w; prevH = h;
+                gce = default;
             }
 
-            if (result.Frames.Count == 0) throw new InvalidDataException("The GIF contains no frames.");
+            if (result.Frames.Count == 0) throw new InvalidDataException("GIF contains no image frames.");
             return result;
         }
 
-        private static Color32[] ReadPalette(Reader r, int count)
+        private static byte[] ReadPalette(Reader r, int count) => r.Bytes(count * 3);
+
+        private static void SkipSubBlocks(Reader r)
         {
-            var p = new Color32[count];
-            for (int i = 0; i < count; i++) p[i] = new Color32(r.Byte(), r.Byte(), r.Byte(), 255);
-            return p;
+            while (true) { int n = r.U8(); if (n == 0) return; r.Skip(n); }
         }
 
-        private static void ApplyDisposal(Color32[] canvas, int width, int height, PrevFrame p)
+        private static byte[] ReadSubBlocks(Reader r)
         {
-            if (p.Disposal == 2)
+            using (var ms = new MemoryStream())
             {
-                int maxY = Math.Min(height, p.Y + p.H), maxX = Math.Min(width, p.X + p.W);
-                for (int yy = Math.Max(0, p.Y); yy < maxY; yy++)
-                    for (int xx = Math.Max(0, p.X); xx < maxX; xx++)
-                        canvas[yy * width + xx] = new Color32(0, 0, 0, 0);
-            }
-            else if (p.Disposal == 3 && p.Restore != null)
-            {
-                Buffer.BlockCopy(p.Restore, 0, canvas, 0, canvas.Length * 4);
-            }
-        }
-
-        private static void DrawImage(Color32[] canvas, int cw, int ch, int x, int y, int w, int h,
-            Color32[] palette, byte[] indices, bool interlaced, bool transparent, byte transparentIndex)
-        {
-            int src = 0;
-            if (!interlaced)
-            {
-                for (int row = 0; row < h; row++) DrawRow(row);
-            }
-            else
-            {
-                int[] starts = { 0, 4, 2, 1 }, steps = { 8, 8, 4, 2 };
-                for (int pass = 0; pass < 4; pass++)
-                    for (int row = starts[pass]; row < h; row += steps[pass]) DrawRow(row);
-            }
-
-            void DrawRow(int row)
-            {
-                int dy = y + row;
-                for (int col = 0; col < w && src < indices.Length; col++, src++)
+                while (true)
                 {
-                    int dx = x + col;
-                    byte idx = indices[src];
-                    if (dx < 0 || dx >= cw || dy < 0 || dy >= ch) continue;
-                    if (transparent && idx == transparentIndex) continue;
-                    if (idx < palette.Length) canvas[dy * cw + dx] = palette[idx];
+                    int n = r.U8();
+                    if (n == 0) break;
+                    byte[] b = r.Bytes(n);
+                    ms.Write(b, 0, b.Length);
                 }
+                return ms.ToArray();
             }
         }
 
-        private static byte[] DecodeLzw(byte[] data, int minCodeSize, int expected)
+        private static byte[] LzwDecode(byte[] data, int minCodeSize, int expected)
         {
             int clear = 1 << minCodeSize;
             int end = clear + 1;
-            int available = clear + 2;
-            int oldCode = -1;
             int codeSize = minCodeSize + 1;
-            int codeMask = (1 << codeSize) - 1;
-            var prefix = new short[4096];
+            int nextCode = end + 1;
+            var prefix = new int[4096];
             var suffix = new byte[4096];
             var stack = new byte[4097];
-            for (int i = 0; i < clear; i++) suffix[i] = (byte)i;
+            for (int i = 0; i < clear; i++) { prefix[i] = -1; suffix[i] = (byte)i; }
 
             var output = new byte[expected];
-            int outPos = 0, datum = 0, bits = 0, dataPos = 0, top = 0, first = 0;
+            int outPos = 0, bitPos = 0, oldCode = -1;
+            byte first = 0;
 
-            while (outPos < expected)
+            while (true)
             {
-                if (top == 0)
+                int code = ReadBits(data, ref bitPos, codeSize);
+                if (code < 0 || code == end) break;
+                if (code == clear)
                 {
-                    while (bits < codeSize)
-                    {
-                        if (dataPos >= data.Length) return output;
-                        datum |= data[dataPos++] << bits;
-                        bits += 8;
-                    }
-                    int code = datum & codeMask;
-                    datum >>= codeSize;
-                    bits -= codeSize;
-
-                    if (code == clear)
-                    {
-                        codeSize = minCodeSize + 1;
-                        codeMask = (1 << codeSize) - 1;
-                        available = clear + 2;
-                        oldCode = -1;
-                        continue;
-                    }
-                    if (code == end) break;
-                    if (oldCode == -1)
-                    {
-                        output[outPos++] = suffix[code];
-                        first = code;
-                        oldCode = code;
-                        continue;
-                    }
-
-                    int inCode = code;
-                    if (code >= available)
-                    {
-                        stack[top++] = (byte)first;
-                        code = oldCode;
-                    }
-                    while (code >= clear)
-                    {
-                        stack[top++] = suffix[code];
-                        code = prefix[code];
-                    }
-                    first = suffix[code];
-                    stack[top++] = (byte)first;
-
-                    if (available < 4096)
-                    {
-                        prefix[available] = (short)oldCode;
-                        suffix[available] = (byte)first;
-                        available++;
-                        if ((available & codeMask) == 0 && available < 4096)
-                        {
-                            codeSize++;
-                            codeMask = (1 << codeSize) - 1;
-                        }
-                    }
-                    oldCode = inCode;
+                    codeSize = minCodeSize + 1;
+                    nextCode = end + 1;
+                    oldCode = -1;
+                    continue;
                 }
-                top--;
-                output[outPos++] = stack[top];
+
+                int inCode = code;
+                int sp = 0;
+                if (code >= nextCode)
+                {
+                    if (oldCode < 0) throw new InvalidDataException("Invalid GIF LZW stream.");
+                    stack[sp++] = first;
+                    code = oldCode;
+                }
+
+                while (code >= clear)
+                {
+                    if (code >= 4096 || sp >= stack.Length) throw new InvalidDataException("Invalid GIF LZW dictionary.");
+                    stack[sp++] = suffix[code];
+                    code = prefix[code];
+                }
+                first = suffix[code];
+                stack[sp++] = first;
+
+                while (sp > 0 && outPos < expected) output[outPos++] = stack[--sp];
+                if (oldCode >= 0 && nextCode < 4096)
+                {
+                    prefix[nextCode] = oldCode;
+                    suffix[nextCode] = first;
+                    nextCode++;
+                    if (nextCode == (1 << codeSize) && codeSize < 12) codeSize++;
+                }
+                oldCode = inCode;
+                if (outPos >= expected) break;
             }
             return output;
+        }
+
+        private static int ReadBits(byte[] data, ref int bitPos, int count)
+        {
+            if (bitPos + count > data.Length * 8) return -1;
+            int value = 0;
+            for (int i = 0; i < count; i++)
+            {
+                int p = bitPos + i;
+                value |= ((data[p >> 3] >> (p & 7)) & 1) << i;
+            }
+            bitPos += count;
+            return value;
+        }
+
+        private static byte[] Deinterlace(byte[] src, int w, int h)
+        {
+            var dst = new byte[src.Length];
+            int s = 0;
+            int[] starts = { 0, 4, 2, 1 };
+            int[] steps = { 8, 8, 4, 2 };
+            for (int pass = 0; pass < 4; pass++)
+                for (int y = starts[pass]; y < h; y += steps[pass])
+                {
+                    int n = Math.Min(w, src.Length - s);
+                    if (n <= 0) return dst;
+                    Buffer.BlockCopy(src, s, dst, y * w, n);
+                    s += n;
+                }
+            return dst;
+        }
+
+        private static void ApplyDisposal(byte[] canvas, byte[] saved, int disposal, int left, int top, int w, int h, int sw, int sh)
+        {
+            if (disposal == 2)
+            {
+                for (int y = Math.Max(0, top); y < Math.Min(sh, top + h); y++)
+                    for (int x = Math.Max(0, left); x < Math.Min(sw, left + w); x++)
+                    {
+                        int o = (y * sw + x) * 4;
+                        canvas[o] = canvas[o + 1] = canvas[o + 2] = canvas[o + 3] = 0;
+                    }
+            }
+            else if (disposal == 3 && saved != null && saved.Length == canvas.Length)
+            {
+                Buffer.BlockCopy(saved, 0, canvas, 0, canvas.Length);
+            }
+        }
+
+        private static void DrawFrame(byte[] canvas, byte[] idx, byte[] pal, int left, int top, int w, int h, int sw, int sh, bool transparent, byte transparentIndex)
+        {
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int si = y * w + x;
+                    if (si >= idx.Length) return;
+                    byte ci = idx[si];
+                    if (transparent && ci == transparentIndex) continue;
+                    int dx = left + x, dy = top + y;
+                    if (dx < 0 || dy < 0 || dx >= sw || dy >= sh) continue;
+                    int pi = ci * 3;
+                    if (pi + 2 >= pal.Length) continue;
+                    int o = (dy * sw + dx) * 4;
+                    canvas[o] = pal[pi]; canvas[o + 1] = pal[pi + 1]; canvas[o + 2] = pal[pi + 2]; canvas[o + 3] = 255;
+                }
         }
     }
 }
