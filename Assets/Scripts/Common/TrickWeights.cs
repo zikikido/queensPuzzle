@@ -22,7 +22,8 @@ namespace QueensPuzzle
                 case SolveTechnique.Squeeze: return 40;
                 case SolveTechnique.SubsetLineToRegion: return 30 + 10 * k;
                 case SolveTechnique.SubsetRegionToLine: return 40 + 10 * k;
-                case SolveTechnique.RegionChoke: return 70;
+                case SolveTechnique.RegionChoke: return 80 + 10 * k; // k = candidate cells of the starved region — each must be checked
+                case SolveTechnique.ShortChain: return 80 + 10 * k;  // k = anchor cells × (1 + forced queens followed) — same family as choke
                 case SolveTechnique.Fish: return 50 + 10 * k;
                 default: return 0; // QueenScope / RegionSingle think for free
             }
@@ -36,9 +37,20 @@ namespace QueensPuzzle
         public static int StepCost(SolveTechnique t, int k, int open, bool streak = false)
         {
             if (t == SolveTechnique.QueenScope) return 0;
-            int think = Of(t, k);
-            if (streak) think /= 2;
+            int think = streak ? StreakThink(t, k) : Of(t, k);
             return Find * open / Anchor + think;
+        }
+
+        /// <summary>
+        /// Think cost when the same trick just fired (streak): half price — except the what-if
+        /// family (choke, short chain), which only drops to 3/4: the pattern helps a little,
+        /// but every what-if is a fresh simulation of a different cell.
+        /// </summary>
+        public static int StreakThink(SolveTechnique t, int k)
+        {
+            int think = Of(t, k);
+            bool whatIf = t == SolveTechnique.RegionChoke || t == SolveTechnique.ShortChain;
+            return whatIf ? think * 3 / 4 : think / 2;
         }
 
         /// <summary>True if this technique can form / continue a streak (has a think cost at all).</summary>

@@ -69,6 +69,7 @@ namespace QueensPuzzle
             readonly string _piece, _pieces;    // what notes call the piece — queen(s) by default; puppy/cat per game
             bool[] cand, queen, rowDone, colDone, regDone;
             int placed;
+            bool _noChains;             // set on what-if boards — chains may not nest inside chains
             int _k;                     // size of the last subset/fish that fired (for weighting)
             public readonly List<TraceNode> Nodes;
             readonly List<int> _elim = new List<int>();
@@ -95,6 +96,7 @@ namespace QueensPuzzle
                 b.cand = (bool[])cand.Clone(); b.queen = (bool[])queen.Clone();
                 b.rowDone = (bool[])rowDone.Clone(); b.colDone = (bool[])colDone.Clone(); b.regDone = (bool[])regDone.Clone();
                 b.placed = placed;
+                b._noChains = _noChains;
                 return b;
             }
 
@@ -224,21 +226,30 @@ namespace QueensPuzzle
                             if (TrySubsetRegionToLine(k, out note)) return Elimed(tech, k, note, out step);
                             break;
                         case SolveTechnique.RegionChoke:
-                            if (TryRegionChoke(out note)) return Elimed(tech, 0, note, out step);
+                            if (TryRegionChoke(out note)) return Elimed(tech, _k, note, out step);
                             break;
                         case SolveTechnique.Fish:
                             if (TryFish(k, out note)) return Elimed(tech, k, note, out step);
                             break;
                     }
                 }
+
+                // Last resort before a guess: short what-if chains — test each cell of a small
+                // unit (2-4 candidates left), follow only the easy moves (shadows, singles,
+                // simple confinements), at most 2 forced queens deep. Cheapest anchors first.
+                if (!_noChains)
+                    foreach (var (k, d) in ChainSteps)
+                        if (TryShortChain(k, d, out note)) return Elimed(SolveTechnique.ShortChain, _k, note, out step);
+
                 return false;
             }
 
             // (technique, k) pairs sorted by weight; ties break colour-cued before positional.
             List<(SolveTechnique tech, int k, int w, int tie)> KOrder()
             {
+                // choke's real cost depends on the region it starves — order it by its cheapest form (k=2)
                 var order = new List<(SolveTechnique tech, int k, int w, int tie)>
-                { (SolveTechnique.RegionChoke, 0, TrickWeights.Of(SolveTechnique.RegionChoke, 0), 0) };
+                { (SolveTechnique.RegionChoke, 0, TrickWeights.Of(SolveTechnique.RegionChoke, 2), 0) };
                 for (int k = 2; k < n; k++)
                 {
                     order.Add((SolveTechnique.SubsetLineToRegion, k, TrickWeights.Of(SolveTechnique.SubsetLineToRegion, k), 1));
@@ -494,7 +505,7 @@ namespace QueensPuzzle
                             if (x / n != idx / n && x % n != idx % n && !Touch(idx, x)) { all = false; break; }
                         if (all) Elim(idx);
                     }
-                    if (_elim.Count > 0) { note = $"a {_piece} on a marked cell leaves {_name(g)} no room → mark it X"; return true; }
+                    if (_elim.Count > 0) { _k = cells.Count; note = $"a {_piece} on a marked cell leaves {_name(g)} no room → mark it X"; return true; }
                 }
                 note = null; return false;
             }
@@ -647,6 +658,84 @@ namespace QueensPuzzle
                     }
                 } while (NextCombo(sel, k, lc));
                 return false;
+            }
+
+            // (anchor size, forced queens) pairs sorted by cost k·(1+d) — cheapest what-if first.
+            // d=0 is the instant starvation (line-choke) case; d≥1 follows forced queens.
+            // Anchors up to 6 cells — walking a whole small column/colour is still a player
+            // move — and chains up to 6 forced queens, but only where k·(1+d) stays affordable:
+            // a wide anchor with a deep chain prices itself out. Beyond all that = guessing.
+            const int MaxChainCost = 14;   // k·(1+d) cap ≈ think 220 — the last stop before a trial
+            static readonly (int k, int d)[] ChainSteps = BuildChainSteps();
+            static (int k, int d)[] BuildChainSteps()
+            {
+                var l = new List<(int k, int d)>();
+                for (int k = 2; k <= 6; k++)
+                    for (int d = 0; d <= 6; d++)
+                        if (k * (1 + d) <= MaxChainCost) l.Add((k, d));
+                l.Sort((a, b) => a.k * (1 + a.d) - b.k * (1 + b.d));
+                return l.ToArray();
+            }
+
+            // Test every cell of an anchor unit (region/row/column) holding exactly k candidates:
+            // a player naturally tries the last few cells of a small unit. Any tested cell whose
+            // what-if reaches a dead unit within d forced queens is proven X. One anchor per firing.
+            bool TryShortChain(int k, int d, out string note)
+            {
+                note = null;
+                for (int g = 0; g < n; g++)
+                {
+                    if (regDone[g]) continue;
+                    var cells = RegCells(g);
+                    if (cells.Count == k && ChainAnchor(cells, k, d, _name(g), ref note)) return true;
+                }
+                for (int r = 0; r < n; r++)
+                {
+                    if (rowDone[r]) continue;
+                    var cells = RowCells(r);
+                    if (cells.Count == k && ChainAnchor(cells, k, d, $"row {r + 1}", ref note)) return true;
+                }
+                for (int c = 0; c < n; c++)
+                {
+                    if (colDone[c]) continue;
+                    var cells = ColCells(c);
+                    if (cells.Count == k && ChainAnchor(cells, k, d, $"column {c + 1}", ref note)) return true;
+                }
+                return false;
+            }
+
+            bool ChainAnchor(List<int> cells, int k, int d, string name, ref string note)
+            {
+                _elim.Clear();
+                foreach (int idx in cells)
+                {
+                    var b = Clone();
+                    b.Place(idx / n, idx % n);
+                    if (ChainDies(b, d)) Elim(idx);
+                }
+                if (_elim.Count == 0) return false;
+                _k = k * (1 + d);   // the whole family prices as 80 + 10·k·(1+d)
+                note = d == 0
+                    ? $"a {_piece} on a marked cell of {name} leaves some unit no room → mark it X"
+                    : $"what-if on {name}: a {_piece} on a marked cell dies after {d} forced {(d == 1 ? "move" : "moves")} → mark it X";
+                return true;
+            }
+
+            // Follow only the easy moves on the what-if board: shadows, singles and the simple
+            // confinements (think weight ≤ 20) — the moves a player makes without stopping.
+            // Anything harder means it is not a short chain. True = a unit died in time.
+            static bool ChainDies(Board b, int maxQueens)
+            {
+                b._noChains = true;
+                int queens = 0;
+                while (true)
+                {
+                    if (b.HasEmptyUnit()) return true;
+                    if (b.Solved) return false;
+                    if (!b.NextStep(out var st)) return false;
+                    if (TrickWeights.Of(st.tech, st.k) > 20) return false;
+                    if (st.kind == NodeKind.Placement && ++queens > maxQueens) return false;
+                }
             }
 
             static bool NextCombo(int[] sel, int k, int total)
