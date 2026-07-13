@@ -678,13 +678,14 @@ namespace QueensPuzzle
             static int Pop(int x) { int c = 0; while (x != 0) { x &= x - 1; c++; } return c; }
             static string Lr(int g) => ((char)('A' + g)).ToString();   // default region name: a letter
 
-            // "5, 6, 7" from a bitmask or a list of line indices
+            // "5, 6, 7" from a bitmask or a list of line indices — 1-BASED for the player
+            // (internally lines are 0-based; every hint text shows row/column numbers from 1)
             static string Lines(int mask) { var l = new List<int>(); for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) l.Add(i); return Lines(l); }
             static string Lines(List<int> xs)
             {
                 xs.Sort();
                 var sb = new StringBuilder();
-                for (int i = 0; i < xs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append(xs[i]); }
+                for (int i = 0; i < xs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append(xs[i] + 1); }
                 return sb.ToString();
             }
 
