@@ -287,10 +287,12 @@ namespace qp {
         const string PieceNamePlural = "puppies";
 
         // How hint texts name a region for the PLAYER: the colour's name, tinted in that colour.
-        static string RegionRichName(int g) {
-            string name = SORegionsColors.NameAt(g);
+        // Painted levels can remap region → colour, so resolve through the level's mapping.
+        string RegionRichName(int g) {
+            int clr = _level != null ? _level.ColorOf(g) : g;
+            string name = SORegionsColors.NameAt(clr);
             if (string.IsNullOrEmpty(name)) name = ((char)('A' + g)).ToString();
-            return $"<color=#{UnityEngine.ColorUtility.ToHtmlStringRGB(SORegionsColors.ColorAt(g))}>{name}</color>";
+            return $"<color=#{UnityEngine.ColorUtility.ToHtmlStringRGB(SORegionsColors.ColorAt(clr))}>{name}</color>";
         }
 
         void PresentHint(Hint hint) {
@@ -357,7 +359,7 @@ namespace qp {
                     float x = (c - (n - 1) * 0.5f) * step;
                     float y = ((n - 1) * 0.5f - r) * step;
                     cell.transform.localPosition = new Vector3(x, y, 0f);
-                    cell.Init(level.RegionAt(r, c), c, r, level.IsSolutionQueen(r, c));
+                    cell.Init(level.ColorOf(level.RegionAt(r, c)), c, r, level.IsSolutionQueen(r, c));
                     _cells[r, c] = cell;
                 }
             }

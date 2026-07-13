@@ -28,8 +28,16 @@ namespace QueensPuzzle
         [Tooltip("Rows whose solution queen starts revealed on the board (early-level help). Empty = none. The column derives from solutionColumns, so a revealed queen can never contradict the solution.")]
         public int[] revealedRows;
 
+        [Tooltip("Optional palette (SORegionsColors) index per region id — painted levels keep their authored colours. Null/empty = region k uses colour k.")]
+        public int[] regionColors;
+
         /// <summary>Region id at the given cell.</summary>
         public int RegionAt(int row, int col) => regions[row * size + col];
+
+        /// <summary>Palette (SORegionsColors) index a region is shown with — authored levels can
+        /// pick their colours; everything else falls back to "region k = colour k".</summary>
+        public int ColorOf(int region) =>
+            regionColors != null && region >= 0 && region < regionColors.Length ? regionColors[region] : region;
 
         /// <summary>True if the queen in the solution sits at this cell.</summary>
         public bool IsSolutionQueen(int row, int col) => solutionColumns[row] == col;

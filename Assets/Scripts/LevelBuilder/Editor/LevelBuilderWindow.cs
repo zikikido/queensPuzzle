@@ -350,8 +350,40 @@ namespace QueensPuzzle.EditorTools
         void SeedPaintFromLevel()
         {
             _paintN = _level.size;
-            _paintRegions = (int[])_level.regions.Clone();
-            _paintColor = Mathf.Clamp(_paintColor, 0, _paintN - 1);
+            _paintRegions = new int[_level.regions.Length];
+            for (int i = 0; i < _paintRegions.Length; i++)
+                _paintRegions[i] = _level.ColorOf(_level.regions[i]);   // paint holds PALETTE indexes
+            _paintColor = Mathf.Clamp(_paintColor, -1, PaletteCount - 1);
+        }
+
+        // the game's full colour palette (paint brushes); board colours resolve through it
+        static int PaletteCount
+        {
+            get
+            {
+                var p = qp.SORegionsColors.Instance;
+                return p != null && p.Colors != null && p.Colors.Length > 0 ? p.Colors.Length : LevelGenerator.MaxSize;
+            }
+        }
+
+        // palette indexes → region ids 0..k-1 (ascending palette order); -1 (empty) passes through
+        static int[] RemapPaint(int[] paint, out int[] idToColor)
+        {
+            var distinct = new SortedSet<int>();
+            foreach (int v in paint) if (v >= 0) distinct.Add(v);
+            idToColor = new int[distinct.Count];
+            var map = new Dictionary<int, int>();
+            int next = 0;
+            foreach (int v in distinct) { idToColor[next] = v; map[v] = next; next++; }
+            var ids = new int[paint.Length];
+            for (int i = 0; i < paint.Length; i++) ids[i] = paint[i] < 0 ? -1 : map[paint[i]];
+            return ids;
+        }
+
+        static bool IsIdentity(int[] a)
+        {
+            for (int i = 0; i < a.Length; i++) if (a[i] != i) return false;
+            return true;
         }
 
         void NewPaintGrid(int n)
@@ -393,26 +425,33 @@ namespace QueensPuzzle.EditorTools
             EnsurePaintGrid();
             int n = _paintN;
 
-            // colour palette (all n colours) + the "empty" colour — click to pick the brush
-            var pr = GUILayoutUtility.GetRect(0, 28, GUILayout.ExpandWidth(true));
-            float sw = Mathf.Min(30f, pr.width / (n + 1));
-            for (int i = 0; i < n; i++)
+            // colour palette — the WHOLE game palette (a board uses any n of them) + the empty brush.
+            // Painted colours are saved onto the level (regionColors) and shown in game.
+            int palette = PaletteCount;
+            const float sw = 26f;
+            int perRow = Mathf.Max(1, Mathf.FloorToInt((EditorGUIUtility.currentViewWidth - 16f) / sw));
+            int slots = palette + 1;
+            int paletteRows = (slots + perRow - 1) / perRow;
+            var pr = GUILayoutUtility.GetRect(0, paletteRows * 28, GUILayout.ExpandWidth(true));
+            for (int i = 0; i < slots; i++)
             {
-                var cell = new Rect(pr.x + i * sw, pr.y, sw - 2, 26);
-                EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(i, n));
-                if (i == _paintColor) DrawOutline(cell, Color.black, 2);
+                var cell = new Rect(pr.x + (i % perRow) * sw, pr.y + (i / perRow) * 28, sw - 2, 26);
+                bool isEmpty = i == palette;
+                if (isEmpty)
+                {
+                    EditorGUI.DrawRect(cell, EmptyCellColor);
+                    GUI.Label(cell, "×", EditorStyles.centeredGreyMiniLabel);
+                }
+                else
+                    EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(i, n));
+                int brush = isEmpty ? -1 : i;
+                if (brush == _paintColor) DrawOutline(cell, Color.black, 2);
                 if (Event.current.type == EventType.MouseDown && cell.Contains(Event.current.mousePosition))
-                { _paintColor = i; Event.current.Use(); Repaint(); }
+                { _paintColor = brush; Event.current.Use(); Repaint(); }
             }
-            var emptyCell = new Rect(pr.x + n * sw + 4, pr.y, sw - 2, 26);
-            EditorGUI.DrawRect(emptyCell, EmptyCellColor);
-            GUI.Label(emptyCell, "×", EditorStyles.centeredGreyMiniLabel);
-            if (_paintColor < 0) DrawOutline(emptyCell, Color.black, 2);
-            if (Event.current.type == EventType.MouseDown && emptyCell.Contains(Event.current.mousePosition))
-            { _paintColor = -1; Event.current.Use(); Repaint(); }
 
-            EditorGUILayout.LabelField($"{n}x{n} — Build needs all {n} colours; or draw with SOME colours, " +
-                "leave the rest empty (×) and Fill completes them.", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField($"{n}x{n} — pick any {n} of the {palette} colours (they save with the level). " +
+                "Build needs a full board; Fill completes empty (×) cells.", EditorStyles.miniLabel);
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -435,17 +474,39 @@ namespace QueensPuzzle.EditorTools
 
         void FillFromPaint()
         {
+            var ids = RemapPaint(_paintRegions, out int[] heroColors);
+            if (heroColors.Length > _paintN)
+            {
+                _status = $"Build failed — {heroColors.Length} colours painted, but a {_paintN}x{_paintN} board has only {_paintN} regions.";
+                Repaint();
+                return;
+            }
+
             LevelData data;
             string error;
             try
             {
-                data = StencilFiller.Fill(_paintN, (int[])_paintRegions.Clone(), _fillAttempts, out error, p =>
+                data = StencilFiller.Fill(_paintN, ids, _fillAttempts, out error, p =>
                     EditorUtility.DisplayProgressBar("Fill",
                         $"completing the drawing — attempt {(int)(p * _fillAttempts) + 1}/{_fillAttempts}…", p));
             }
             finally { EditorUtility.ClearProgressBar(); }
 
             if (data == null) { _status = "Build failed — " + error; Repaint(); return; }
+
+            // painted regions keep their palette colours; filled-in regions take unused ones in order
+            var colors = new int[_paintN];
+            System.Array.Copy(heroColors, colors, heroColors.Length);
+            var taken = new HashSet<int>(heroColors);
+            int nextClr = 0;
+            for (int id = heroColors.Length; id < _paintN; id++)
+            {
+                while (taken.Contains(nextClr)) nextClr++;
+                colors[id] = nextClr;
+                taken.Add(nextClr);
+            }
+            data.regionColors = IsIdentity(colors) ? null : colors;
+
             SetLevel(data);
             _paintMode = false;   // show the solved board
             _status = $"Filled {data.size}x{data.size} — weight {data.weight}, unique ✓. Press Save to keep it.";
@@ -454,8 +515,15 @@ namespace QueensPuzzle.EditorTools
 
         void BuildFromPaint()
         {
-            var data = LevelImporter.BuildFromRegions(_paintN, (int[])_paintRegions.Clone(), out string error);
+            var ids = RemapPaint(_paintRegions, out int[] idToColor);
+            LevelData data = null;
+            string error;
+            if (System.Array.IndexOf(ids, -1) >= 0)
+                error = "the board has empty (×) cells — press Fill instead.";
+            else
+                data = LevelImporter.BuildFromRegions(_paintN, ids, out error);
             if (data == null) { _status = "Build failed — " + error; Repaint(); return; }
+            data.regionColors = IsIdentity(idToColor) ? null : idToColor;
             SetLevel(data);       // SetLevel clears _paintRegions so it re-seeds from the built level next time
             _paintMode = false;   // show the solved board
             _status = $"Built {data.size}x{data.size} — weight {data.weight}, unique ✓. Press Save to keep it.";
@@ -504,7 +572,7 @@ namespace QueensPuzzle.EditorTools
                 {
                     int i = r * n + c;
                     var cell = new Rect(board.x + c * cs + 1, board.y + r * cs + 1, cs - 2, cs - 2);
-                    EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(_level.RegionAt(r, c), n));
+                    EditorGUI.DrawRect(cell, BoardVisuals.RegionColor(_level.ColorOf(_level.RegionAt(r, c)), n));
                     GUI.Label(new Rect(cell.x + 2, cell.y + 1, cell.width, cell.height * 0.5f),
                         ((char)('A' + _level.RegionAt(r, c))).ToString(), letterStyle);
 
@@ -633,7 +701,7 @@ namespace QueensPuzzle.EditorTools
                 for (int g = 0; g < n; g++)
                 {
                     var rect = GUILayoutUtility.GetRect(30, 16, GUILayout.Width(30), GUILayout.Height(16));
-                    EditorGUI.DrawRect(new Rect(rect.x, rect.y + 1, 13, 13), BoardVisuals.RegionColor(g, n));
+                    EditorGUI.DrawRect(new Rect(rect.x, rect.y + 1, 13, 13), BoardVisuals.RegionColor(_level.ColorOf(g), n));
                     GUI.Label(new Rect(rect.x + 15, rect.y, 15, 16), ((char)('A' + g)).ToString(), EditorStyles.miniLabel);
                 }
             }
