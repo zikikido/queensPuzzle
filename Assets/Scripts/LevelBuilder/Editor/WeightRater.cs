@@ -12,10 +12,11 @@ namespace QueensPuzzle
     ///     region single      0    line single     10    one-colour line 10
     ///     trapped region    20    squeeze         40    subset L→R 30+10k
     ///     subset R→L   40+10k    region choke 80+10k   fish        50+10k
-    ///     short chain 80+10k′
+    ///     what-if starve 80+10k′
     ///   (choke's k = candidate cells of the starved region — every one must be checked;
-    ///    chain's k′ = anchor cells × (1 + forced queens followed), capped at 14 — deeper
-    ///    or wider what-ifs count as guessing)
+    ///    what-if starve: try each of a small unit's k′ cells — if the try's SHADOW ALONE
+    ///    starves another unit, the cell is X. One look deep; any what-if that needs
+    ///    forced moves after the try is a GUESS, not a trick)
     ///   Queen shadow is free — the eyes are already on the queen that was just placed.
     ///   Streak: the same trick again, right after (no other paid step between) → think cost
     ///   halved — the pattern is still loaded in the player's head. A guess breaks the streak;
@@ -34,7 +35,7 @@ namespace QueensPuzzle
     /// </summary>
     public static class WeightRater
     {
-        const int GuessSetup = 30;     // flat cost of deciding to try a what-if
+        const int GuessSetup = 200;   // flat cost of a guess — always above every trick (the worst move in the game)
         const int Nest = 3;            // multiplier per nesting level past the first
         const int MaxProbe = 3;        // beyond this a stuck branch pays a flat wall
         const int DeepWall = 300;
@@ -181,7 +182,7 @@ namespace QueensPuzzle
         {
             if (!solved) return "unsolved";
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
-            if (m.shortChainUses > 0) return "short chain";
+            if (m.shortChainUses > 0) return "what-if starve";
             if (m.fishUses > 0) return "positional fish";
             if (m.regionChokeUses > 0) return "region choke";
             if (m.subsetRegionToLineUses > 0) return "subset (region→line)";
