@@ -25,14 +25,14 @@ namespace Kido.SpriteTimeline.Editor
         private float fuzzyTolerance = 0.02f;
         private int[] duplicateOf;
 
-        [MenuItem("Tools/Kido/GIF to Flipbook Animation")]
+        [MenuItem("Tools/Puzzby/GIF to Flipbook Animation")]
         public static void Open()
         {
             var window = GetWindow<SpriteTimelineImporterWindow>("GIF Flipbook Importer");
             window.minSize = new Vector2(620f, 520f);
         }
 
-        [MenuItem("Assets/Kido/Import GIF as Flipbook Animation", false, 2000)]
+        [MenuItem("Assets/Puzzby/Import GIF as Flipbook Animation", false, 2000)]
         private static void OpenFromSelectedGif()
         {
             string assetPath = GetSelectedGifAssetPath();
@@ -45,7 +45,7 @@ namespace Kido.SpriteTimeline.Editor
             window.LoadGif(AssetPathToAbsolutePath(assetPath));
         }
 
-        [MenuItem("Assets/Kido/Import GIF as Flipbook Animation", true)]
+        [MenuItem("Assets/Puzzby/Import GIF as Flipbook Animation", true)]
         private static bool ValidateOpenFromSelectedGif() => !string.IsNullOrEmpty(GetSelectedGifAssetPath());
 
         private static string GetSelectedGifAssetPath()
