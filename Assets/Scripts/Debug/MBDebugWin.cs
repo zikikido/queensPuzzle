@@ -48,7 +48,7 @@ namespace qp {
             float w = Screen.width / _scale, h = Screen.height / _scale;
 
             GUILayout.BeginArea(new Rect(10, 10, w - 20, h - 20), GUI.skin.box);
-            GUILayout.Label($"DEBUG | level {AppData.LevelIdx + 1}/{SOLevelsData.Count} | attempts {AppData.LevelAttempts.Value} | bones lost {AppData.LastPlayData.bonesLost} | firebase {FirebaseState()}");
+            GUILayout.Label($"DEBUG | level {AppData.LevelIdx + 1}/{LevelLoader.LevelCount} | attempts {AppData.LevelAttempts.Value} | bones lost {AppData.LastPlayData.bonesLost} | firebase {FirebaseState()}");
             _scroll = GUILayout.BeginScrollView(_scroll);
 
             GUILayout.Label("Crashlytics");
@@ -66,8 +66,8 @@ namespace qp {
             if (Button("Level -1")) JumpLevel(-1);
             GUILayout.BeginHorizontal();
             _levelInput = GUILayout.TextField(_levelInput, GUILayout.Height(44), GUILayout.Width(120));
-            if (Button($"Set level (1-{SOLevelsData.Count})") && int.TryParse(_levelInput, out int lvl))
-                AppData.LevelIdx.Value = Mathf.Clamp(lvl - 1, 0, Mathf.Max(0, SOLevelsData.Count - 1));
+            if (Button($"Set level (1-{LevelLoader.LevelCount})") && int.TryParse(_levelInput, out int lvl))
+                AppData.LevelIdx.Value = Mathf.Clamp(lvl - 1, 0, Mathf.Max(0, LevelLoader.LevelCount - 1));
             GUILayout.EndHorizontal();
             if (Button("Clear saved board")) AppData.LastPlayData.Invalidate();
             if (Button("Restore bones")) { AppData.LastPlayData.bonesLost = 0; AppData.LastPlayData.Save(); }
@@ -98,7 +98,7 @@ namespace qp {
         // A jump only moves the pointer — the stale saved attempt is ignored anyway because
         // LastPlayData.forLevelIdx no longer matches.
         static void JumpLevel(int delta) =>
-            AppData.LevelIdx.Value = Mathf.Clamp(AppData.LevelIdx.Value + delta, 0, Mathf.Max(0, SOLevelsData.Count - 1));
+            AppData.LevelIdx.Value = Mathf.Clamp(AppData.LevelIdx.Value + delta, 0, Mathf.Max(0, LevelLoader.LevelCount - 1));
 
         static bool Button(string label) => GUILayout.Button(label, GUILayout.Height(44));
 

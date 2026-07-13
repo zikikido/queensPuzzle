@@ -6,7 +6,7 @@ namespace qp {
     /// <summary>
     /// App-wide sounds (buttons, popups) + the one Play() everybody calls:
     /// CommonSFX.Play(GPSFX.Instance.PlaceQueen). Loaded once from Resources/CommonSFX
-    /// and kept for the whole run, like SOLevelsData.
+    /// and kept for the whole run.
     /// </summary>
     [CreateAssetMenu(fileName = "CommonSFX", menuName = "QueensPuzzle/Common SFX")]
     public class CommonSFX : ScriptableObject {

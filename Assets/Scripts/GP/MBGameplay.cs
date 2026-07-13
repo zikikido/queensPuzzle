@@ -24,7 +24,7 @@ namespace qp {
         enum DragMode { None, PaintX, Erase }
 
         MBCell[,] _cells;            // [row, col]
-        LevelData _level;            // the level currently on the board (for hints)
+        LevelPack.Level _level;      // the level currently on the board (for hints)
         int _levelHash;              // _level.ContentHash() — stamps saves, gates restores
         RectTransform _board;
         int _n;
@@ -74,7 +74,7 @@ namespace qp {
         public bool Ready => _ready;
         public int N => _n;
         public int Remaining => _cells == null ? 0 : _n - CountQueens();   // puppies still to place
-        public LevelData Level => _level;
+        public LevelPack.Level Level => _level;
         public MBCell CellAt(int row, int col) =>
             _cells != null && row >= 0 && row < _n && col >= 0 && col < _n ? _cells[row, col] : null;
 
@@ -316,7 +316,7 @@ namespace qp {
 
         IEnumerator BuildBoard() {
 
-            LevelData level = LevelLoader.LoadLevel();
+            var level = LevelLoader.LoadLevel();
             if (level == null) {
                 Debug.LogError("[MBGameplay] No level to load.");
                 yield break;
@@ -533,7 +533,7 @@ namespace qp {
 
         // Early-level help: the level can ship with some solution queens already on the board.
         // Fresh starts only — a restored board already contains them (SaveBoard saves everything).
-        void RevealQueens(LevelData level) {
+        void RevealQueens(LevelPack.Level level) {
             if (level.revealedRows == null || level.revealedRows.Length == 0) return;
             foreach (int r in level.revealedRows) {
                 var cell = CellAt(r, level.solutionColumns[r]);
