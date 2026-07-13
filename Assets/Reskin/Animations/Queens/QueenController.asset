@@ -15,25 +15,25 @@ MonoBehaviour:
   defaultState: 
   states:
   - name: Idle
-    anim: {fileID: 11400000, guid: c1b31d7027647e646ad9c47529e89f59, type: 2}
+    anim: {fileID: 11400000, guid: 2778f7723f757654bbfac78cb54359ec, type: 2}
     loop: 1
     loopDelay: 3
     next: 
     nextDelay: 0
   - name: Happy
-    anim: {fileID: 11400000, guid: 1d8b721a11094ffcb060657ac81f429d, type: 2}
+    anim: {fileID: 11400000, guid: d58702a95b9a4ad41b2c0838c2bf31a2, type: 2}
     loop: 0
     loopDelay: 0
     next: Idle
     nextDelay: 2
   - name: Cry
-    anim: {fileID: 11400000, guid: fdb35e012a2140389942807d1d10ec58, type: 2}
+    anim: {fileID: 11400000, guid: 46fbf0c0587d0144aaf61214c542c319, type: 2}
     loop: 0
     loopDelay: 0
     next: 
     nextDelay: 3
   - name: Disappointed
-    anim: {fileID: 11400000, guid: 37efc35528b54695b8f7cfeae8007184, type: 2}
+    anim: {fileID: 11400000, guid: 9f8f4cb774c0e5140be02e5b19db553d, type: 2}
     loop: 0
     loopDelay: 0
     next: Idle
