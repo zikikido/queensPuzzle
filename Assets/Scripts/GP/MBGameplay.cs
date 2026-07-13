@@ -428,15 +428,20 @@ namespace qp {
             MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
 
             // restored/revealed queens hold their base pose through the bloom; a beat later the
-            // whole board starts idling together
+            // whole board starts idling together — unless a newer mood played meanwhile (a queen
+            // placed during the beat): the stale idle must never cut it mid-animation
+            int mood = _moodVersion;
             yield return new WaitForSecondsRealtime(3f);
-            PlayQueens(MBCell.QueenState.IDLE);
+            if (mood == _moodVersion) PlayQueens(MBCell.QueenState.IDLE);
         }
+
+        int _moodVersion;   // bumps on every PlayQueens — lets delayed mood changes detect they're stale
 
         // Play a queen animation on every OPENED queen (placed cells only) — all in the same
         // frame, so the flipbooks stay in sync.
         void PlayQueens(MBCell.QueenState state) {
             if (_cells == null) return;
+            _moodVersion++;
             foreach (var cell in _cells)
                 if (cell != null && cell.State == MBCell.ECellType.QUEEN) cell.PlayQueen(state);
         }
@@ -757,6 +762,7 @@ namespace qp {
             AppData.LastPlayData = LastPlayData.Unstash();   // the attempt Fail() invalidated is alive again
             AppData.LastPlayData.bonesLost = 0;
             AppData.LastPlayData.livesAdded += GameConfig.BonesAddedAfterRewarded;
+            PlayQueens(MBCell.QueenState.IDLE);   // Cry holds its last frame — un-freeze the mourning
             SaveBoard();
             Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _topBar?.SetWrongMoves(0);

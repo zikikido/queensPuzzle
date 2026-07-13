@@ -5,8 +5,11 @@ namespace qp {
 
         const float PopDur = 0.15f;     // mark "stamp" in
 
+        Coroutine _anim;
+
         public void PopIn() {
-            StartCoroutine(_popIn());
+            if (_anim != null) StopCoroutine(_anim);   // restart clean — never two pops fighting over the scale
+            _anim = StartCoroutine(_popIn());
         }
 
         IEnumerator _popIn() {
@@ -17,6 +20,7 @@ namespace qp {
                 yield return null;
             }
             t.localScale = Vector3.one;
+            _anim = null;
         }
 
         // overshoot ease (matches the board bloom): 0 -> past 1 -> settles to 1
