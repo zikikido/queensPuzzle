@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c82cf32d3a947f3973666c2de902093, type: 3}
+  m_Name: Happy
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: 4b1e25f917b724b46b211bf1e4874118, type: 3}
+  - {fileID: 21300000, guid: 4b0427372f3a0fa46b1326da32a5d3b9, type: 3}
+  - {fileID: 21300000, guid: e885956ae3d91f147a7e4bb05dd8d42b, type: 3}
+  - {fileID: 21300000, guid: b7fc592fd23485f4899fcc01f1d5aaf7, type: 3}
+  - {fileID: 21300000, guid: e45e3933987c65444968be054408a512, type: 3}
+  - {fileID: 21300000, guid: 5c5bdb5a81250d647b76d50bf53ccf82, type: 3}
+  - {fileID: 21300000, guid: b7fc592fd23485f4899fcc01f1d5aaf7, type: 3}
+  - {fileID: 21300000, guid: e885956ae3d91f147a7e4bb05dd8d42b, type: 3}
+  - {fileID: 21300000, guid: 4585373bdfe2a184385a7096ee44d384, type: 3}
+  - {fileID: 21300000, guid: 58ec5c1a9174bd84bad65876ad5e6e0f, type: 3}
+  - {fileID: 21300000, guid: cc28247c2ad904f4aaa6e5cb206f70b2, type: 3}
+  frameDurations:
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.1
+  - 0.5
+  - 0.03
+  - 0.5
+  - 0.1
+  - 0.033333335
+  - 0.5
+  _length: 0
