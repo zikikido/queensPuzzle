@@ -219,6 +219,7 @@ namespace QueensPuzzle.EditorTools
             lvl.solutionColumns = res.sol;
             lvl.seed = job.seed;
             lvl.weight = res.weight;
+            lvl.regionColors = null;   // generated board — default region→colour mapping
             lvl.revealedRows = null;   // new board, new solution — stale reveals would point at wrong rows
             lvl.name = job.number.ToString();
 

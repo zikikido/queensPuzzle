@@ -13,7 +13,7 @@ namespace QueensPuzzle
     public static class LevelGenerator
     {
         public const int MinSize = 4;
-        public const int MaxSize = 11;
+        public const int MaxSize = 12;
 
         /// <summary>
         /// Generates a unique puzzle of the given size. Returns null only if generation
