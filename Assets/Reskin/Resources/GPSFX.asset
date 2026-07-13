@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 832c3e3763dd51343b2ea8a5d481662d, type: 3}
   m_Name: GPSFX
   m_EditorClassIdentifier: 
-  PlaceQueen: {fileID: 8300000, guid: 8b92a5de9fd8982458faf569eceed0c8, type: 3}
-  XMark: {fileID: 8300000, guid: ea86d83d1cf8e4348a4a9feea8297b96, type: 3}
+  PlaceQueen: {fileID: 8300000, guid: d0f1bff9bbe92e24baa49b7c734d1f44, type: 3}
+  XMark: {fileID: 8300000, guid: 8321515e75c04d84d96e8f0e8337ce47, type: 3}
   Erase: {fileID: 8300000, guid: 8525f7b5cd7e47e47bddc2040fd44553, type: 3}
   Happy: {fileID: 8300000, guid: 9d1bab32cdba7964593eaa46c48675db, type: 3}
   Error: {fileID: 8300000, guid: 5993beb483b803049b5d506470cf89bc, type: 3}
   Win: {fileID: 8300000, guid: d9559ee4f7c09564dacc9a677b8aa71d, type: 3}
   Fail: {fileID: 8300000, guid: 7af311d5e78a9f042a38589b1ac984f8, type: 3}
-  Hint: {fileID: 8300000, guid: f1a741c4263c3894f83fac5dae5a6680, type: 3}
+  Hint: {fileID: 8300000, guid: 3d823af9db11f2641a44f923c7fc08f9, type: 3}
   BoardStart: {fileID: 8300000, guid: a7c89b26358e6d24b8603c0374174f7d, type: 3}
