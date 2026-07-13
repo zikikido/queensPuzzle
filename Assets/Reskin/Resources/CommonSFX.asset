@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10f375faa5d6ed748b2244f644cf445b, type: 3}
   m_Name: CommonSFX
   m_EditorClassIdentifier: 
-  Click: {fileID: 8300000, guid: 307d7b43f30b4a7dabb921ed239effbd, type: 3}
+  Click: {fileID: 8300000, guid: 58ff3e075b69ae749bf899b6249851a5, type: 3}
