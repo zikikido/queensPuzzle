@@ -5,16 +5,17 @@ using UnityEngine;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Copies a level set (Assets/Levels/{set}/{n}.asset) into a skin's Resources folder so the
-    /// runtime can load them by index (LevelLoader → Resources.Load("Levels/{n}")). Authoring stays
-    /// in Assets/Levels/{set}; the export is the runtime copy. Future skins = other Resources targets.
+    /// Packs a level set (Assets/Levels/{set}/{n}.asset) into ONE encrypted binary —
+    /// Resources/Levels/levels.bytes — that LevelLoader reads at runtime via LevelPack.
+    /// Authoring stays in Assets/Levels/{set}; the pack is the shipped copy. Old per-level
+    /// .asset copies in the target folder are deleted (the pack replaces them completely).
     /// </summary>
     public static class LevelResourcesExporter
     {
         const string DefaultSource = "Assets/Levels/Puzzby";
         const string ResourcesRoot = "Assets/Reskin/Resources";
         const string TargetFolder = ResourcesRoot + "/Levels";
-        const string DataPath = ResourcesRoot + "/SOLevelsData.asset";
+        const string PackPath = TargetFolder + "/levels.bytes";
 
         [MenuItem("QueensPuzzle/Export Levels to Resources")]
         public static void Export() => Export(DefaultSource, "Puzzby");
@@ -23,7 +24,7 @@ namespace QueensPuzzle
         {
             if (!EditorUtility.DisplayDialog(
                     "Export levels to Resources",
-                    $"Copy all {setName} levels ({sourceFolder}) into {TargetFolder} (replacing its content) and update SOLevelsData?",
+                    $"Pack all {setName} levels ({sourceFolder}) into {PackPath} (encrypted, replacing the old export)?",
                     "Export", "Cancel"))
                 return;
 
@@ -32,34 +33,51 @@ namespace QueensPuzzle
 
             EnsureFolder(TargetFolder);
 
-            // clear stale numbered levels first — a smaller set must not leave the old tail behind
-            foreach (var file in Directory.GetFiles(TargetFolder, "*.asset"))
-                if (int.TryParse(Path.GetFileNameWithoutExtension(file), out _))
-                    AssetDatabase.DeleteAsset(file.Replace('\\', '/'));
-
-            int count = 0;
+            // gather the numbered levels, in slot order; gaps break the 1-based index → abort
+            var numbers = new System.Collections.Generic.List<int>();
             foreach (var file in Directory.GetFiles(sourceFolder, "*.asset"))
-            {
-                string name = Path.GetFileNameWithoutExtension(file);
-                if (!int.TryParse(name, out _)) continue;   // only numbered levels (skip __Play etc.)
+                if (int.TryParse(Path.GetFileNameWithoutExtension(file), out int num)) numbers.Add(num);
+            numbers.Sort();
+            for (int i = 0; i < numbers.Count; i++)
+                if (numbers[i] != i + 1)
+                {
+                    Debug.LogError($"[Levels] Export aborted — {setName} has a gap: expected level {i + 1}, found {numbers[i]}.");
+                    return;
+                }
 
-                string dst = $"{TargetFolder}/{name}.asset";
-                if (AssetDatabase.CopyAsset($"{sourceFolder}/{name}.asset", dst)) count++;
+            var levels = new System.Collections.Generic.List<LevelPack.Level>(numbers.Count);
+            foreach (int num in numbers)
+            {
+                var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{sourceFolder}/{num}.asset");
+                if (lvl == null || lvl.regions == null || lvl.solutionColumns == null)
+                { Debug.LogError($"[Levels] Export aborted — level {num} is unreadable."); return; }
+                levels.Add(lvl.ToPacked());
             }
 
-            // write / update the level-set data asset (loaded at runtime for the levels count)
-            var data = AssetDatabase.LoadAssetAtPath<qp.SOLevelsData>(DataPath);
-            if (data == null)
+            byte[] plain = LevelPack.EncodePlain(levels);
+            byte[] file2 = LevelPack.Encrypt(plain);
+
+            // measurement only (nothing gzipped is shipped): how much compression WOULD save
+            int gzipped;
+            using (var ms = new MemoryStream())
             {
-                data = ScriptableObject.CreateInstance<qp.SOLevelsData>();
-                AssetDatabase.CreateAsset(data, DataPath);
+                using (var gz = new System.IO.Compression.GZipStream(ms, System.IO.Compression.CompressionLevel.Optimal, true))
+                    gz.Write(plain, 0, plain.Length);
+                gzipped = (int)ms.Length;
             }
-            data.LevelsCount = count;
-            EditorUtility.SetDirty(data);
+
+            // the pack replaces the per-level assets completely — delete every numbered copy
+            foreach (var old in Directory.GetFiles(TargetFolder, "*.asset"))
+                if (int.TryParse(Path.GetFileNameWithoutExtension(old), out _))
+                    AssetDatabase.DeleteAsset(old.Replace('\\', '/'));
+
+            File.WriteAllBytes(PackPath, file2);
+            AssetDatabase.ImportAsset(PackPath);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[Levels] Exported {count} levels → {TargetFolder} (SOLevelsData.LevelsCount = {count})");
+            Debug.Log($"[Levels] Packed {levels.Count} levels → {PackPath}: {file2.Length / 1024f:0.0} KB shipped "
+                    + $"(plain {plain.Length / 1024f:0.0} KB · gzip would be {gzipped / 1024f:0.0} KB)");
         }
 
         // Create a folder (and any missing parents) via the AssetDatabase.

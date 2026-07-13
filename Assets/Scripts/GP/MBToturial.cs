@@ -297,7 +297,7 @@ namespace qp {
                 }
         }
 
-        static bool Attacks(MBCell q, MBCell t, LevelData level) {
+        static bool Attacks(MBCell q, MBCell t, LevelPack.Level level) {
             if (q.Y == t.Y || q.X == t.X) return true;                                  // row / column
             if (Mathf.Abs(q.Y - t.Y) <= 1 && Mathf.Abs(q.X - t.X) <= 1) return true;    // touch
             return level != null && level.RegionAt(q.Y, q.X) == level.RegionAt(t.Y, t.X); // region
