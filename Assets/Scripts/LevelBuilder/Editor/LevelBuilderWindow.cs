@@ -13,18 +13,17 @@ namespace QueensPuzzle.EditorTools
     /// </summary>
     public partial class LevelBuilderWindow : EditorWindow
     {
-        const string LevelsFolder = "Assets/Levels";   // root; sets live in subfolders, __Play in the root
+        const string LevelsFolder = "Assets/Levels/Sets";   // root; sets live in subfolders, __Play in the root
         const int LoadPickerId = 9210;
 
         // Level sets = the subfolders of Assets/Levels (e.g. MSet = Meowdoku references,
         // Puzzby = our own game's levels). Discovered from disk — add a folder, get a set.
         string[] _sets = { "MSet", "Puzzby" };
-        int _loadSetIdx, _saveSetIdx, _exportSetIdx;
+        int _loadSetIdx, _saveSetIdx;
         // per-window selection, serialized so it survives domain reloads; empty = first open → prefs
-        [SerializeField] string _loadSetName, _saveSetName, _exportSetName;
+        [SerializeField] string _loadSetName, _saveSetName;
         string LoadSet => SetAt(_loadSetIdx);
         string SaveSet => SetAt(_saveSetIdx);
-        string ExportSet => SetAt(_exportSetIdx);
         string SetAt(int i) => _sets[Mathf.Clamp(i, 0, _sets.Length - 1)];
         static string SetFolder(string set) => $"{LevelsFolder}/{set}";
 
@@ -33,7 +32,6 @@ namespace QueensPuzzle.EditorTools
             // this window's own choice wins; the shared prefs only seed a freshly opened window
             string load = string.IsNullOrEmpty(_loadSetName) ? EditorPrefs.GetString(PrefLoadSet, "MSet") : _loadSetName;
             string save = string.IsNullOrEmpty(_saveSetName) ? EditorPrefs.GetString(PrefSaveSet, "Puzzby") : _saveSetName;
-            string export = string.IsNullOrEmpty(_exportSetName) ? EditorPrefs.GetString(PrefExportSet, "Puzzby") : _exportSetName;
 
             var found = new List<string>();
             if (System.IO.Directory.Exists(LevelsFolder))
@@ -44,10 +42,8 @@ namespace QueensPuzzle.EditorTools
             _sets = found.ToArray();
             _loadSetIdx = SetIndex(load);
             _saveSetIdx = SetIndex(save);
-            _exportSetIdx = SetIndex(export);
             _loadSetName = LoadSet;
             _saveSetName = SaveSet;
-            _exportSetName = ExportSet;
         }
 
         int SetIndex(string name)
@@ -108,7 +104,6 @@ namespace QueensPuzzle.EditorTools
 
         const string PrefLoadSet = "QP.LevelBuilder.LoadSet";
         const string PrefSaveSet = "QP.LevelBuilder.SaveSet";
-        const string PrefExportSet = "QP.LevelBuilder.ExportSet";
         const string PrefTolWeight = "QP.LevelBuilder.TolWeight";
         const string PrefTolPeak = "QP.LevelBuilder.TolPeak";
         const string PrefTolEvenness = "QP.LevelBuilder.TolEvenness";
@@ -253,8 +248,6 @@ namespace QueensPuzzle.EditorTools
             using (new EditorGUI.DisabledScope(_genTask != null))
                 if (GUILayout.Button(genLabel, GUILayout.Height(28))) Generate();
 
-            DrawRangeGenerate();   // parallel "from N to M" regenerate, keeping each slot's size
-
             EditorGUI.BeginChangeCheck();
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -299,18 +292,6 @@ namespace QueensPuzzle.EditorTools
                 if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
 
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                if (GUILayout.Button("Export levels → Resources", GUILayout.Height(22)))
-                    LevelResourcesExporter.Export(SetFolder(ExportSet), ExportSet);
-                EditorGUI.BeginChangeCheck();
-                _exportSetIdx = EditorGUILayout.Popup(_exportSetIdx, _sets, GUILayout.Width(90));
-                if (EditorGUI.EndChangeCheck())
-                {
-                    _exportSetName = ExportSet;
-                    EditorPrefs.SetString(PrefExportSet, ExportSet);
-                }
-            }
         }
 
         void HandleObjectPicker()
@@ -939,7 +920,7 @@ namespace QueensPuzzle.EditorTools
 
         // Single-level Generate runs on a worker task so the editor never blocks; the cancelable
         // progress bar is polled on the editor loop, and Cancel reaches the worker cooperatively —
-        // its progress callback throws on the next tick. Same pattern as the batch clone.
+        // its progress callback throws on the next tick.
         struct GenResult { public bool ok; public int[] region, sol; public int weight; }
         System.Threading.Tasks.Task<GenResult> _genTask;
         volatile float _genProgress;
@@ -1294,8 +1275,10 @@ namespace QueensPuzzle.EditorTools
 
         static void EnsureLevelsFolder()
         {
-            if (!AssetDatabase.IsValidFolder(LevelsFolder))
+            if (AssetDatabase.IsValidFolder(LevelsFolder)) return;
+            if (!AssetDatabase.IsValidFolder("Assets/Levels"))
                 AssetDatabase.CreateFolder("Assets", "Levels");
+            AssetDatabase.CreateFolder("Assets/Levels", "Sets");
         }
 
         static void EnsureSetFolder(string set)
