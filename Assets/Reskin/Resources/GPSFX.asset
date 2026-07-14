@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 832c3e3763dd51343b2ea8a5d481662d, type: 3}
   m_Name: GPSFX
   m_EditorClassIdentifier: 
-  PlaceQueen: {fileID: 8300000, guid: 963c7fac0b236854da7f92854fdf5aee, type: 3}
+  PlaceQueen: {fileID: 8300000, guid: d545d068fd491744d980fa607069a9c4, type: 3}
   XMark: {fileID: 8300000, guid: a472a266d4c9ae0479dc16629a798b69, type: 3}
   Erase: {fileID: 8300000, guid: 8525f7b5cd7e47e47bddc2040fd44553, type: 3}
   Happy: {fileID: 8300000, guid: 9d1bab32cdba7964593eaa46c48675db, type: 3}
