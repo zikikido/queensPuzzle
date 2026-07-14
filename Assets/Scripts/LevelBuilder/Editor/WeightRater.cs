@@ -35,7 +35,7 @@ namespace QueensPuzzle
     /// </summary>
     public static class WeightRater
     {
-        const int GuessSetup = 200;   // flat cost of a guess — always above every trick (the worst move in the game)
+        public const int GuessSetup = 200;   // flat cost of a guess — always above every trick (the worst move in the game)
         const int Nest = 3;            // multiplier per nesting level past the first
         const int MaxProbe = 3;        // beyond this a stuck branch pays a flat wall
         const int DeepWall = 300;
@@ -107,28 +107,31 @@ namespace QueensPuzzle
                 }
                 prevTech = SolveTechnique.None; // a guess is a context switch — streak broken
 
-                // stuck → guess: X the wrong cell that is cheapest to disprove
-                int row = s.MostConstrainedRow();
-                if (row < 0) { solved = false; break; }
-                int correctCol = solution[row];
+                // stuck → guess in the most constrained UNIT (row/column/region — fewest options
+                // wins): X the wrong cell that is cheapest to disprove
+                var unit = s.MostConstrainedUnitCells(out _);
+                if (unit == null) { solved = false; break; }
                 int best = -1, bestCost = int.MaxValue;
-                foreach (int col in s.RowCands(row))
+                foreach (int cell in unit)
                 {
-                    if (col == correctCol) continue; // never eliminate the real cell
+                    if (solution[cell / n] == cell % n) continue; // never eliminate the real cell
                     var b = s.Clone();
-                    b.Place(row, col);
+                    b.Place(cell / n, cell % n);
                     int cost = GuessCost(b, m, ctx, 1);
-                    if (cost < bestCost) { bestCost = cost; best = col; }
+                    if (cost < bestCost) { bestCost = cost; best = cell; }
                 }
                 if (best < 0) { solved = false; break; }
                 m.trials++;
+                // a human can't know which option is the true one — one inconclusive test of
+                // the true cell is paid once per stuck point (folded into the run's first X)
+                if (!prevWasGuess) bestCost += GuessSetup;
                 m.guessCost += bestCost;
                 if (bestCost > 0) m.costs.Add(bestCost);
                 weight += bestCost;
                 if (prevWasGuess && guessRuns.Count > 0) guessRuns[guessRuns.Count - 1] += bestCost;
                 else guessRuns.Add(bestCost);
                 prevWasGuess = true;
-                s.KnownX(row * n + best);
+                s.KnownX(best);
             }
 
             if (ctx.aborted) { solved = true; weight = Math.Max(weight, 500); }
@@ -257,13 +260,13 @@ namespace QueensPuzzle
 
             if (depth >= MaxProbe) return GuessSetup + chain + DeepWall;
 
-            int row = s.MostConstrainedRow();
-            if (row < 0) return GuessSetup + chain;
+            var unit = s.MostConstrainedUnitCells(out _);
+            if (unit == null) return GuessSetup + chain;
             int best = int.MaxValue;
-            foreach (int col in s.RowCands(row))
+            foreach (int cell in unit)
             {
                 var b = s.Clone();
-                b.Place(row, col);
+                b.Place(cell / s.N, cell % s.N);
                 int cost = GuessCost(b, m, ctx, depth + 1);
                 if (cost < best) best = cost;
             }

@@ -754,19 +754,85 @@ namespace QueensPuzzle.EditorTools
                 richText = false
             };
 
+            // stepping into a collapsed detour with Prev/Next must reveal it
+            if (_selectedStep >= 0 && _selectedStep < trace.Length)
+                for (int p = trace[_selectedStep].parent; p >= 0; p = trace[p].parent)
+                    if (IsDetour(trace[p])) _expandedBranches.Add(p);
+
             for (int i = 0; i < trace.Length; i++)
             {
                 var nd = trace[i];
-                string prefix = nd.outcome == Outcome.DeadEnd ? "✗ "
+                if (HiddenByCollapse(trace, i)) continue;
+
+                // indent: deeper for every refuted-branch ancestor; branch rows half-step extra.
+                // The winning branch and everything after it stay on the main line (indent 0).
+                int detours = 0;
+                for (int p = nd.parent; p >= 0; p = trace[p].parent) if (IsDetour(trace[p])) detours++;
+                float indent = detours * 28f + (nd.kind == NodeKind.TrialBranch ? 14f : 0f);
+
+                bool detourBranch = IsDetour(nd);
+                string prefix = nd.kind == NodeKind.TrialBranch ? (detourBranch ? "✗ " : "✓ ")
+                              : nd.outcome == Outcome.DeadEnd ? "✗ "
                               : nd.outcome == Outcome.Unresolved ? "… " : "";
                 string cost = nd.cost > 0 ? (nd.streak ? $"+{nd.cost} (streak ×½)  " : $"+{nd.cost}  ") : "";
                 string label = $"{i}.  [{TechniqueTag(nd.technique)}]  {cost}{prefix}{nd.note}";
+                if (detourBranch && !_expandedBranches.Contains(i))
+                    label += $"   ({SubtreeSize(trace, i)} hidden steps — dead end)";
+                else if (nd.kind == NodeKind.TrialBranch && !detourBranch)
+                    label += "   (the real path — continues below)";
 
-                Color prevBg = GUI.backgroundColor;
-                if (i == _selectedStep) GUI.backgroundColor = new Color(1f, 0.88f, 0.35f);
-                if (GUILayout.Button(label, rowStyle)) { _selectedStep = i; Repaint(); }
-                GUI.backgroundColor = prevBg;
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.Space(indent);
+                    if (detourBranch)
+                    {
+                        bool open = _expandedBranches.Contains(i);
+                        if (GUILayout.Button(open ? "▾" : "▸", GUILayout.Width(22)))
+                        {
+                            if (open) _expandedBranches.Remove(i); else _expandedBranches.Add(i);
+                            Repaint();
+                        }
+                    }
+
+                    Color prevBg = GUI.backgroundColor;
+                    if (i == _selectedStep) GUI.backgroundColor = new Color(1f, 0.88f, 0.35f);
+                    else if (nd.kind == NodeKind.TrialRoot) GUI.backgroundColor = new Color(1f, 0.8f, 0.55f);
+                    else if (detourBranch) GUI.backgroundColor = new Color(1f, 0.7f, 0.7f);
+                    else if (nd.kind == NodeKind.TrialBranch) GUI.backgroundColor = new Color(0.72f, 1f, 0.72f);
+                    else if (detours > 0) GUI.backgroundColor = new Color(1f, 0.9f, 0.9f);
+                    if (GUILayout.Button(label, rowStyle)) { _selectedStep = i; Repaint(); }
+                    GUI.backgroundColor = prevBg;
+                }
             }
+        }
+
+        // ---- trace tree helpers: refuted trial branches are collapsible detours ------
+
+        readonly HashSet<int> _expandedBranches = new HashSet<int>();
+
+        // a refuted trial branch = a what-if detour; the winning branch continues the main line
+        static bool IsDetour(TraceNode nd) => nd.kind == NodeKind.TrialBranch && nd.outcome != Outcome.Continues;
+
+        bool HiddenByCollapse(TraceNode[] trace, int idx)
+        {
+            for (int p = trace[idx].parent; p >= 0; p = trace[p].parent)
+                if (IsDetour(trace[p]) && !_expandedBranches.Contains(p)) return true;
+            return false;
+        }
+
+        // nodes whose ancestor chain passes through `root` (the branch's whole exploration)
+        static int SubtreeSize(TraceNode[] trace, int root)
+        {
+            int count = 0;
+            for (int j = root + 1; j < trace.Length; j++)
+            {
+                bool under = false;
+                for (int p = trace[j].parent; p >= 0; p = trace[p].parent)
+                    if (p == root) { under = true; break; }
+                if (under) count++;
+                else if (count > 0) break;   // DFS order — once we leave the subtree it never resumes
+            }
+            return count;
         }
 
         static string TechniqueTag(SolveTechnique t)
@@ -1142,25 +1208,51 @@ namespace QueensPuzzle.EditorTools
             _level = lvl;
             _report = lvl != null ? WeightRater.Rate(lvl.size, lvl.regions, lvl.solutionColumns) : (WeightRater.Report?)null;
             _trace = lvl != null ? SolveTracer.Build(lvl.size, lvl.regions, lvl.solutionColumns) : null;
-            AnnotateGuessCosts(_trace, _report);
+            AnnotateGuessCosts(_trace);
             _importText = lvl != null ? LevelToGridText(lvl) : "";
             _paintRegions = null;   // re-seed the paint grid from the new level on next use
             _selectedStep = -1;
         }
 
-        // The tracer prices deduction rows only — a guess's cost (setup + cheapest contradiction
-        // chain) is the rater's. Stamp each guided-path TrialRoot with its stuck-point cost so
-        // the steps list shows "+N" on [guess] rows too.
-        static void AnnotateGuessCosts(TraceNode[] trace, WeightRater.Report? report)
+        // Price every guess from the tree itself, so the numbers always match what the list
+        // shows: a refuted branch = setup + the work inside its dead end (+ setup per nested
+        // guess); the guess row (TrialRoot) = the sum of its refuted branches. Processed in
+        // reverse so branch prices exist before their root sums them.
+        static void AnnotateGuessCosts(TraceNode[] trace)
         {
-            if (trace == null || report == null || report.Value.guessCosts == null) return;
-            var costs = report.Value.guessCosts;
-            int next = 0;
-            for (int i = 0; i < trace.Length && next < costs.Length; i++)
+            if (trace == null) return;
+            for (int i = trace.Length - 1; i >= 0; i--)
             {
-                if (trace[i].kind != NodeKind.TrialRoot || !OnGuidedPath(trace, i)) continue;
-                trace[i].cost = costs[next++];
+                if (trace[i].kind == NodeKind.TrialBranch)
+                    trace[i].cost = trace[i].outcome != Outcome.Continues
+                        ? WeightRater.GuessSetup + DeadEndWork(trace, i)
+                        : WeightRater.GuessSetup;   // the true cell: its test proves nothing but is still paid
+                else if (trace[i].kind == NodeKind.TrialRoot)
+                {
+                    int sum = 0;
+                    for (int j = i + 1; j < trace.Length; j++)
+                        if (trace[j].parent == i && trace[j].kind == NodeKind.TrialBranch)
+                            sum += trace[j].cost;
+                    trace[i].cost = sum;
+                }
             }
+        }
+
+        // Deduction work inside a branch's exploration, plus a setup fee for each nested guess.
+        static int DeadEndWork(TraceNode[] trace, int root)
+        {
+            int sum = 0; bool entered = false;
+            for (int j = root + 1; j < trace.Length; j++)
+            {
+                bool under = false;
+                for (int p = trace[j].parent; p >= 0; p = trace[p].parent)
+                    if (p == root) { under = true; break; }
+                if (!under) { if (entered) break; continue; }   // DFS order — leaving means done
+                entered = true;
+                if (trace[j].kind == NodeKind.TrialRoot) sum += WeightRater.GuessSetup;
+                else if (trace[j].kind != NodeKind.TrialBranch) sum += trace[j].cost;
+            }
+            return sum;
         }
 
         // Guided path = no ancestor is a refuted trial branch (those are the what-if detours).
@@ -1191,7 +1283,7 @@ namespace QueensPuzzle.EditorTools
             _report = rep;
             _level.weight = rep.weight;
             _trace = SolveTracer.Build(_level.size, _level.regions, _level.solutionColumns);
-            AnnotateGuessCosts(_trace, _report);
+            AnnotateGuessCosts(_trace);
             if (AssetDatabase.Contains(_level)) { EditorUtility.SetDirty(_level); AssetDatabase.SaveAssets(); }
             _selectedStep = -1;
             _status = $"Rechecked: weight {rep.weight} ({rep.technique}) — {_trace.Length} solve steps.";

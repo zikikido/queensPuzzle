@@ -146,25 +146,25 @@ namespace QueensPuzzle
                             NoMarks, $"would need a deeper guess (depth limit {MaxDepth})");
                         return Outcome.Unresolved;
                     }
-                    int row = MostConstrainedRow();
-                    var cols = RowCands(row);
+                    var unit = MostConstrainedUnitCells(out string uname);
+                    if (unit == null) return Outcome.DeadEnd;
                     int trial = Add(cur, NodeKind.TrialRoot, SolveTechnique.Trial, Outcome.Continues,
-                        NoMarks, $"stuck — guess in row {row + 1} ({cols.Count} options)");
+                        NoMarks, $"stuck — guess in {uname} ({unit.Count} options)");
 
-                    int rightBranch = -1;
-                    foreach (int c in cols)
+                    int rightBranch = -1, rightCell = -1;
+                    foreach (int cell in unit)
                     {
                         int branch = Add(trial, NodeKind.TrialBranch, SolveTechnique.Trial, Outcome.Continues,
-                            QueenAt(row * n + c), $"try a queen in row {row + 1}");
-                        if (guided && c == sol[row]) { rightBranch = branch; continue; } // the real path continues here
+                            QueenAt(cell), $"try a queen in {uname}");
+                        if (guided && sol[cell / n] == cell % n) { rightBranch = branch; rightCell = cell; continue; } // the real path continues here
                         var clone = Clone();
-                        clone.Place(row, c);
+                        clone.Place(cell / n, cell % n);
                         Outcome outc = clone.Run(branch, depth + 1, guided: false);
                         SetOutcome(branch, outc == Outcome.Solved ? Outcome.Continues : outc);
                     }
 
-                    if (!guided) return Outcome.DeadEnd; // an impossible line — every option exhausted
-                    Place(row, sol[row]);
+                    if (!guided || rightCell < 0) return Outcome.DeadEnd; // an impossible line — every option exhausted
+                    Place(rightCell / n, rightCell % n);
                     cur = rightBranch;
                     prevTech = SolveTechnique.None;      // a guess is a context switch — streak broken
                 }
@@ -334,29 +334,31 @@ namespace QueensPuzzle
                 }
 
                 // the contradiction needs deeper look-ahead than one step — fall back to the queen
-                int row = MostConstrainedRow();
-                if (row < 0 || sol == null) return false;
+                var unit = MostConstrainedUnitCells(out _);
+                if (unit == null || sol == null) return false;
+                int rightCell = -1;
+                foreach (int u in unit) if (sol[u / n] == u % n) rightCell = u;
+                if (rightCell < 0) return false;
                 // PlaceQueen, not Guess: the cell comes from the solution so the move is safe,
                 // and the step must have a target state for Apply/completion to work.
-                hint = new Hint { kind = HintKind.PlaceQueen, cells = new[] { row * n + sol[row] },
+                hint = new Hint { kind = HintKind.PlaceQueen, cells = new[] { rightCell },
                     note = $"no certain move — best guess: a {_piece} here" };
                 return true;
             }
 
-            // No basic deduction — in the most-constrained row, find an option that can be ruled out:
+            // No basic deduction — in the most-constrained unit, find an option that can be ruled out:
             // assume a queen there; if it propagates to a contradiction it must be an X.
             bool TryTrialElim(out int cell, out int options)
             {
                 cell = -1; options = 0;
-                int row = MostConstrainedRow();
-                if (row < 0) return false;
-                var cols = RowCands(row);
-                options = cols.Count;
-                foreach (int col in cols)
+                var unit = MostConstrainedUnitCells(out _);
+                if (unit == null) return false;
+                options = unit.Count;
+                foreach (int c in unit)
                 {
                     var clone = Clone();
-                    clone.Place(row, col);
-                    if (clone.RunsToContradiction()) { cell = row * n + col; return true; }
+                    clone.Place(c / n, c % n);
+                    if (clone.RunsToContradiction()) { cell = c; return true; }
                 }
                 return false;
             }
@@ -767,6 +769,20 @@ namespace QueensPuzzle
             public List<int> RowCands(int r) { var l = new List<int>(); for (int c = 0; c < n; c++) if (C(r * n + c)) l.Add(c); return l; } // columns, not indices
             public int OpenCells() { int k = 0; for (int i = 0; i < cand.Length; i++) if (C(i)) k++; return k; }
             public int MostConstrainedRow() { int best = -1, bk = int.MaxValue; for (int r = 0; r < n; r++) { if (rowDone[r]) continue; int k = RowCount(r); if (k > 1 && k < bk) { bk = k; best = r; } } return best; }
+
+            // The unfinished unit — row, COLUMN or REGION — with the fewest candidates: the best
+            // place to guess (a 3-cell color beats a 4-option row). Null = nothing guessable.
+            public List<int> MostConstrainedUnitCells(out string unitName)
+            {
+                List<int> best = null; string bestName = null;
+                void Consider(List<int> cells, string nm)
+                { if (cells.Count > 1 && (best == null || cells.Count < best.Count)) { best = cells; bestName = nm; } }
+                for (int r = 0; r < n; r++) if (!rowDone[r]) Consider(RowCells(r), $"row {r + 1}");
+                for (int c = 0; c < n; c++) if (!colDone[c]) Consider(ColCells(c), $"column {c + 1}");
+                for (int g = 0; g < n; g++) if (!regDone[g]) Consider(RegCells(g), _name(g));
+                unitName = bestName;
+                return best;
+            }
             bool AllSameRow(List<int> cells, out int row) { row = cells[0] / n; foreach (int i in cells) if (i / n != row) return false; return true; }
             bool AllSameCol(List<int> cells, out int col) { col = cells[0] % n; foreach (int i in cells) if (i % n != col) return false; return true; }
             bool AllSameRegion(List<int> cells, out int g) { g = region[cells[0]]; foreach (int i in cells) if (region[i] != g) return false; return true; }
