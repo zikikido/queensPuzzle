@@ -12,6 +12,8 @@ namespace qp {
     public class CommonSFX : ScriptableObject {
 
         public AudioClip Click;
+        public AudioClip ButtonDown;
+        public AudioClip ButtonUp;
 
         const string ResourcePath = "CommonSFX";
         static CommonSFX _instance;

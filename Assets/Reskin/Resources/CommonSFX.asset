@@ -13,3 +13,5 @@ MonoBehaviour:
   m_Name: CommonSFX
   m_EditorClassIdentifier: 
   Click: {fileID: 8300000, guid: 58ff3e075b69ae749bf899b6249851a5, type: 3}
+  ButtonDown: {fileID: 8300000, guid: 3fb961a02e699294bb795345f9ff726b, type: 3}
+  ButtonUp: {fileID: 8300000, guid: f18507be9eb29bd43b217b9366cbb0ba, type: 3}
