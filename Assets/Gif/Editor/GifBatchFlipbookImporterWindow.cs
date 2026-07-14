@@ -182,10 +182,13 @@ namespace Kido.GifImporter.Editor
         {
             EnsurePreview(item);
             EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.BeginVertical(GUILayout.Width(180));
             Rect previewRect = GUILayoutUtility.GetRect(180, 180, GUILayout.Width(180), GUILayout.Height(180));
             GUI.Box(previewRect, GUIContent.none);
             if (item.PreviewTexture != null)
                 GUI.DrawTexture(previewRect, item.PreviewTexture, ScaleMode.ScaleToFit, true);
+            DrawFrameSpriteName(FrameHash(item, item.PreviewFrame));
+            EditorGUILayout.EndVertical();
             EditorGUILayout.BeginVertical();
             _autoPlay = EditorGUILayout.ToggleLeft("Auto play previews", _autoPlay);
             EditorGUI.BeginChangeCheck();
@@ -199,9 +202,7 @@ namespace Kido.GifImporter.Editor
             float effective = EffectiveDuration(f);
             string timing = f.RawDelayCentiseconds == 0 ? $"0 ms → fallback {effective * 1000f:0.#} ms" : $"{f.RawDelayCentiseconds * 10} ms";
             EditorGUILayout.LabelField("Timing", timing);
-            string hash = item.FrameHashes.Count > item.PreviewFrame
-                ? item.FrameHashes[item.PreviewFrame]
-                : HashFrame(f.Width, f.Height, f.Rgba);
+            string hash = FrameHash(item, item.PreviewFrame);
             if (!_analysisDirty && _analysisLibrary.TryGetValue(hash, out var c))
             {
                 EditorGUILayout.LabelField("Sprite reuse", c.Uses.Count > 1 ? $"Reused {c.Uses.Count} times" : "Unique in current batch");
@@ -210,6 +211,36 @@ namespace Kido.GifImporter.Editor
             }
             EditorGUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
+        }
+
+        static string FrameHash(GifItem item, int frame)
+        {
+            if (item.FrameHashes.Count > frame) return item.FrameHashes[frame];
+            var f = item.Data.Frames[frame];
+            return HashFrame(f.Width, f.Height, f.Rgba);
+        }
+
+        void DrawFrameSpriteName(string hash)
+        {
+            string spriteFile = hash.Substring(0, 20) + ".png";
+            string spritePath = CombineAsset(CombineAsset(_outputFolder, "Images"), spriteFile);
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(spritePath);
+            if (tex != null)
+            {
+                var content = new GUIContent(tex.name, spritePath + "\nClick to select in Project");
+                if (GUILayout.Button(content, EditorStyles.linkLabel, GUILayout.Width(180)))
+                {
+                    UnityEngine.Object target = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+                    if (target == null) target = tex;
+                    Selection.activeObject = target;
+                    EditorGUIUtility.PingObject(target);
+                }
+            }
+            else
+            {
+                var content = new GUIContent(spriteFile + " (not generated)", "Sprite asset does not exist yet — click Generate to create it.");
+                EditorGUILayout.LabelField(content, EditorStyles.miniLabel, GUILayout.Width(180));
+            }
         }
 
         void DrawTimeline(GifItem item)
