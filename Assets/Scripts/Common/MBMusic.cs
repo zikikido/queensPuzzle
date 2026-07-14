@@ -21,5 +21,9 @@ namespace qp {
             BG = GetComponent<MBBGMusicV2>();
             DontDestroyOnLoad(gameObject);
         }
+
+        private void Start() {
+            BG.Play(true, 2);
+        }
     }
 }
