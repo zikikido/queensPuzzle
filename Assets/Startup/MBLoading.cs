@@ -24,6 +24,9 @@ namespace qp {
 
             _bar.value = _bar.maxValue;
 
+            if (MBMusic.BG)
+                MBMusic.BG.Play(nextTrack: true, fadeDuration: 2f);
+
             if (AppData.LevelIdx == 0) {
                 Navigator.Go(Navigator.Gameplay);
             } else {

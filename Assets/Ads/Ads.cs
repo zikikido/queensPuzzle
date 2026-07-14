@@ -38,6 +38,14 @@ namespace qp {
         static Action _onInterstitialClosed;
         static bool _bannerCreated;
 
+        // Fullscreen ads play their own audio (iOS expects the game to go silent), so ALL game
+        // audio is paused during the show. The previous pause state is saved and restored —
+        // never blindly set to false, something else may have paused audio first.
+        static bool _audioPausedBefore;
+
+        static void PauseGameAudio() { _audioPausedBefore = AudioListener.pause; AudioListener.pause = true; }
+        static void RestoreGameAudio() { AudioListener.pause = _audioPausedBefore; }
+
         // Loaded-state tracked by us (OnAdLoaded sets, show/load-fail clears) so ready polls
         // never call into the SDK — MaxSdk.Is*Ready logs when nothing was loaded, and it's a
         // JNI hop that UI code tends to poll every frame.
@@ -102,10 +110,12 @@ namespace qp {
             _onRewardedDone = onDone;
             _rewardedEarned = false;
             _rewardedLoaded = false;   // consumed — the next OnAdLoaded flips it back
+            PauseGameAudio();
             MaxSdk.ShowRewardedAd(RewardedId);
         }
 
         static void FinishRewarded() {
+            RestoreGameAudio();
             var cb = _onRewardedDone; _onRewardedDone = null;
             bool earned = _rewardedEarned; _rewardedEarned = false;
             MaxSdk.LoadRewardedAd(RewardedId);   // preload the next one
@@ -143,10 +153,12 @@ namespace qp {
 
             _onInterstitialClosed = onClosed;
             _interstitialLoaded = false;   // consumed — the next OnAdLoaded flips it back
+            PauseGameAudio();
             MaxSdk.ShowInterstitial(InterstitialId);
         }
 
         static void FinishInterstitial(bool displayed) {
+            RestoreGameAudio();
             // cooldown only when an ad was actually SEEN — a failed show must not block the next try
             if (displayed) _lastInterClosedAt = Time.realtimeSinceStartup;
             var cb = _onInterstitialClosed; _onInterstitialClosed = null;
