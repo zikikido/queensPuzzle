@@ -160,6 +160,8 @@ namespace QueensPuzzle
                     LevelResourcesExporter.Export(OutputFolder, SetName);
             }
 
+            DrawColorsSection();
+
             graphFoldout = EditorGUILayout.Foldout(graphFoldout, "Graph", true);
             if (!graphFoldout) return;
 
@@ -294,6 +296,187 @@ namespace QueensPuzzle
                 RefreshSetStats();
             }
             Debug.Log($"[CampaignBuilder] filled {made} level(s), {open.Count} still open, {System.Threading.Interlocked.Read(ref genAttempts)} boards generated at tol ±{config.matchTol * 100:0}%");
+        }
+
+        // ---- colors: find & fix close colors on touching regions --------------------------
+
+        bool colorsFoldout = true;
+        float colorMinDist = 0.09f;   // OKLab distance below which two colors read as "the same"
+        System.Collections.Generic.List<(int lvl, int ca, int cb, float d)> colorFindings;
+        Vector2 colorScroll;
+
+        void DrawColorsSection()
+        {
+            colorsFoldout = EditorGUILayout.Foldout(colorsFoldout, "Colors", true);
+            if (!colorsFoldout) return;
+
+            colorMinDist = EditorGUILayout.Slider("Min color distance", colorMinDist, 0.03f, 0.20f);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Find close colors"))
+                {
+                    FindCloseColors();
+                    GUIUtility.ExitGUI();
+                }
+                using (new EditorGUI.DisabledScope(colorFindings == null || colorFindings.Count == 0))
+                    if (GUILayout.Button($"Fix ({(colorFindings != null ? CountDistinctLevels() : 0)} levels)"))
+                    {
+                        FixCloseColors();
+                        GUIUtility.ExitGUI();
+                    }
+            }
+
+            if (colorFindings == null) return;
+            var palette = qp.SORegionsColors.Instance.Colors;
+            EditorGUILayout.LabelField($"{colorFindings.Count} close pair(s) in {CountDistinctLevels()} level(s) of {SetName}",
+                colorFindings.Count > 0 ? EditorStyles.miniBoldLabel : EditorStyles.miniLabel);
+            if (colorFindings.Count == 0) return;
+            colorScroll = EditorGUILayout.BeginScrollView(colorScroll, GUILayout.MaxHeight(140));
+            int i = 0;
+            while (i < colorFindings.Count)   // one row per level, its pairs joined
+            {
+                int lvl = colorFindings[i].lvl;
+                var parts = new System.Collections.Generic.List<string>();
+                while (i < colorFindings.Count && colorFindings[i].lvl == lvl)
+                {
+                    var f = colorFindings[i++];
+                    if (parts.Count < 3) parts.Add($"{palette[f.ca].Name}~{palette[f.cb].Name} {f.d:0.00}");
+                    else if (parts.Count == 3) parts.Add("…");
+                }
+                EditorGUILayout.LabelField($"L{lvl}:  {string.Join(" · ", parts)}", EditorStyles.miniLabel);
+            }
+            EditorGUILayout.EndScrollView();
+        }
+
+        int CountDistinctLevels()
+        {
+            var seen = new System.Collections.Generic.HashSet<int>();
+            foreach (var f in colorFindings) seen.Add(f.lvl);
+            return seen.Count;
+        }
+
+        static Vector3 ToOklab(Color c)
+        {
+            float Lin(float v) => v <= 0.04045f ? v / 12.92f : Mathf.Pow((v + 0.055f) / 1.055f, 2.4f);
+            float r = Lin(c.r), g = Lin(c.g), b = Lin(c.b);
+            float l = Mathf.Pow(0.4122214708f * r + 0.5363325363f * g + 0.0514459929f * b, 1f / 3f);
+            float m = Mathf.Pow(0.2119034982f * r + 0.6806995451f * g + 0.1073969566f * b, 1f / 3f);
+            float s = Mathf.Pow(0.0883024619f * r + 0.2817188376f * g + 0.6299787005f * b, 1f / 3f);
+            return new Vector3(
+                0.2104542553f * l + 0.793617785f * m - 0.0040720468f * s,
+                1.9779984951f * l - 2.428592205f * m + 0.4505937099f * s,
+                0.0259040371f * l + 0.7827717662f * m - 0.808675766f * s);
+        }
+
+        static Vector3[] PaletteLab()
+        {
+            var colors = qp.SORegionsColors.Instance.Colors;
+            var lab = new Vector3[colors.Length];
+            for (int i = 0; i < colors.Length; i++) lab[i] = ToOklab(colors[i].Color);
+            return lab;
+        }
+
+        // region adjacency (orthogonal neighbours) as a bool matrix
+        static bool[,] Adjacency(LevelData lvl)
+        {
+            int n = lvl.size;
+            var adj = new bool[n, n];
+            for (int r = 0; r < n; r++)
+                for (int c = 0; c < n; c++)
+                {
+                    int a = lvl.regions[r * n + c];
+                    if (c + 1 < n) { int b = lvl.regions[r * n + c + 1]; if (a != b) { adj[a, b] = adj[b, a] = true; } }
+                    if (r + 1 < n) { int b = lvl.regions[(r + 1) * n + c]; if (a != b) { adj[a, b] = adj[b, a] = true; } }
+                }
+            return adj;
+        }
+
+        void FindCloseColors()
+        {
+            var lab = PaletteLab();
+            colorFindings = new System.Collections.Generic.List<(int, int, int, float)>();
+            if (!System.IO.Directory.Exists(OutputFolder)) return;
+            foreach (var file in System.IO.Directory.GetFiles(OutputFolder, "*.asset"))
+            {
+                if (!int.TryParse(System.IO.Path.GetFileNameWithoutExtension(file), out int l)) continue;
+                var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
+                if (lvl == null) continue;
+                var adj = Adjacency(lvl);
+                int n = lvl.size;
+                for (int a = 0; a < n; a++)
+                    for (int b = a + 1; b < n; b++)
+                    {
+                        if (!adj[a, b]) continue;
+                        int ca = lvl.ColorOf(a), cb = lvl.ColorOf(b);
+                        if (ca >= lab.Length || cb >= lab.Length) continue;
+                        float d = ca == cb ? 0f : Vector3.Distance(lab[ca], lab[cb]);
+                        if (d < colorMinDist) colorFindings.Add((l, ca, cb, d));
+                    }
+            }
+            colorFindings.Sort((x, y) => x.lvl.CompareTo(y.lvl));
+            Repaint();
+        }
+
+        // Re-colour every offending level: pick distinct palette colors per region so that no
+        // touching pair is closer than the threshold. Prefers each region's current color, so
+        // only the clashing regions change.
+        void FixCloseColors()
+        {
+            var lab = PaletteLab();
+            var levels = new System.Collections.Generic.SortedSet<int>();
+            foreach (var f in colorFindings) levels.Add(f.lvl);
+
+            int done = 0, failed = 0;
+            foreach (int l in levels)
+            {
+                var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
+                if (lvl == null) continue;
+                var adj = Adjacency(lvl);
+                int n = lvl.size;
+                var current = new int[n];
+                for (int i = 0; i < n; i++) current[i] = lvl.ColorOf(i);
+
+                var assign = new int[n];
+                for (int i = 0; i < n; i++) assign[i] = -1;
+                if (Solve(0, n, adj, lab, current, assign))
+                {
+                    bool identity = true;
+                    for (int i = 0; i < n; i++) if (assign[i] != i) { identity = false; break; }
+                    Undo.RecordObject(lvl, "Fix close colors");
+                    lvl.regionColors = identity ? null : assign;
+                    EditorUtility.SetDirty(lvl);
+                    done++;
+                }
+                else failed++;   // no assignment exists at this threshold — lower the slider a bit
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CampaignBuilder] colors fixed on {done} level(s), {failed} unsolvable at dE {colorMinDist:0.00}");
+            FindCloseColors();   // refresh the list — should be empty now
+        }
+
+        // Backtracking: distinct colors per region, adjacent regions at least colorMinDist apart.
+        // Candidate order tries the region's current color first (minimal visual change).
+        bool Solve(int region, int n, bool[,] adj, Vector3[] lab, int[] current, int[] assign)
+        {
+            if (region == n) return true;
+            var candidates = new System.Collections.Generic.List<int> { current[region] };
+            for (int c = 0; c < lab.Length; c++) if (c != current[region]) candidates.Add(c);
+
+            foreach (int c in candidates)
+            {
+                bool ok = true;
+                for (int other = 0; other < n && ok; other++)
+                {
+                    if (assign[other] < 0 || other == region) continue;
+                    if (assign[other] == c) ok = false;   // colors stay distinct on one board
+                    else if (adj[region, other] && Vector3.Distance(lab[c], lab[assign[other]]) < colorMinDist) ok = false;
+                }
+                if (!ok) continue;
+                assign[region] = c;
+                if (Solve(region + 1, n, adj, lab, current, assign)) return true;
+                assign[region] = -1;
+            }
+            return false;
         }
 
         // Existing levels in range whose weight sits outside their slot's tolerance window.
