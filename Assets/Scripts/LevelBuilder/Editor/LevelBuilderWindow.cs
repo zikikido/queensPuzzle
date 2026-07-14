@@ -60,6 +60,7 @@ namespace QueensPuzzle.EditorTools
         int _targetWeight;      // what Generate aims for; 0 = instant random board (no steering)
         int _targetPeak;        // optional fingerprint targets; 0 = don't care
         float _targetEvenness;
+        float _targetStart;
         int _targetSteps;
         int _levelNumber = 1;   // slot for numbered Load / Save ({set}/{n}.asset)
         int _loadCount;         // consecutive levels from 1 in the load set (cached)
@@ -112,10 +113,11 @@ namespace QueensPuzzle.EditorTools
         const string PrefTolPeak = "QP.LevelBuilder.TolPeak";
         const string PrefTolEvenness = "QP.LevelBuilder.TolEvenness";
         const string PrefTolSteps = "QP.LevelBuilder.TolSteps";
+        const string PrefTolStart = "QP.LevelBuilder.TolStart";
         const string PrefWarmStart = "QP.LevelBuilder.WarmStart";
 
         // fingerprint tolerances, in % — how far a generated level may deviate per parameter
-        int _tolWeight = 10, _tolPeak = 15, _tolEvenness = 10, _tolSteps = 20;
+        int _tolWeight = 10, _tolPeak = 15, _tolEvenness = 10, _tolSteps = 20, _tolStart = 15;
         bool _warmStart = true; // Generate mutates the loaded board (when sizes match) instead of a random start
 
         void OnEnable()
@@ -125,6 +127,7 @@ namespace QueensPuzzle.EditorTools
             _tolPeak = EditorPrefs.GetInt(PrefTolPeak, 15);
             _tolEvenness = EditorPrefs.GetInt(PrefTolEvenness, 10);
             _tolSteps = EditorPrefs.GetInt(PrefTolSteps, 20);
+            _tolStart = EditorPrefs.GetInt(PrefTolStart, 15);
             _warmStart = EditorPrefs.GetBool(PrefWarmStart, true);
             _queenTex = BoardVisuals.CreateQueenTexture(64);
             RefreshMaxLevel();
@@ -205,6 +208,8 @@ namespace QueensPuzzle.EditorTools
                 _targetEvenness = Mathf.Clamp(EditorGUILayout.FloatField(_targetEvenness, GUILayout.Width(36)), 0f, 1f);
                 GUILayout.Label("steps", EditorStyles.miniLabel, GUILayout.Width(36));
                 _targetSteps = Mathf.Max(0, EditorGUILayout.IntField(_targetSteps, GUILayout.Width(36)));
+                GUILayout.Label("start", EditorStyles.miniLabel, GUILayout.Width(32));
+                _targetStart = Mathf.Clamp(EditorGUILayout.FloatField(_targetStart, GUILayout.Width(36)), 0f, 1f);
                 using (new EditorGUI.DisabledScope(!_report.HasValue))
                     if (GUILayout.Button("⟵ level", EditorStyles.miniButton, GUILayout.Width(56)))
                         CopyFingerprintFromReport();
@@ -222,6 +227,8 @@ namespace QueensPuzzle.EditorTools
                 _tolEvenness = Mathf.Clamp(EditorGUILayout.IntField(_tolEvenness, GUILayout.Width(36)), 0, 100);
                 GUILayout.Label("steps", EditorStyles.miniLabel, GUILayout.Width(36));
                 _tolSteps = Mathf.Clamp(EditorGUILayout.IntField(_tolSteps, GUILayout.Width(36)), 0, 100);
+                GUILayout.Label("start", EditorStyles.miniLabel, GUILayout.Width(32));
+                _tolStart = Mathf.Clamp(EditorGUILayout.IntField(_tolStart, GUILayout.Width(36)), 0, 100);
             }
             if (EditorGUI.EndChangeCheck())
             {
@@ -229,8 +236,9 @@ namespace QueensPuzzle.EditorTools
                 EditorPrefs.SetInt(PrefTolPeak, _tolPeak);
                 EditorPrefs.SetInt(PrefTolEvenness, _tolEvenness);
                 EditorPrefs.SetInt(PrefTolSteps, _tolSteps);
+                EditorPrefs.SetInt(PrefTolStart, _tolStart);
             }
-            EditorGUILayout.LabelField(" ", "weight 0 = random · peak/even/steps 0 = ignore · auto-fills on Load", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(" ", "weight 0 = random · peak/even/steps/start 0 = ignore · auto-fills on Load", EditorStyles.miniLabel);
 
             EditorGUI.BeginChangeCheck();
             _warmStart = EditorGUILayout.ToggleLeft("Warm start — mutate the loaded board (same size) instead of a random start", _warmStart);
@@ -812,8 +820,10 @@ namespace QueensPuzzle.EditorTools
                 {
                     var rep = _report.Value;
                     string shape = rep.evenness >= 0.7f ? "smooth grind" : rep.evenness <= 0.4f ? "peaky — has a wall" : "mixed";
+                    string opening = rep.startShare > 0.4f ? "STARTS HARD" : rep.startShare < 0.2f ? "easy opening" : "ok opening";
                     EditorGUILayout.LabelField($"find (scanning) {rep.findCost}   +   think (tricks) {rep.thinkCost}   +   guesses {rep.guessCost}");
                     EditorGUILayout.LabelField($"peak {rep.peak}   ·   evenness {rep.evenness:0.00}   ·   paid steps {rep.paidSteps}  —  {shape}");
+                    EditorGUILayout.LabelField($"start {rep.startShare:P0} of the weight in the first third  —  {opening}");
                     EditorGUILayout.Space(4);
                     TechRow("Queen shadow (free)", rep.techUses[(int)SolveTechnique.QueenScope], 0, rep.weight);
                     TechRow("Region single", rep.regionSingles, TechCost(rep, SolveTechnique.RegionSingle), rep.weight);
@@ -844,6 +854,7 @@ namespace QueensPuzzle.EditorTools
             _targetPeak = r.peak;
             _targetEvenness = Mathf.Round(r.evenness * 100f) / 100f;
             _targetSteps = r.paidSteps;
+            _targetStart = Mathf.Round(r.startShare * 100f) / 100f;
         }
 
         LevelFingerprint TargetFingerprint() => new LevelFingerprint
@@ -852,10 +863,12 @@ namespace QueensPuzzle.EditorTools
             peak = _targetPeak,
             evenness = _targetEvenness,
             steps = _targetSteps,
+            startShare = _targetStart,
             tolWeightPct = _tolWeight,
             tolPeakPct = _tolPeak,
             tolEvennessPct = _tolEvenness,
             tolStepsPct = _tolSteps,
+            tolStartPct = _tolStart,
         };
 
         // Single-level Generate runs on a worker task so the editor never blocks; the cancelable
@@ -965,7 +978,8 @@ namespace QueensPuzzle.EditorTools
                 string got = $"weight {rep.weight}"
                     + (fp.peak > 0 ? $" · peak {rep.peak}" : "")
                     + (fp.evenness > 0 ? $" · even {rep.evenness:0.00}" : "")
-                    + (fp.steps > 0 ? $" · steps {rep.paidSteps}" : "");
+                    + (fp.steps > 0 ? $" · steps {rep.paidSteps}" : "")
+                    + (fp.startShare > 0 ? $" · start {rep.startShare:0.00}" : "");
                 _status = $"Aimed {fp.weight}/{(fp.peak > 0 ? fp.peak.ToString() : "-")}/{(fp.evenness > 0 ? fp.evenness.ToString("0.00") : "-")}/{(fp.steps > 0 ? fp.steps.ToString() : "-")} → {got} — {hit} ({(_genWarm ? "warm" : "cold")}, {_genSw.Elapsed.TotalSeconds:0.0}s).";
             }
             Repaint();

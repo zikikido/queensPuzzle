@@ -8,7 +8,7 @@ namespace QueensPuzzle.EditorTools
     /// <summary>
     /// Range generator: clone a run of numbered levels from the Load set into the Save set, in
     /// parallel. Each new level keeps its source's board size AND is steered to its source's own
-    /// fingerprint (weight / peak / even / steps) — so the Save set copies the Load set's difficulty,
+    /// fingerprint (weight / peak / even / steps / start) — so the Save set copies the Load set's difficulty,
     /// just on different boards. Tolerances + the Warm toggle apply to all. Every level must end on a
     /// unique board ("V"); slots that can't reach one in the attempt budget are offered for retry.
     /// </summary>
@@ -69,10 +69,12 @@ namespace QueensPuzzle.EditorTools
                         peak = rep.peak,
                         evenness = Mathf.Round(rep.evenness * 100f) / 100f,
                         steps = rep.paidSteps,
+                        startShare = Mathf.Round(rep.startShare * 100f) / 100f,
                         tolWeightPct = _tolWeight,
                         tolPeakPct = _tolPeak,
                         tolEvennessPct = _tolEvenness,
                         tolStepsPct = _tolSteps,
+                        tolStartPct = _tolStart,
                     },
                 });
             }

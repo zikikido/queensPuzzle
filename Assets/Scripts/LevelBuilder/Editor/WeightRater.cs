@@ -67,6 +67,7 @@ namespace QueensPuzzle
             public int guessCost;        // total cost of all guesses (setup + chains)
             public int peak;             // cost of the single most expensive step (the "wall")
             public float evenness;       // 0..1 — 1 = every step costs the same (grind), →0 = one step holds it all (peak)
+            public float startShare;     // 0..1 — share of the weight paid in the FIRST THIRD of the solve (high = starts hard)
             public int paidSteps;        // steps that cost anything (queen shadows and free endgame moves excluded)
             public int[] techCost;       // cost per SolveTechnique (find + think of its steps)
             public int[] techUses;       // uses per SolveTechnique
@@ -162,8 +163,19 @@ namespace QueensPuzzle
             rep.technique = TechniqueName(m, rep.solved);
             rep.paidSteps = m.costs.Count;
             foreach (int c in m.costs) rep.peak = Math.Max(rep.peak, c);
+            rep.startShare = StartShare(m.costs, weight);   // before Evenness — it sorts the list
             rep.evenness = Evenness(m.costs);
             return rep;
+        }
+
+        // Share of the weight paid in the first third of the solve's paid steps — high means the
+        // level opens with its hardest thinking (bad shape: players quit on a cold wall).
+        static float StartShare(System.Collections.Generic.List<int> costs, int total)
+        {
+            if (costs.Count == 0 || total <= 0) return 0f;
+            int third = (costs.Count + 2) / 3, sum = 0;
+            for (int i = 0; i < third; i++) sum += costs[i];
+            return (float)sum / total;
         }
 
         // 1 − Gini of the step costs: 1 = all steps cost the same, →0 = one step carries everything.

@@ -4,15 +4,16 @@ using System.Collections.Generic;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// What Generate aims for. weight is required; peak / evenness / steps are optional
-    /// (&lt;= 0 = don't care). Each tolerance is a % of its target value — a level counts
-    /// as on-target when every active term is within its tolerance.
+    /// What Generate aims for. weight is required; peak / evenness / steps / startShare are
+    /// optional (&lt;= 0 = don't care). Each tolerance is a % of its target value — a level
+    /// counts as on-target when every active term is within its tolerance.
     /// </summary>
     public struct LevelFingerprint
     {
         public int weight, peak, steps;   // steps = paid steps (queen shadows excluded)
         public float evenness;            // 0..1
-        public int tolWeightPct, tolPeakPct, tolEvennessPct, tolStepsPct;
+        public float startShare;          // 0..1 — share of the weight in the solve's first third (opening shape)
+        public int tolWeightPct, tolPeakPct, tolEvennessPct, tolStepsPct, tolStartPct;
     }
 
     /// <summary>
@@ -108,7 +109,8 @@ namespace QueensPuzzle
             => Gap(rep.weight, t.weight, t.tolWeightPct)
              + Gap(rep.peak, t.peak, t.tolPeakPct)
              + Gap(rep.evenness, t.evenness, t.tolEvennessPct)
-             + Gap(rep.paidSteps, t.steps, t.tolStepsPct);
+             + Gap(rep.paidSteps, t.steps, t.tolStepsPct)
+             + Gap(rep.startShare, t.startShare, t.tolStartPct);
 
         public static bool OnTarget(WeightRater.Report rep, LevelFingerprint t) => FingerprintGap(rep, t) <= 0;
 
