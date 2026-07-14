@@ -136,6 +136,7 @@ namespace qp {
         /// player does what the hint says (or taps Apply, which does it for them).
         /// </summary>
         public void ShowHint(Hint hint) {
+            ClearHintGhosts();
             _targets.Clear();
             var gp = MBGameplay.instance;
             if (gp == null || hint.cells == null || hint.cells.Length == 0) return;
@@ -147,6 +148,7 @@ namespace qp {
                 if (cell == null) continue;
                 lit.Add(cell);
                 if (target.HasValue) _targets[cell] = target.Value;
+                cell.SetHintGhost(target);   // ghost of the wanted mark (only QUEEN/X have one)
             }
 
             // the cells the reasoning is ABOUT get a hole too, tinted, so the player sees the
@@ -411,7 +413,13 @@ namespace qp {
             Spot(Collect(c => gp.Level.RegionAt(c.Y, c.X) == region));
         }
 
+        // only QUEEN/X targets show a ghost, and every such cell is in _targets
+        void ClearHintGhosts() {
+            foreach (var kv in _targets) kv.Key.SetHintGhost(null);
+        }
+
         public void Hide() {
+            ClearHintGhosts();
             _allowed.Clear();
             _targets.Clear();
             if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }

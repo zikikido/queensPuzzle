@@ -35,6 +35,8 @@ namespace qp {
         MBABSMarkAnim _xMark, _wrongQueenMark;
         SpriteRenderer _cellSprite;
         Coroutine _pulseAnim;
+        GameObject _hintQueen, _hintX;   // ghost previews of the mark a tutorial step wants here
+        ECellType? _hintGhost;           // the wanted mark; the ghost shows only while State differs
 
         public Vector2 GetSize() {
             return (transform as RectTransform).sizeDelta;
@@ -50,10 +52,30 @@ namespace qp {
             _queenMark = transform.RecursiveFindChild<MBQueenMark>("$Queen");
             _wrongQueenMark = transform.RecursiveFindChild<MBABSMarkAnim>("$WrongQueen");
 
+            var hq = transform.RecursiveFindChild("$HintQueen");
+            _hintQueen = hq != null ? hq.gameObject : null;
+            var hx = transform.RecursiveFindChild("$HintX");
+            _hintX = hx != null ? hx.gameObject : null;
+
             _xMark.InitOut();
             _queenMark.InitOut();
             _wrongQueenMark.InitOut();
             State = ECellType.EMPTY;
+            SetHintGhost(null);
+        }
+
+        /// <summary>Ghost preview of the mark the tutorial wants here: QUEEN shows $HintQueen,
+        /// X shows $HintX, anything else hides both. The ghost hides itself while the cell
+        /// already holds the wanted mark and returns if the player clears it.</summary>
+        public void SetHintGhost(ECellType? type) {
+            _hintGhost = type;
+            ApplyHintGhost();
+        }
+
+        void ApplyHintGhost() {
+            bool pending = _hintGhost.HasValue && State != _hintGhost.Value;
+            if (_hintQueen != null) _hintQueen.SetActive(pending && _hintGhost.Value == ECellType.QUEEN);
+            if (_hintX != null) _hintX.SetActive(pending && _hintGhost.Value == ECellType.X);
         }
 
         /// <summary>Play a queen animation — only when this cell actually shows a queen.</summary>
@@ -81,6 +103,7 @@ namespace qp {
             if (target != null) {
                 target.InitIn();
             }
+            ApplyHintGhost();
         }
 
         public void MarkCell(ECellType type) {
@@ -102,6 +125,7 @@ namespace qp {
             if (target != null) {
                 target.ActIn();
             }
+            ApplyHintGhost();
         }
 
         MBABSMarkAnim OverlayFor(ECellType type) {
