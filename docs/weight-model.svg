@@ -1,5 +1,5 @@
 <svg viewBox="0 0 940 1920" xmlns="http://www.w3.org/2000/svg" role="img" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
-<title>Queens weight model</title><desc>Eleven solving tricks with their weights, plus the find+think formula that sums every step into a level's weight.</desc>
+<title>Queens weight model</title><desc>Twelve solving tricks with their weights, plus the find+think formula that sums every step into a level's weight.</desc>
 <defs><g id="cr"><path d="M3 17L3 8L8 13L12 5L16 13L21 8L21 17Z"/></g></defs>
 <rect x="0" y="0" width="940" height="1920" fill="#FBFAF7"/>
 <rect x="0.5" y="0.5" width="939" height="1919" fill="none" stroke="#E7E5DF"/>
@@ -75,7 +75,7 @@
 <rect x="20" y="1180" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="54" cy="1210" r="11" fill="#EFEDE6"/><text x="54" y="1214" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">9</text>
 <text x="72" y="1215" font-size="14" font-weight="600" fill="#2b2b2b">What-if (trial)</text>
-<rect x="352" y="1198" width="96" height="22" rx="11" fill="#F1EFE8"/><text x="400" y="1213" font-size="11" fill="#5f5e5a" text-anchor="middle">30 + chain</text>
+<rect x="352" y="1198" width="96" height="22" rx="11" fill="#F1EFE8"/><text x="400" y="1213" font-size="11" fill="#5f5e5a" text-anchor="middle">200 + chain</text>
 <rect x="40" y="1230" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="40" y="1230" width="30" height="30" fill="#FAC775"/><rect x="130" y="1350" width="30" height="30" fill="#F09595"/><rect x="160" y="1350" width="30" height="30" fill="#F09595"/><path d="M40 1230V1380M70 1230V1380M100 1230V1380M130 1230V1380M160 1230V1380M190 1230V1380M40 1230H190M40 1260H190M40 1290H190M40 1320H190M40 1350H190M40 1380H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><path d="M79 1239L91 1251M91 1239L79 1251M109 1239L121 1251M121 1239L109 1251M49 1269L61 1281M61 1269L49 1281M49 1299L61 1311M61 1299L49 1311M79 1269L91 1281M91 1269L79 1281M139 1359L151 1371M151 1359L139 1371M169 1359L181 1371M181 1359L169 1371" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><rect x="40" y="1230" width="30" height="30" fill="none" stroke="#b07a00" stroke-width="2" stroke-dasharray="3 2"/><use href="#cr" x="43" y="1234" fill="#7a5600"/><rect x="40" y="1230" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
 <text x="205" y="1260">Assume a queen and follow it.</text>
 <text x="205" y="1278">If a region ends fully blocked</text>
@@ -93,23 +93,41 @@
 <rect x="20" y="1440" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
 <circle cx="54" cy="1470" r="11" fill="#EFEDE6"/><text x="54" y="1474" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">11</text>
 <text x="72" y="1475" font-size="14" font-weight="600" fill="#2b2b2b">Region choke</text>
-<rect x="370" y="1458" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="409" y="1473" font-size="11" fill="#5f5e5a" text-anchor="middle">70</text>
+<rect x="370" y="1458" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="409" y="1473" font-size="11" fill="#5f5e5a" text-anchor="middle">80+10k</text>
 <rect x="40" y="1490" width="150" height="150" rx="4" fill="#ECEAE3"/><rect x="40" y="1520" width="30" height="30" fill="#C0DD97"/><rect x="160" y="1520" width="30" height="30" fill="#C0DD97"/><rect x="100" y="1550" width="30" height="30" fill="#C0DD97"/><path d="M40 1490V1640M70 1490V1640M100 1490V1640M130 1490V1640M160 1490V1640M190 1490V1640M40 1490H190M40 1520H190M40 1550H190M40 1580H190M40 1610H190M40 1640H190" stroke="#cfcdc6" stroke-width="1.1" fill="none"/><circle cx="55" cy="1535" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="175" cy="1535" r="3.6" fill="#000" fill-opacity="0.32"/><circle cx="115" cy="1565" r="3.6" fill="#000" fill-opacity="0.32"/><path d="M109 1529L121 1541M121 1529L109 1541" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/><rect x="100" y="1520" width="30" height="30" fill="none" stroke="#b07a00" stroke-width="2" stroke-dasharray="3 2"/><rect x="40" y="1490" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
 <text x="205" y="1520">A queen on the dashed cell would</text>
 <text x="205" y="1538">attack ALL of green's cells (row +</text>
 <text x="205" y="1556">column + touch) -> green suffocates</text>
 <text x="205" y="1574">-> mark that cell X.</text>
 <text x="205" y="1598" fill="#8a8a86">Squeeze is the touch-only case.</text>
+<text x="205" y="1616" fill="#8a8a86">k = green's open cells (here 3 -> 110).</text>
+<rect x="480" y="1440" width="440" height="250" rx="12" fill="#fff" stroke="#E7E5DF"/>
+<circle cx="514" cy="1470" r="11" fill="#EFEDE6"/><text x="514" y="1474" font-size="12" font-weight="600" fill="#5f5e5a" text-anchor="middle">12</text>
+<text x="532" y="1475" font-size="14" font-weight="600" fill="#2b2b2b">What-if starve (one look)</text>
+<rect x="830" y="1458" width="78" height="22" rx="11" fill="#F1EFE8"/><text x="869" y="1473" font-size="11" fill="#5f5e5a" text-anchor="middle">80+10k'</text>
+<rect x="500" y="1490" width="150" height="150" rx="4" fill="#ECEAE3"/>
+<rect x="530" y="1520" width="30" height="30" fill="#F09595"/><rect x="560" y="1580" width="30" height="30" fill="#F09595"/>
+<path d="M500 1490V1640M530 1490V1640M560 1490V1640M590 1490V1640M620 1490V1640M650 1490V1640M500 1490H650M500 1520H650M500 1550H650M500 1580H650M500 1610H650M500 1640H650" stroke="#cfcdc6" stroke-width="1.1" fill="none"/>
+<path d="M539 1499L551 1511M551 1499L539 1511M599 1499L611 1511M611 1499L599 1511M569 1529L581 1541M581 1529L569 1541M569 1559L581 1571M581 1559L569 1571M539 1529L551 1541M551 1529L539 1541M569 1589L581 1601M581 1589L569 1601" stroke="#6b6b6b" stroke-width="2.3" stroke-linecap="round"/>
+<rect x="560" y="1490" width="30" height="30" fill="none" stroke="#b07a00" stroke-width="2" stroke-dasharray="3 2"/><use href="#cr" x="563" y="1494" fill="#7a5600"/>
+<rect x="500" y="1490" width="150" height="150" rx="4" fill="none" stroke="#b9b6ad"/>
+<text x="665" y="1520">Stuck? Try a cell of a small unit:</text>
+<text x="665" y="1538">its shadow ALONE (row + column +</text>
+<text x="665" y="1556">touch + colour) leaves red no room</text>
+<text x="665" y="1574">-> the tried cell is an X.</text>
+<text x="665" y="1598" fill="#8a8a86">k' = cells of the unit you try.</text>
+<text x="665" y="1616" fill="#8a8a86">Needs moves AFTER the try? A guess.</text>
 </g>
 <text x="20" y="1730" font-size="18" font-weight="600" fill="#2b2b2b">Weight &#8212; higher = harder</text>
 <rect x="20" y="1746" width="560" height="132" rx="10" fill="#F3F1EA"/>
 <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12.5" fill="#3c3c3a">
 <text x="36" y="1772">every step -> cost = 3 x open/25 + trick weight</text>
 <text x="36" y="1794">level weight = sum of all steps (queen shadow free)</text>
-<text x="52" y="1814">stuck -> guess: 30 + chain to contradiction</text>
+<text x="52" y="1814">stuck -> guess: 200 + chain to contradiction</text>
 <text x="52" y="1834">nested guess -> x3 per extra depth</text>
 </g>
-<text x="36" y="1858" font-size="12" fill="#6b6b6b">open = empty cells now (25 = neutral) &#183; streak: same trick again in a row -> think x&#189; &#183; pencil assumed</text>
+<text x="36" y="1858" font-size="12" fill="#6b6b6b">open = empty cells now (25 = neutral) &#183; pencil assumed</text>
+<text x="36" y="1896" font-size="12" fill="#6b6b6b">streak: the same trick again in a row -> think x&#189; &#183; chokes discount less (x&#190;) - each one is a fresh what-if</text>
 <rect x="600" y="1746" width="320" height="132" rx="10" fill="#fff" stroke="#E7E5DF"/>
 <text x="618" y="1770" font-size="12" font-weight="600" fill="#2b2b2b">weight</text><text x="690" y="1770" font-size="12" font-weight="600" fill="#2b2b2b">feels like</text>
 <line x1="618" y1="1779" x2="902" y2="1779" stroke="#E7E5DF"/>

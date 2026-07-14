@@ -36,6 +36,9 @@ namespace qp {
         Coroutine _handSweep;
 
         [SerializeField] float _boardMargin = 0.4f;   // gap to the board, in cell widths
+        [SerializeField] Color _causeDotGray = new Color(0.35f, 0.35f, 0.35f, 0.9f);   // dot on the hint's cause cells
+
+        readonly List<Transform> _causeDots = new List<Transform>();   // live dots, destroyed on Hide
 
         bool _handEnabled = true, _applyEnabled = true;   // per-step visibility switches (sticky until changed)
 
@@ -146,13 +149,23 @@ namespace qp {
                 if (target.HasValue) _targets[cell] = target.Value;
             }
 
-            // the queen(s) CAUSING the elimination (queen-scope: "a queen rules out its row/
-            // column/region/neighbours") get a hole too, so the player sees the why — they're
-            // lit but never targets. Other tricks have no attacking queen, so nothing is added.
+            // the cells the reasoning is ABOUT get a hole too, tinted, so the player sees the
+            // why: the trick's own cause cells (a confined region, a one-colour line, a subset…)
+            // plus — for eliminations — every placed queen attacking a target. Lit, tinted,
+            // never targets, never editable.
+            var cause = new List<MBCell>();
+            if (hint.causeCells != null)
+                foreach (int idx in hint.causeCells) {
+                    var cell = gp.CellAt(idx / gp.N, idx % gp.N);
+                    if (cell != null && !lit.Contains(cell) && !cause.Contains(cell)) cause.Add(cell);
+                }
             if (hint.kind == HintKind.Eliminate)
-                AddCauseQueens(lit, gp);
+                AddCauseQueens(lit, cause, gp);
 
-            Spot(lit);
+            var holes = new List<MBCell>(lit);
+            holes.AddRange(cause);
+            Spot(holes);
+            ShowCauseDots(cause);
             SetText(hint.note);
             ShowHand(hint, gp);
             if (_applyRt != null) _applyRt.gameObject.SetActive(_applyEnabled && _targets.Count > 0);
@@ -285,16 +298,71 @@ namespace qp {
             if (_text != null) _text.text = message ?? "";
         }
 
-        // every placed queen that attacks one of the lit cells
-        void AddCauseQueens(List<MBCell> lit, MBGameplay gp) {
-            int n = lit.Count; // only test against the original hint cells
+        // every placed queen that attacks one of the target cells — collected as a cause
+        void AddCauseQueens(List<MBCell> lit, List<MBCell> cause, MBGameplay gp) {
             for (int r = 0; r < gp.N; r++)
                 for (int c = 0; c < gp.N; c++) {
                     var q = gp.CellAt(r, c);
-                    if (q == null || q.State != MBCell.ECellType.QUEEN || lit.Contains(q)) continue;
-                    for (int i = 0; i < n; i++)
-                        if (Attacks(q, lit[i], gp.Level)) { lit.Add(q); break; }
+                    if (q == null || q.State != MBCell.ECellType.QUEEN || lit.Contains(q) || cause.Contains(q)) continue;
+                    foreach (var t in lit)
+                        if (Attacks(q, t, gp.Level)) { cause.Add(q); break; }
                 }
+        }
+
+        // A simple gray dot in the center of each cause cell — marks the cells the hint
+        // reasons about. Soft-edged disc generated in code (no asset), static (no animation).
+        // Cleared on Hide().
+        void ShowCauseDots(List<MBCell> cells) {
+            ClearCauseDots();
+            foreach (var cell in cells) {
+                // a cell with a puppy explains itself — the lit puppy is the marker, no dot on top
+                if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) continue;
+                var src = cell.transform.RecursiveFindChild<SpriteRenderer>("$CellSprite");
+                if (src == null) src = cell.GetComponentInChildren<SpriteRenderer>();
+                if (src == null) continue;
+
+                float w = src.bounds.size.x;
+                var go = new GameObject("$CauseDot");
+                go.transform.SetParent(cell.transform, false);
+                go.transform.position = src.bounds.center;
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = DotSprite();
+                sr.color = _causeDotGray;
+                sr.sortingLayerID = src.sortingLayerID;
+                sr.sortingOrder = src.sortingOrder + 40;
+
+                // dot ≈ 28% of the cell, whatever the board scale (the sprite is 1 world unit)
+                float parentScale = Mathf.Max(cell.transform.lossyScale.x, 0.0001f);
+                go.transform.localScale = Vector3.one * (w * 0.28f / parentScale);
+                _causeDots.Add(go.transform);
+            }
+        }
+
+        void ClearCauseDots() {
+            foreach (var t in _causeDots) if (t != null) Destroy(t.gameObject);
+            _causeDots.Clear();
+        }
+
+        // Soft anti-aliased disc, white (tinted by the renderer): solid core, smooth falloff edge.
+        static Sprite _dot;
+        static Sprite DotSprite() {
+            if (_dot != null) return _dot;
+            const int S = 64;
+            float c = (S - 1) * 0.5f, rIn = S * 0.36f, rOut = S * 0.48f;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[S * S];
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++) {
+                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c));
+                    float t = Mathf.Clamp01((d - rIn) / (rOut - rIn));
+                    float a = 1f - t * t * (3f - 2f * t);   // smoothstep falloff
+                    px[y * S + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            tex.SetPixels32(px);
+            tex.Apply();
+            _dot = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), S);   // 1 world unit
+            return _dot;
         }
 
         static bool Attacks(MBCell q, MBCell t, LevelPack.Level level) {
@@ -349,6 +417,7 @@ namespace qp {
             if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
             PlayFingerAnim(false);
             if (_hand != null) _hand.SetActive(false);
+            ClearCauseDots();
             MBDrapeHoles.Clear();
             gameObject.SetActive(false);   // back to sleep until the next Show*
         }

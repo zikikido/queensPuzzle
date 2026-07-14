@@ -360,6 +360,10 @@ namespace qp {
                     float y = ((n - 1) * 0.5f - r) * step;
                     cell.transform.localPosition = new Vector3(x, y, 0f);
                     cell.Init(level.ColorOf(level.RegionAt(r, c)), c, r, level.IsSolutionQueen(r, c));
+                    // born invisible: the layout frames before BloomReveal must not flash the
+                    // finished board (incl. restored marks) — the bloom animates in from this state
+                    cell.transform.localScale = Vector3.zero;
+                    cell.SetAlpha(0f);
                     _cells[r, c] = cell;
                 }
             }
@@ -428,15 +432,20 @@ namespace qp {
             MBFirstPlayToturial.TryBegin(this);   // first level ever → guided tutorial
 
             // restored/revealed queens hold their base pose through the bloom; a beat later the
-            // whole board starts idling together
+            // whole board starts idling together — unless a newer mood played meanwhile (a queen
+            // placed during the beat): the stale idle must never cut it mid-animation
+            int mood = _moodVersion;
             yield return new WaitForSecondsRealtime(3f);
-            PlayQueens(MBCell.QueenState.IDLE);
+            if (mood == _moodVersion) PlayQueens(MBCell.QueenState.IDLE);
         }
+
+        int _moodVersion;   // bumps on every PlayQueens — lets delayed mood changes detect they're stale
 
         // Play a queen animation on every OPENED queen (placed cells only) — all in the same
         // frame, so the flipbooks stay in sync.
         void PlayQueens(MBCell.QueenState state) {
             if (_cells == null) return;
+            _moodVersion++;
             foreach (var cell in _cells)
                 if (cell != null && cell.State == MBCell.ECellType.QUEEN) cell.PlayQueen(state);
         }
@@ -537,7 +546,7 @@ namespace qp {
             if (level.revealedRows == null || level.revealedRows.Length == 0) return;
             foreach (int r in level.revealedRows) {
                 var cell = CellAt(r, level.solutionColumns[r]);
-                if (cell != null && cell.State != MBCell.ECellType.QUEEN) cell.MarkCell(MBCell.ECellType.QUEEN);
+                if (cell != null && cell.State != MBCell.ECellType.QUEEN) cell.StartWithMark(MBCell.ECellType.QUEEN);
             }
             SaveBoard();
             _topBar.SetProgress(CountQueens());
@@ -555,7 +564,7 @@ namespace qp {
             int i = 0;
             foreach (var cell in _cells) {
                 var state = CharState(s[i++]);
-                if (state != MBCell.ECellType.EMPTY) cell.MarkCell(state);
+                if (state != MBCell.ECellType.EMPTY) cell.StartWithMark(state);   // instant — no move anims/PS
             }
             _topBar.SetProgress(CountQueens());
             MaybePrepareReview(CountQueens());   // resuming a board that's already 2-from-win
@@ -757,6 +766,7 @@ namespace qp {
             AppData.LastPlayData = LastPlayData.Unstash();   // the attempt Fail() invalidated is alive again
             AppData.LastPlayData.bonesLost = 0;
             AppData.LastPlayData.livesAdded += GameConfig.BonesAddedAfterRewarded;
+            PlayQueens(MBCell.QueenState.IDLE);   // Cry holds its last frame — un-freeze the mourning
             SaveBoard();
             Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
             _topBar?.SetWrongMoves(0);

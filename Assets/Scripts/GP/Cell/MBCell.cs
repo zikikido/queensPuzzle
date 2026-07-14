@@ -66,6 +66,23 @@ namespace qp {
         public float GetStateLength(QueenState state) =>
             _queenMark != null ? _queenMark.StateLength(state.ToString()) : 0f;
 
+        /// <summary>Board setup (restore / revealed queens, before the bloom): set the state and
+        /// show the mark INSTANTLY — no pop-in, no particles, no fades. Played moves use MarkCell.</summary>
+        public void StartWithMark(ECellType type) {
+
+            if (type == State) {
+                return;
+            }
+
+            State = type;
+
+            var target = OverlayFor(type);
+
+            if (target != null) {
+                target.InitIn();
+            }
+        }
+
         public void MarkCell(ECellType type) {
 
             if (type == State) {

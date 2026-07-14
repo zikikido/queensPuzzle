@@ -11,10 +11,16 @@ namespace QueensPuzzle
     ///   cells are still open); the weight is the thinking cost of the trick itself (tenths):
     ///     region single      0    line single     10    one-colour line 10
     ///     trapped region    20    squeeze         40    subset L→R 30+10k
-    ///     subset R→L   40+10k    region choke    70    fish        50+10k
+    ///     subset R→L   40+10k    region choke 80+10k   fish        50+10k
+    ///     what-if starve 80+10k′
+    ///   (choke's k = candidate cells of the starved region — every one must be checked;
+    ///    what-if starve: try each of a small unit's k′ cells — if the try's SHADOW ALONE
+    ///    starves another unit, the cell is X. One look deep; any what-if that needs
+    ///    forced moves after the try is a GUESS, not a trick)
     ///   Queen shadow is free — the eyes are already on the queen that was just placed.
     ///   Streak: the same trick again, right after (no other paid step between) → think cost
-    ///   halved — the pattern is still loaded in the player's head. A guess breaks the streak.
+    ///   halved — the pattern is still loaded in the player's head. A guess breaks the streak;
+    ///   chokes streak weakly (3/4, not 1/2 — each one is still a fresh what-if).
     ///
     /// A stuck board costs a guess: GuessSetup + the chain of forced moves to the cheapest
     /// contradiction (pencil profile — the chain is board work, not head work). Nesting
@@ -29,7 +35,7 @@ namespace QueensPuzzle
     /// </summary>
     public static class WeightRater
     {
-        const int GuessSetup = 30;     // flat cost of deciding to try a what-if
+        const int GuessSetup = 200;   // flat cost of a guess — always above every trick (the worst move in the game)
         const int Nest = 3;            // multiplier per nesting level past the first
         const int MaxProbe = 3;        // beyond this a stuck branch pays a flat wall
         const int DeepWall = 300;
@@ -53,6 +59,7 @@ namespace QueensPuzzle
             public int subsetLineToRegionUses;
             public int subsetRegionToLineUses;
             public int fishUses;
+            public int shortChainUses;
             public int trials;
             public int maxTrialDepth;
             public int findCost;         // total scanning cost (the 3·open/25 parts)
@@ -142,6 +149,7 @@ namespace QueensPuzzle
                 subsetLineToRegionUses = m.subsetLineToRegionUses,
                 subsetRegionToLineUses = m.subsetRegionToLineUses,
                 fishUses = m.fishUses,
+                shortChainUses = m.shortChainUses,
                 trials = m.trials,
                 maxTrialDepth = m.maxTrialDepth,
                 findCost = m.findCost,
@@ -174,6 +182,7 @@ namespace QueensPuzzle
         {
             if (!solved) return "unsolved";
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
+            if (m.shortChainUses > 0) return "what-if starve";
             if (m.fishUses > 0) return "positional fish";
             if (m.regionChokeUses > 0) return "region choke";
             if (m.subsetRegionToLineUses > 0) return "subset (region→line)";
@@ -202,10 +211,10 @@ namespace QueensPuzzle
                 case SolveTechnique.SubsetLineToRegion: m.subsetLineToRegionUses++; m.eliminations += step.cells.Length; break;
                 case SolveTechnique.SubsetRegionToLine: m.subsetRegionToLineUses++; m.eliminations += step.cells.Length; break;
                 case SolveTechnique.Fish:               m.fishUses++;               m.eliminations += step.cells.Length; break;
+                case SolveTechnique.ShortChain:         m.shortChainUses++;         m.eliminations += step.cells.Length; break;
             }
             int find = TrickWeights.Find * open / TrickWeights.Anchor;
-            int think = TrickWeights.Of(step.tech, step.k);
-            if (streak) think /= 2;
+            int think = streak ? TrickWeights.StreakThink(step.tech, step.k) : TrickWeights.Of(step.tech, step.k);
             m.findCost += find;
             m.thinkCost += think;
             m.techCost[(int)step.tech] += find + think;
@@ -256,7 +265,7 @@ namespace QueensPuzzle
             public int cycles, placements, regionSingles, lineSingles, eliminations,
                 lineToRegionUses, regionToLineUses, squeezeUses, regionChokeUses,
                 subsetLineToRegionUses, subsetRegionToLineUses,
-                fishUses, trials, maxTrialDepth,
+                fishUses, shortChainUses, trials, maxTrialDepth,
                 findCost, thinkCost, guessCost;
             public int[] techCost = new int[16];
             public int[] techUses = new int[16];

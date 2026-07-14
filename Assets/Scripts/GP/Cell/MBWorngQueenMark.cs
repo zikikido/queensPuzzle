@@ -57,10 +57,24 @@ namespace qp {
             _cellWorng.color = c;
         }
 
+        // restore path: the X is simply there — no bone break, no red flash
+        public override void InitIn() {
+            _cellWorng = transform.RecursiveFindChild<SpriteRenderer>("$CellWorng");
+            _redX = transform.RecursiveFindChild("$RedX").gameObject;
+
+            base.InitIn();
+            StopAllCoroutines();
+            _setCellWorngAlpha(0f);
+            _redX.SetActive(true);
+        }
+
         public override void ActOut() {
 
-            // if never awake (hidden before the first show)
-            if (_cellWorng == null) Awake();
+            // if never shown yet, the children aren't cached
+            if (_cellWorng == null) {
+                _cellWorng = transform.RecursiveFindChild<SpriteRenderer>("$CellWorng");
+                _redX = transform.RecursiveFindChild("$RedX").gameObject;
+            }
 
             StopAllCoroutines();
             _setCellWorngAlpha(0f);

@@ -13,7 +13,8 @@ namespace QueensPuzzle
     public struct Hint
     {
         public HintKind kind;
-        public int[] cells;
+        public int[] cells;       // the cells to mark/unmark — the step's targets
+        public int[] causeCells;  // the cells the reasoning is ABOUT (shown tinted, never editable); may be null
         public string note;
     }
 }

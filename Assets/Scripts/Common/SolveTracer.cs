@@ -72,6 +72,7 @@ namespace QueensPuzzle
             int _k;                     // size of the last subset/fish that fired (for weighting)
             public readonly List<TraceNode> Nodes;
             readonly List<int> _elim = new List<int>();
+            readonly List<int> _cause = new List<int>();   // the cells the firing rule reasons ABOUT (for hints)
 
             public int N => n;
             public bool Solved => placed == n;
@@ -171,7 +172,7 @@ namespace QueensPuzzle
 
             // ---- one shared deduction step: the trace, the weight and the hint all go through here ----
 
-            public struct DeductionStep { public NodeKind kind; public SolveTechnique tech; public int k; public int[] cells; public string note; }
+            public struct DeductionStep { public NodeKind kind; public SolveTechnique tech; public int k; public int[] cells; public int[] cause; public string note; }
 
             public void SeedQueen(int idx) { Place(idx / n, idx % n); }
             public void KnownX(int idx) { if (!queen[idx]) cand[idx] = false; }
@@ -224,21 +225,30 @@ namespace QueensPuzzle
                             if (TrySubsetRegionToLine(k, out note)) return Elimed(tech, k, note, out step);
                             break;
                         case SolveTechnique.RegionChoke:
-                            if (TryRegionChoke(out note)) return Elimed(tech, 0, note, out step);
+                            if (TryRegionChoke(out note)) return Elimed(tech, _k, note, out step);
                             break;
                         case SolveTechnique.Fish:
                             if (TryFish(k, out note)) return Elimed(tech, k, note, out step);
                             break;
                     }
                 }
+
+                // Last resort before a guess: the starve check — try each cell of a small unit
+                // (2-6 candidates left); if the imaginary queen's SHADOW ALONE leaves some other
+                // unit no room, that cell is an X. One look deep, like the region choke.
+                // Anything that would need forced moves after the try is a GUESS, not a trick.
+                for (int k = 2; k <= 6; k++)
+                    if (TryShortChain(k, out note)) return Elimed(SolveTechnique.ShortChain, _k, note, out step);
+
                 return false;
             }
 
             // (technique, k) pairs sorted by weight; ties break colour-cued before positional.
             List<(SolveTechnique tech, int k, int w, int tie)> KOrder()
             {
+                // choke's real cost depends on the region it starves — order it by its cheapest form (k=2)
                 var order = new List<(SolveTechnique tech, int k, int w, int tie)>
-                { (SolveTechnique.RegionChoke, 0, TrickWeights.Of(SolveTechnique.RegionChoke, 0), 0) };
+                { (SolveTechnique.RegionChoke, 0, TrickWeights.Of(SolveTechnique.RegionChoke, 2), 0) };
                 for (int k = 2; k < n; k++)
                 {
                     order.Add((SolveTechnique.SubsetLineToRegion, k, TrickWeights.Of(SolveTechnique.SubsetLineToRegion, k), 1));
@@ -250,7 +260,7 @@ namespace QueensPuzzle
             }
 
             bool Elimed(SolveTechnique tech, int k, string note, out DeductionStep step)
-            { step = new DeductionStep { kind = NodeKind.Elimination, tech = tech, k = k, cells = _elim.ToArray(), note = note }; return true; }
+            { step = new DeductionStep { kind = NodeKind.Elimination, tech = tech, k = k, cells = _elim.ToArray(), cause = _cause.ToArray(), note = note }; return true; }
 
             // A placed queen's eliminations, split into three separate hints: its row/column,
             // then its region, then the 8 cells it touches.
@@ -306,6 +316,7 @@ namespace QueensPuzzle
                     hint = new Hint {
                         kind = step.kind == NodeKind.Placement ? HintKind.PlaceQueen : HintKind.Eliminate,
                         cells = step.cells,   // one deduction step (may touch several cells)
+                        causeCells = step.cause,
                         note = step.note
                     };
                     return true;
@@ -415,13 +426,13 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int c = 0; c < n; c++) { int i = rr * n + c; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in row {rr + 1} → clear other colors from row {rr + 1}"; return true; }
+                        if (_elim.Count > 0) { Cause(cells); note = $"{_name(g)} fits only in row {rr + 1} → clear other colors from row {rr + 1}"; return true; }
                     }
                     if (AllSameCol(cells, out int cc))
                     {
                         _elim.Clear();
                         for (int r = 0; r < n; r++) { int i = r * n + cc; if (region[i] != g) Elim(i); }
-                        if (_elim.Count > 0) { note = $"{_name(g)} fits only in column {cc + 1} → clear other colors from column {cc + 1}"; return true; }
+                        if (_elim.Count > 0) { Cause(cells); note = $"{_name(g)} fits only in column {cc + 1} → clear other colors from column {cc + 1}"; return true; }
                     }
                 }
                 note = null; return false;
@@ -438,7 +449,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i / n != r) Elim(i);
-                        if (_elim.Count > 0) { note = $"row {r + 1} is all {_name(g)} → clear {_name(g)} outside row {r + 1}"; return true; }
+                        if (_elim.Count > 0) { Cause(cells); note = $"row {r + 1} is all {_name(g)} → clear {_name(g)} outside row {r + 1}"; return true; }
                     }
                 }
                 for (int c = 0; c < n; c++)
@@ -449,7 +460,7 @@ namespace QueensPuzzle
                     {
                         _elim.Clear();
                         for (int i = 0; i < cand.Length; i++) if (region[i] == g && i % n != c) Elim(i);
-                        if (_elim.Count > 0) { note = $"column {c + 1} is all {_name(g)} → clear {_name(g)} outside column {c + 1}"; return true; }
+                        if (_elim.Count > 0) { Cause(cells); note = $"column {c + 1} is all {_name(g)} → clear {_name(g)} outside column {c + 1}"; return true; }
                     }
                 }
                 note = null; return false;
@@ -470,7 +481,7 @@ namespace QueensPuzzle
                         foreach (int x in cells) if (!Touch(idx, x)) { all = false; break; }
                         if (all) Elim(idx);
                     }
-                    if (_elim.Count > 0) { note = $"{_name(g)}'s {_piece} attacks every marked cell"; return true; }
+                    if (_elim.Count > 0) { Cause(cells); note = $"{_name(g)}'s {_piece} attacks every marked cell"; return true; }
                 }
                 note = null; return false;
             }
@@ -494,7 +505,7 @@ namespace QueensPuzzle
                             if (x / n != idx / n && x % n != idx % n && !Touch(idx, x)) { all = false; break; }
                         if (all) Elim(idx);
                     }
-                    if (_elim.Count > 0) { note = $"a {_piece} on a marked cell leaves {_name(g)} no room → mark it X"; return true; }
+                    if (_elim.Count > 0) { _k = cells.Count; Cause(cells); note = $"a {_piece} on a marked cell leaves {_name(g)} no room → mark it X"; return true; }
                 }
                 note = null; return false;
             }
@@ -545,6 +556,9 @@ namespace QueensPuzzle
                     if (_elim.Count > 0)
                     {
                         var regs = new List<int>(); for (int i = 0; i < k; i++) regs.Add(g[sel[i]]);
+                        _cause.Clear();
+                        for (int idx = 0; idx < cand.Length; idx++)
+                            if (C(idx) && regs.Contains(region[idx])) _cause.Add(idx);
                         _k = k;
                         note = $"colors {Letters(regs)} fill {k} {(rows ? "rows" : "columns")} {Lines(u)} → no other color fits there, clear them out";
                         return true;
@@ -587,6 +601,9 @@ namespace QueensPuzzle
                     if (_elim.Count > 0)
                     {
                         var lines = new List<int>(); for (int i = 0; i < k; i++) lines.Add(L[sel[i]]);
+                        _cause.Clear();
+                        for (int idx = 0; idx < cand.Length; idx++)
+                            if (C(idx) && lines.Contains(rows ? idx / n : idx % n)) _cause.Add(idx);
                         _k = k;
                         note = $"{what} {Lines(lines)} hold only colors {Letters(u)} → those colors live here, clear them everywhere else";
                         return true;
@@ -640,6 +657,9 @@ namespace QueensPuzzle
                     if (_elim.Count > 0)
                     {
                         var set = new List<int>(); for (int i = 0; i < k; i++) set.Add(L[sel[i]]);
+                        _cause.Clear();
+                        for (int idx = 0; idx < cand.Length; idx++)
+                            if (C(idx) && set.Contains(rows ? idx / n : idx % n)) _cause.Add(idx);
                         _k = k;
                         string lw = rows ? "rows" : "columns", pw = rows ? "columns" : "rows";
                         note = $"{lw} {Lines(set)} are confined to {pw} {Lines(u)} → those {pw} are theirs, clear them everywhere else";
@@ -647,6 +667,81 @@ namespace QueensPuzzle
                     }
                 } while (NextCombo(sel, k, lc));
                 return false;
+            }
+
+            // Test every cell of an anchor unit (region/row/column) holding exactly k candidates:
+            // a player naturally tries the last few cells of a small unit. Any tested cell whose
+            // shadow starves some other unit is proven X. One anchor per firing.
+            bool TryShortChain(int k, out string note)
+            {
+                note = null;
+                for (int g = 0; g < n; g++)
+                {
+                    if (regDone[g]) continue;
+                    var cells = RegCells(g);
+                    if (cells.Count == k && ChainAnchor(cells, k, ref note)) return true;
+                }
+                for (int r = 0; r < n; r++)
+                {
+                    if (rowDone[r]) continue;
+                    var cells = RowCells(r);
+                    if (cells.Count == k && ChainAnchor(cells, k, ref note)) return true;
+                }
+                for (int c = 0; c < n; c++)
+                {
+                    if (colDone[c]) continue;
+                    var cells = ColCells(c);
+                    if (cells.Count == k && ChainAnchor(cells, k, ref note)) return true;
+                }
+                return false;
+            }
+
+            bool ChainAnchor(List<int> cells, int k, ref string note)
+            {
+                _elim.Clear();
+                int vk = -1, vi = -1; bool oneVictim = true;
+                foreach (int idx in cells)
+                {
+                    var b = Clone();
+                    b.Place(idx / n, idx % n);
+                    if (!ChainDies(b, out int kind, out int unit)) continue;
+                    Elim(idx);
+                    if (vk < 0) { vk = kind; vi = unit; }
+                    else if (vk != kind || vi != unit) oneVictim = false;
+                }
+                if (_elim.Count == 0) return false;
+
+                // Explain by the VICTIM — the tried cell itself attacks every dotted cell,
+                // so dots + "would leave X no room" reads at a glance.
+                _cause.Clear();
+                if (oneVictim)
+                {
+                    _cause.AddRange(vk == 0 ? RowCells(vi) : vk == 1 ? ColCells(vi) : RegCells(vi));
+                    string victim = vk == 0 ? $"row {vi + 1}" : vk == 1 ? $"column {vi + 1}" : _name(vi);
+                    note = $"a {_piece} on a marked cell would leave {victim} no room → mark it X";
+                }
+                else note = $"a {_piece} on a marked cell leaves some color or line no room → mark it X";
+                _k = k;   // prices as 80 + 10·k — k cells to test, one look each
+                return true;
+            }
+
+            // The try's shadow ALONE: apply every queen-scope elimination, then look for a unit
+            // with no room. No forced moves, no tricks, no depth — one imaginary queen, one look.
+            // victimKind/victimUnit say WHICH unit starved (0 = row, 1 = column, 2 = region).
+            static bool ChainDies(Board b, out int victimKind, out int victimUnit)
+            {
+                while (b.TryQueenElim(out _)) { }
+                return b.EmptyUnitInfo(out victimKind, out victimUnit);
+            }
+
+            // The first empty unit on the board, if any (0 = row, 1 = column, 2 = region) —
+            // HasEmptyUnit with a name, for explaining what a dead what-if kills.
+            bool EmptyUnitInfo(out int kind, out int unit)
+            {
+                for (int r = 0; r < n; r++) if (!rowDone[r] && RowCount(r) == 0) { kind = 0; unit = r; return true; }
+                for (int c = 0; c < n; c++) if (!colDone[c] && ColCount(c) == 0) { kind = 1; unit = c; return true; }
+                for (int g = 0; g < n; g++) if (!regDone[g] && RegCount(g) == 0) { kind = 2; unit = g; return true; }
+                kind = unit = -1; return false;
             }
 
             static bool NextCombo(int[] sel, int k, int total)
@@ -662,6 +757,7 @@ namespace QueensPuzzle
             // ---- helpers ----
 
             bool C(int i) => cand[i] && !queen[i];
+            void Cause(List<int> cells) { _cause.Clear(); _cause.AddRange(cells); }
             int RowCount(int r) { int k = 0; for (int c = 0; c < n; c++) if (C(r * n + c)) k++; return k; }
             int ColCount(int c) { int k = 0; for (int r = 0; r < n; r++) if (C(r * n + c)) k++; return k; }
             int RegCount(int g) { int k = 0; for (int i = 0; i < cand.Length; i++) if (region[i] == g && C(i)) k++; return k; }
@@ -678,13 +774,14 @@ namespace QueensPuzzle
             static int Pop(int x) { int c = 0; while (x != 0) { x &= x - 1; c++; } return c; }
             static string Lr(int g) => ((char)('A' + g)).ToString();   // default region name: a letter
 
-            // "5, 6, 7" from a bitmask or a list of line indices
+            // "5, 6, 7" from a bitmask or a list of line indices — 1-BASED for the player
+            // (internally lines are 0-based; every hint text shows row/column numbers from 1)
             static string Lines(int mask) { var l = new List<int>(); for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) l.Add(i); return Lines(l); }
             static string Lines(List<int> xs)
             {
                 xs.Sort();
                 var sb = new StringBuilder();
-                for (int i = 0; i < xs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append(xs[i]); }
+                for (int i = 0; i < xs.Count; i++) { if (i > 0) sb.Append(", "); sb.Append(xs[i] + 1); }
                 return sb.ToString();
             }
 
