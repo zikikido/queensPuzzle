@@ -238,7 +238,7 @@ namespace QueensPuzzle
                 // unit no room, that cell is an X. One look deep, like the region choke.
                 // Anything that would need forced moves after the try is a GUESS, not a trick.
                 for (int k = 2; k <= 6; k++)
-                    if (TryShortChain(k, out note)) return Elimed(SolveTechnique.ShortChain, _k, note, out step);
+                    if (TryLineChoke(k, out note)) return Elimed(SolveTechnique.LineChoke, _k, note, out step);
 
                 return false;
             }
@@ -672,7 +672,7 @@ namespace QueensPuzzle
             // Test every cell of an anchor unit (region/row/column) holding exactly k candidates:
             // a player naturally tries the last few cells of a small unit. Any tested cell whose
             // shadow starves some other unit is proven X. One anchor per firing.
-            bool TryShortChain(int k, out string note)
+            bool TryLineChoke(int k, out string note)
             {
                 note = null;
                 for (int g = 0; g < n; g++)

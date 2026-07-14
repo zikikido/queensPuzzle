@@ -17,7 +17,7 @@ namespace QueensPuzzle
         Trial = 9,
         QueenScope = 10,         // a queen rules out the rest of its row/column/region and its neighbours
         RegionChoke = 11,        // a queen here would attack ALL of a region's candidates → that cell is an X
-        ShortChain = 12,         // what-if from a small unit: place a queen, follow forced moves, a unit dies → X
+        LineChoke = 12,          // what-if starve: a queen here leaves a row/column (or region) no room → X
     }
 
     /// <summary>What a trace node represents.</summary>

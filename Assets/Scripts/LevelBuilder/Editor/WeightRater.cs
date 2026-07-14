@@ -12,9 +12,9 @@ namespace QueensPuzzle
     ///     region single      0    line single     10    one-colour line 10
     ///     trapped region    20    squeeze         40    subset L→R 30+10k
     ///     subset R→L   40+10k    region choke 80+10k   fish        50+10k
-    ///     what-if starve 80+10k′
+    ///     line choke 80+10k′
     ///   (choke's k = candidate cells of the starved region — every one must be checked;
-    ///    what-if starve: try each of a small unit's k′ cells — if the try's SHADOW ALONE
+    ///    line choke: try each of a small unit's k′ cells — if the try's SHADOW ALONE
     ///    starves another unit, the cell is X. One look deep; any what-if that needs
     ///    forced moves after the try is a GUESS, not a trick)
     ///   Queen shadow is free — the eyes are already on the queen that was just placed.
@@ -59,7 +59,7 @@ namespace QueensPuzzle
             public int subsetLineToRegionUses;
             public int subsetRegionToLineUses;
             public int fishUses;
-            public int shortChainUses;
+            public int lineChokeUses;
             public int trials;
             public int maxTrialDepth;
             public int findCost;         // total scanning cost (the 3·open/25 parts)
@@ -149,7 +149,7 @@ namespace QueensPuzzle
                 subsetLineToRegionUses = m.subsetLineToRegionUses,
                 subsetRegionToLineUses = m.subsetRegionToLineUses,
                 fishUses = m.fishUses,
-                shortChainUses = m.shortChainUses,
+                lineChokeUses = m.lineChokeUses,
                 trials = m.trials,
                 maxTrialDepth = m.maxTrialDepth,
                 findCost = m.findCost,
@@ -182,7 +182,7 @@ namespace QueensPuzzle
         {
             if (!solved) return "unsolved";
             if (m.trials > 0) return m.maxTrialDepth >= 2 ? "trial (nested)" : "trial";
-            if (m.shortChainUses > 0) return "what-if starve";
+            if (m.lineChokeUses > 0) return "line choke";
             if (m.fishUses > 0) return "positional fish";
             if (m.regionChokeUses > 0) return "region choke";
             if (m.subsetRegionToLineUses > 0) return "subset (region→line)";
@@ -211,7 +211,7 @@ namespace QueensPuzzle
                 case SolveTechnique.SubsetLineToRegion: m.subsetLineToRegionUses++; m.eliminations += step.cells.Length; break;
                 case SolveTechnique.SubsetRegionToLine: m.subsetRegionToLineUses++; m.eliminations += step.cells.Length; break;
                 case SolveTechnique.Fish:               m.fishUses++;               m.eliminations += step.cells.Length; break;
-                case SolveTechnique.ShortChain:         m.shortChainUses++;         m.eliminations += step.cells.Length; break;
+                case SolveTechnique.LineChoke:         m.lineChokeUses++;         m.eliminations += step.cells.Length; break;
             }
             int find = TrickWeights.Find * open / TrickWeights.Anchor;
             int think = streak ? TrickWeights.StreakThink(step.tech, step.k) : TrickWeights.Of(step.tech, step.k);
@@ -265,7 +265,7 @@ namespace QueensPuzzle
             public int cycles, placements, regionSingles, lineSingles, eliminations,
                 lineToRegionUses, regionToLineUses, squeezeUses, regionChokeUses,
                 subsetLineToRegionUses, subsetRegionToLineUses,
-                fishUses, shortChainUses, trials, maxTrialDepth,
+                fishUses, lineChokeUses, trials, maxTrialDepth,
                 findCost, thinkCost, guessCost;
             public int[] techCost = new int[16];
             public int[] techUses = new int[16];
