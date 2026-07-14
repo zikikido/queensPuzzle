@@ -11,7 +11,8 @@ namespace Common {
     /// </summary>
     public class MBBGMusicV2 : MonoBehaviour {
 
-        public static float MAX_VOLUME = 0.4f;
+        [Range(0, 1)]
+        [SerializeField] float _maxVolume = 1;
 
         [SerializeField] BGMusicPlaylist _playlist;
 
@@ -118,7 +119,7 @@ namespace Common {
 
         IEnumerator _fadeIn(float fadeDuration) {
             _ac.Play();
-            var anim = Animators.AnimateNumber(_ac.volume, MAX_VOLUME, fadeDuration);
+            var anim = Animators.AnimateNumber(_ac.volume, _maxVolume, fadeDuration);
             while (anim.MoveNext()) {
                 _ac.volume = anim.Current;
                 yield return null;
