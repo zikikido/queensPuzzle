@@ -12,4 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2fd1e0f4c88eba149a722b6bbebcb8cb, type: 3}
   m_Name: BGMusicPlaylist
   m_EditorClassIdentifier: 
-  ResourcePaths: []
+  ResourcePaths:
+  - p_20141203_o
+  - KOSATKA - Calm Piano Strings Ambient Loop
