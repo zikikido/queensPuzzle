@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 
 namespace QueensPuzzle
@@ -19,9 +20,10 @@ namespace QueensPuzzle
     /// self-describing — the in-code "region k = colour k" fallback only serves editor playtests
     /// of raw .asset files.
     ///
-    /// The whole file is AES-encrypted (IV prefixed) and decrypted ONCE per session. This deters
-    /// asset rippers and casual copying; it cannot be absolute — the key ships with the game.
-    /// Pure C# (no Unity types), so the round-trip is testable outside the editor.
+    /// The whole file is gzipped, then AES-encrypted (IV prefixed) — compression must precede
+    /// encryption, as ciphertext doesn't compress. Decrypted+inflated ONCE per session. This
+    /// deters asset rippers and casual copying; it cannot be absolute — the key ships with the
+    /// game. Pure C# (no Unity types), so the round-trip is testable outside the editor.
     /// </summary>
     public static class LevelPack
     {
@@ -190,13 +192,14 @@ namespace QueensPuzzle
 
         public static byte[] Encrypt(byte[] plain)
         {
+            byte[] packed = Gzip(plain);
             using (var aes = Aes.Create())
             {
                 aes.Key = Key();
                 aes.GenerateIV();
                 using (var enc = aes.CreateEncryptor())
                 {
-                    byte[] cipher = enc.TransformFinalBlock(plain, 0, plain.Length);
+                    byte[] cipher = enc.TransformFinalBlock(packed, 0, packed.Length);
                     var outBytes = new byte[16 + cipher.Length];
                     Array.Copy(aes.IV, outBytes, 16);
                     Array.Copy(cipher, 0, outBytes, 16, cipher.Length);
@@ -214,7 +217,32 @@ namespace QueensPuzzle
                 Array.Copy(file, iv, 16);
                 aes.IV = iv;
                 using (var dec = aes.CreateDecryptor())
-                    return dec.TransformFinalBlock(file, 16, file.Length - 16);
+                {
+                    byte[] plain = dec.TransformFinalBlock(file, 16, file.Length - 16);
+                    // gzip magic → inflate; a bare QPLV pack (pre-compression export) passes through
+                    return plain.Length > 2 && plain[0] == 0x1F && plain[1] == 0x8B ? Gunzip(plain) : plain;
+                }
+            }
+        }
+
+        static byte[] Gzip(byte[] data)
+        {
+            using (var ms = new MemoryStream())
+            {
+                using (var gz = new GZipStream(ms, CompressionLevel.Optimal, true))
+                    gz.Write(data, 0, data.Length);
+                return ms.ToArray();
+            }
+        }
+
+        static byte[] Gunzip(byte[] data)
+        {
+            using (var src = new MemoryStream(data, false))
+            using (var gz = new GZipStream(src, CompressionMode.Decompress))
+            using (var dst = new MemoryStream())
+            {
+                gz.CopyTo(dst);
+                return dst.ToArray();
             }
         }
     }

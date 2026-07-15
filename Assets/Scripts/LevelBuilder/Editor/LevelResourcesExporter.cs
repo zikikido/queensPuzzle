@@ -55,16 +55,7 @@ namespace QueensPuzzle
             }
 
             byte[] plain = LevelPack.EncodePlain(levels);
-            byte[] file2 = LevelPack.Encrypt(plain);
-
-            // measurement only (nothing gzipped is shipped): how much compression WOULD save
-            int gzipped;
-            using (var ms = new MemoryStream())
-            {
-                using (var gz = new System.IO.Compression.GZipStream(ms, System.IO.Compression.CompressionLevel.Optimal, true))
-                    gz.Write(plain, 0, plain.Length);
-                gzipped = (int)ms.Length;
-            }
+            byte[] file2 = LevelPack.Encrypt(plain);   // gzip + AES
 
             // the pack replaces the per-level assets completely — delete every numbered copy
             foreach (var old in Directory.GetFiles(TargetFolder, "*.asset"))
@@ -77,7 +68,7 @@ namespace QueensPuzzle
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"[Levels] Packed {levels.Count} levels → {PackPath}: {file2.Length / 1024f:0.0} KB shipped "
-                    + $"(plain {plain.Length / 1024f:0.0} KB · gzip would be {gzipped / 1024f:0.0} KB)");
+                    + $"(plain {plain.Length / 1024f:0.0} KB)");
         }
 
         // Create a folder (and any missing parents) via the AssetDatabase.
