@@ -71,3 +71,5 @@ GooglePackages/*.tgz
 # EDM Android Resolver output: regenerated from the tarballs on resolve
 Assets/GeneratedLocalRepo/
 Assets/GeneratedLocalRepo.meta
+
+.agents/*
