@@ -19,23 +19,32 @@ namespace qp {
             CrashLog($"[screen] close {screen}");
         }
 
-        // ---- game flow: Firebase events, each with the level and its attempt number ----
+        // ---- game flow: Firebase events. The level id and attempt number are DERIVED here —
+        // daily runs report the day index + the day's attempts, campaign runs the level index +
+        // AppData.LevelAttempts — so no call site can ever send the wrong pair.
+        //
+        // CONTRACT for callers: fire the event while the statics still describe the thing the
+        // event is about — i.e. BEFORE advancing progress (LevelIdx++), BEFORE invalidating /
+        // stashing LastPlayData, and BEFORE ExitDaily; AFTER LoadLevel, attempt bumps and
+        // counter bumps. Win()/Fail() in MBGameplay document the exact order.
 
-        public static void GameStart(int levelIdx, int attempts) => GameEvent("game_start", levelIdx, attempts);
-        public static void GameWin(int levelIdx, int attempts)   => GameEvent("game_win",   levelIdx, attempts);
-        public static void GameLose(int levelIdx, int attempts)  => GameEvent("game_lose",  levelIdx, attempts);
+        static int LevelIdx => DailyChallengeManager.InDailyRun
+            ? DailyChallengeManager.DayIndex : AppData.LevelIdx.Value;
+        static int Attempts => DailyChallengeManager.InDailyRun
+            ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
+
+        public static void GameStart() => GameEvent("game_start");
+        public static void GameWin()   => GameEvent("game_win");
+        public static void GameLose()  => GameEvent("game_lose");
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>
-        public static void BoostUsed(string boost, int levelIdx, int attempts) =>
-            GameEvent("boost_used", levelIdx, attempts, "boost", boost);
+        public static void BoostUsed(string boost) => GameEvent("boost_used", "boost", boost);
 
         /// <summary>The fail-continue grant (later: video/coins) — its own event stream, not a boost.</summary>
-        public static void LivesAdded(int amount, int levelIdx, int attempts) =>
-            GameEvent("lives_added", levelIdx, attempts, "amount", amount);
+        public static void LivesAdded(int amount) => GameEvent("lives_added", "amount", amount);
 
         /// <summary>A booster earned by watching a rewarded ad (no boost left → video).</summary>
-        public static void BoostEarned(string boost, int levelIdx, int attempts) =>
-            GameEvent("boost_earned", levelIdx, attempts, "boost", boost);
+        public static void BoostEarned(string boost) => GameEvent("boost_earned", "boost", boost);
 
         // TEMP — review prepare timing probe, read via BigQuery. REMOVE after the measurement.
         public static void ReviewPrepareTime(int ms, bool prepared) {
@@ -48,10 +57,14 @@ namespace qp {
 
         // every game event carries the level, the attempt and the attempt's counters;
         // extraKey/extraVal (optional) adds the event's own parameter (boost name, amount, ...)
-        static void GameEvent(string name, int levelIdx, int attempts, string extraKey = null, object extraVal = null) {
+        static void GameEvent(string name, string extraKey = null, object extraVal = null) {
             var d = AppData.LastPlayData;
+            bool daily = DailyChallengeManager.InDailyRun;
+            int levelIdx = LevelIdx;
+            int attempts = Attempts;
             var extra = extraKey != null ? $" {extraKey}={extraVal}" : "";
-            CrashLog($"[game] {name}{extra} level {levelIdx} set {LevelLoader.CurrentLevelSetId} pack {LevelLoader.CurrentPackIndex} hash {LevelLoader.CurrentLevelHash} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
+            var dailyCrumb = daily ? $" | daily time {(int)DailyChallengeManager.State.timeSec}s" : "";
+            CrashLog($"[game] {name}{extra} level {levelIdx} set {LevelLoader.CurrentLevelSetId} pack {LevelLoader.CurrentPackIndex} hash {LevelLoader.CurrentLevelHash} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}{dailyCrumb}");
 #if !IGNORE_FIREBASE
             var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
                 new Firebase.Analytics.Parameter("lvl_idx", levelIdx),
@@ -61,6 +74,10 @@ namespace qp {
                 new Firebase.Analytics.Parameter("lvl_attempts", attempts),
             };
             ps.AddRange(d.ToParams());
+            if (daily) {
+                // the daily's accumulated solve clock — final on game_win (OnSolved runs first)
+                ps.Add(new Firebase.Analytics.Parameter("lvl_time_sec", (int)DailyChallengeManager.State.timeSec));
+            }
             if (extraKey != null)
                 ps.Add(extraVal is int i ? new Firebase.Analytics.Parameter(extraKey, i)
                                          : new Firebase.Analytics.Parameter(extraKey, extraVal.ToString()));

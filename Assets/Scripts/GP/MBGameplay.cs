@@ -78,12 +78,10 @@ namespace qp {
         public MBCell CellAt(int row, int col) =>
             _cells != null && row >= 0 && row < _n && col >= 0 && col < _n ? _cells[row, col] : null;
 
-        // Daily runs save/report under the DAY index and the daily attempts counter —
-        // campaign runs under the level index and AppData.LevelAttempts.
+        // Daily runs save under the DAY index, campaign runs under the level index —
+        // the board-save key (LastPlayData.forLevelIdx). Analytics derives its own ids.
         static int ProgressKey => DailyChallengeManager.InDailyRun
             ? DailyChallengeManager.DayIndex : AppData.LevelIdx.Value;
-        static int AttemptsCount => DailyChallengeManager.InDailyRun
-            ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
 
         void Awake() {
             instance = this;
@@ -175,7 +173,7 @@ namespace qp {
                         CommonSFX.Play(GPSFX.Instance.Hint);
                         AppData.LastPlayData.hintsUsed++;
                         AppData.LastPlayData.Save();
-                        Analytics.BoostUsed("hint", ProgressKey, AttemptsCount);
+                        Analytics.BoostUsed("hint");
                         return true;
                     }
                     return false;
@@ -204,7 +202,7 @@ namespace qp {
 
         void CountQueenBoost() {
             AppData.LastPlayData.queenBoostsUsed++;
-            Analytics.BoostUsed("queen", ProgressKey, AttemptsCount);
+            Analytics.BoostUsed("queen");
         }
 
         // Place a correct queen from a boost and advance the game (as a manual correct placement).
@@ -270,7 +268,7 @@ namespace qp {
             if (any) {
                 AppData.LastPlayData.undosUsed++;   // before SaveBoard — it persists the counter too
                 SaveBoard();
-                Analytics.BoostUsed("undo", ProgressKey, AttemptsCount);
+                Analytics.BoostUsed("undo");
                 Haptics.Play(GameHaptic.Tap);
             }
             return any;
@@ -407,7 +405,7 @@ namespace qp {
                 AppData.LastPlayData = LastPlayData.StartFresh(ProgressKey, daily);
                 RevealQueens(level);
 
-                Analytics.GameStart(ProgressKey, AttemptsCount);
+                Analytics.GameStart();
             }
 
             _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
@@ -729,11 +727,14 @@ namespace qp {
             _ready = false;              // stop input
             PlayQueens(MBCell.QueenState.HAPPY);   // the whole board celebrates, in sync
             Ads.HideBanner();            // banner off while the win popup is up
-            Analytics.GameWin(ProgressKey, AttemptsCount);   // before LevelIdx++/OnSolved
+            // ORDER MATTERS — the event derives everything from statics:
+            // OnSolved first (final time), GameWin before Invalidate (counters still the
+            // attempt's) and before LevelIdx++ (the win belongs to the level just solved).
+            if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();
+            Analytics.GameWin();
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
-            if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();   // timer stops, TOP % fixed
-            else AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
+            if (!DailyChallengeManager.InDailyRun) AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
@@ -758,7 +759,7 @@ namespace qp {
             _ready = false;   // stop input; Continue or Reset decides what's next
             PlayQueens(MBCell.QueenState.CRY);   // the board mourns (overrides the disappointment)
             Ads.HideBanner();            // banner off while the fail popup is up
-            Analytics.GameLose(ProgressKey, AttemptsCount);
+            Analytics.GameLose();   // BEFORE Stash/Invalidate — the counters still belong to the attempt
 
             // Failed → the attempt is over: quitting now restarts the level fresh.
             // But Continue may revive it — it waits in the stash until the popup decides.
@@ -794,7 +795,7 @@ namespace qp {
             AppData.LastPlayData.livesAdded += GameConfig.BonesAddedAfterRewarded;
             PlayQueens(MBCell.QueenState.IDLE);   // Cry holds its last frame — un-freeze the mourning
             SaveBoard();
-            Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, ProgressKey, AttemptsCount);
+            Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded);
             _topBar?.SetWrongMoves(0);
             _ready = true;
 
