@@ -11,27 +11,19 @@ namespace QueensPuzzle
     /// (Resources/Levels/levels.bytes) instead of thousands of ScriptableObjects.
     ///
     /// Plain layout (before encryption):
-    ///   "QPLV" (4B) · version (1B) · count (int32)
-    ///   lookup table: count × int32 — byte offset of each level from the payload start
-    ///   payload, per level: size (1B) · weight (uint16) · revealedRows bitmask (uint16)
-    ///     · regions (size² bytes) · solutionColumns (size bytes) · regionColors (size bytes)
-    ///
-    /// Colours are ALWAYS stored (identity 0,1,2… for generator levels): the pack is
-    /// self-describing — the in-code "region k = colour k" fallback only serves editor playtests
-    /// of raw .asset files.
-    ///
-    /// The whole file is gzipped, then AES-encrypted (IV prefixed) — compression must precede
-    /// encryption, as ciphertext doesn't compress. Decrypted+inflated ONCE per session. This
-    /// deters asset rippers and casual copying; it cannot be absolute — the key ships with the
-    /// game. Pure C# (no Unity types), so the round-trip is testable outside the editor.
+    ///   "QPLV" (4B) - version (1B) - levelSetId (string) - count (int32)
+    ///   lookup table: count x int32 - byte offset of each level from the payload start
+    ///   payload, per level: size (1B) - weight (uint16) - revealedRows bitmask (uint16)
+    ///     - regions (size^2 bytes) - solutionColumns (size bytes) - regionColors (size bytes)
+
     /// </summary>
     public static class LevelPack
     {
-        const byte Version = 1;
+        const byte Version = 2;
         static readonly byte[] MagicBytes = { (byte)'Q', (byte)'P', (byte)'L', (byte)'V' };
 
         /// <summary>
-        /// One level's content — the RUNTIME level type. The LevelData ScriptableObject is the
+        /// One level's content - the RUNTIME level type. The LevelData ScriptableObject is the
         /// editor-side authoring format only; the game plays these, decoded from the pack (or
         /// converted from an asset for editor playtests).
         /// </summary>
@@ -39,10 +31,10 @@ namespace QueensPuzzle
         {
             public int size;
             public int weight;
-            public int[] regions;          // size² region ids
+            public int[] regions;          // size^2 region ids
             public int[] solutionColumns;  // size entries
             public int[] revealedRows;     // may be null
-            public int[] regionColors;     // may be null → identity is written on encode
+            public int[] regionColors;     // may be null -> identity is written on encode
 
             /// <summary>Region id at the given cell.</summary>
             public int RegionAt(int row, int col) => regions[row * size + col];
@@ -53,15 +45,15 @@ namespace QueensPuzzle
             /// <summary>True if this row's solution queen starts revealed on the board.</summary>
             public bool IsRevealedRow(int row) => revealedRows != null && Array.IndexOf(revealedRows, row) >= 0;
 
-            /// <summary>Palette (SORegionsColors) index a region is shown with — authored levels
+            /// <summary>Palette (SORegionsColors) index a region is shown with - authored levels
             /// pick their colours; null falls back to "region k = colour k" (editor playtests).</summary>
             public int ColorOf(int region) =>
                 regionColors != null && region >= 0 && region < regionColors.Length ? regionColors[region] : region;
 
             /// <summary>Stable hash of the PLAYABLE content (size + regions + solution). A saved
-            /// board may only be restored onto the exact puzzle it was played on — if a level is
+            /// board may only be restored onto the exact puzzle it was played on - if a level is
             /// redesigned (even at the same size), the hash changes and the stale save is rejected.
-            /// Must stay byte-identical to the historical LevelData hash — players' saves carry it.</summary>
+            /// Must stay byte-identical to the historical LevelData hash - players' saves carry it.</summary>
             public int ContentHash()
             {
                 unchecked
@@ -78,8 +70,12 @@ namespace QueensPuzzle
         // ---- encode (editor / tests) ---------------------------------------------------
 
         /// <summary>Builds the plain (unencrypted) pack. Call <see cref="Encrypt"/> on the result.</summary>
-        public static byte[] EncodePlain(IList<Level> levels)
+        public static byte[] EncodePlain(IList<Level> levels) => EncodePlain(levels, "unnamed");
+
+        public static byte[] EncodePlain(IList<Level> levels, string levelSetId)
         {
+            if (string.IsNullOrWhiteSpace(levelSetId)) levelSetId = "unnamed";
+
             using (var payload = new MemoryStream())
             using (var pw = new BinaryWriter(payload))
             {
@@ -114,6 +110,7 @@ namespace QueensPuzzle
                 {
                     w.Write(MagicBytes);
                     w.Write(Version);
+                    w.Write(levelSetId);
                     w.Write(levels.Count);
                     foreach (int off in offsets) w.Write(off);
                     w.Write(payload.GetBuffer(), 0, (int)payload.Length);
@@ -128,22 +125,29 @@ namespace QueensPuzzle
         /// <summary>Number of levels in a plain pack (validates magic + version).</summary>
         public static int Count(byte[] plain)
         {
-            using (var r = OpenHeader(plain))
-                return r.ReadInt32();
+            using (var h = OpenHeader(plain))
+                return h.count;
+        }
+
+        /// <summary>Stable id of the exported level set stored in the pack header.</summary>
+        public static string LevelSetId(byte[] plain)
+        {
+            using (var h = OpenHeader(plain))
+                return h.levelSetId;
         }
 
         /// <summary>Decodes one level from a plain pack via the lookup table. O(1).</summary>
         public static Level Decode(byte[] plain, int index)
         {
-            using (var r = OpenHeader(plain))
+            using (var h = OpenHeader(plain))
             {
-                int count = r.ReadInt32();
+                var r = h.reader;
+                int count = h.count;
                 if (index < 0 || index >= count) throw new ArgumentOutOfRangeException(nameof(index));
 
-                r.BaseStream.Position += index * 4L;
+                r.BaseStream.Position = h.lookupStart + index * 4L;
                 int offset = r.ReadInt32();
-                long payloadStart = 4 + 1 + 4 + count * 4L;
-                r.BaseStream.Position = payloadStart + offset;
+                r.BaseStream.Position = h.payloadStart + offset;
 
                 var l = new Level();
                 int n = r.ReadByte();
@@ -168,7 +172,17 @@ namespace QueensPuzzle
             }
         }
 
-        static BinaryReader OpenHeader(byte[] plain)
+        sealed class Header : IDisposable
+        {
+            public BinaryReader reader;
+            public string levelSetId;
+            public int count;
+            public long lookupStart;
+            public long payloadStart;
+            public void Dispose() => reader?.Dispose();
+        }
+
+        static Header OpenHeader(byte[] plain)
         {
             var r = new BinaryReader(new MemoryStream(plain, false));
             var magic = r.ReadBytes(4);
@@ -177,7 +191,18 @@ namespace QueensPuzzle
                     throw new InvalidDataException("not a level pack");
             byte version = r.ReadByte();
             if (version != Version) throw new InvalidDataException($"level pack version {version}, expected {Version}");
-            return r;   // positioned at the count field
+
+            string levelSetId = r.ReadString();
+            int count = r.ReadInt32();
+            long lookupStart = r.BaseStream.Position;
+            return new Header
+            {
+                reader = r,
+                levelSetId = levelSetId,
+                count = count,
+                lookupStart = lookupStart,
+                payloadStart = lookupStart + count * 4L
+            };
         }
 
         // ---- encryption ----------------------------------------------------------------
@@ -219,7 +244,7 @@ namespace QueensPuzzle
                 using (var dec = aes.CreateDecryptor())
                 {
                     byte[] plain = dec.TransformFinalBlock(file, 16, file.Length - 16);
-                    // gzip magic → inflate; a bare QPLV pack (pre-compression export) passes through
+                    // gzip magic -> inflate; a bare QPLV pack (pre-compression export) passes through
                     return plain.Length > 2 && plain[0] == 0x1F && plain[1] == 0x8B ? Gunzip(plain) : plain;
                 }
             }

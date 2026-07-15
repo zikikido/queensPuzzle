@@ -51,10 +51,13 @@ namespace qp {
         static void GameEvent(string name, int levelIdx, int attempts, string extraKey = null, object extraVal = null) {
             var d = AppData.LastPlayData;
             var extra = extraKey != null ? $" {extraKey}={extraVal}" : "";
-            CrashLog($"[game] {name}{extra} level {levelIdx} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
+            CrashLog($"[game] {name}{extra} level {levelIdx} set {LevelLoader.CurrentLevelSetId} pack {LevelLoader.CurrentPackIndex} hash {LevelLoader.CurrentLevelHash} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}");
 #if !IGNORE_FIREBASE
             var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
                 new Firebase.Analytics.Parameter("lvl_idx", levelIdx),
+                new Firebase.Analytics.Parameter("pack_idx", LevelLoader.CurrentPackIndex),
+                new Firebase.Analytics.Parameter("level_set_id", LevelLoader.CurrentLevelSetId),
+                new Firebase.Analytics.Parameter("level_hash", LevelLoader.CurrentLevelHash),
                 new Firebase.Analytics.Parameter("lvl_attempts", attempts),
             };
             ps.AddRange(d.ToParams());
