@@ -23,10 +23,22 @@ namespace QueensPuzzle
 
         public static void Export(string sourceFolder, string setName)
         {
-            if (!AssetDatabase.IsValidFolder(sourceFolder))
-            { Debug.LogWarning($"[Levels] No source folder {sourceFolder}."); return; }
+            var levels = GatherNumberedLevels(sourceFolder, setName);
+            if (levels == null) return;
 
-            // gather the numbered levels, in slot order; gaps break the 1-based index -> abort
+            ResolveLevelSetId(setName, levels, levelSetId =>
+            {
+                if (string.IsNullOrWhiteSpace(levelSetId)) return;
+                ExportResolved(sourceFolder, setName, levels, levelSetId.Trim());
+            });
+        }
+
+        // Load {sourceFolder}/{1..N}.asset in slot order. Gaps break the 1-based index -> null (logged).
+        static System.Collections.Generic.List<LevelPack.Level> GatherNumberedLevels(string sourceFolder, string setName)
+        {
+            if (!AssetDatabase.IsValidFolder(sourceFolder))
+            { Debug.LogWarning($"[Levels] No source folder {sourceFolder}."); return null; }
+
             var numbers = new System.Collections.Generic.List<int>();
             foreach (var file in Directory.GetFiles(sourceFolder, "*.asset"))
                 if (int.TryParse(Path.GetFileNameWithoutExtension(file), out int num)) numbers.Add(num);
@@ -35,7 +47,7 @@ namespace QueensPuzzle
                 if (numbers[i] != i + 1)
                 {
                     Debug.LogError($"[Levels] Export aborted - {setName} has a gap: expected level {i + 1}, found {numbers[i]}.");
-                    return;
+                    return null;
                 }
 
             var levels = new System.Collections.Generic.List<LevelPack.Level>(numbers.Count);
@@ -43,15 +55,73 @@ namespace QueensPuzzle
             {
                 var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{sourceFolder}/{num}.asset");
                 if (lvl == null || lvl.regions == null || lvl.solutionColumns == null)
-                { Debug.LogError($"[Levels] Export aborted - level {num} is unreadable."); return; }
+                { Debug.LogError($"[Levels] Export aborted - level {num} is unreadable."); return null; }
                 levels.Add(lvl.ToPacked());
             }
+            return levels;
+        }
 
-            ResolveLevelSetId(setName, levels, levelSetId =>
+        /// <summary>
+        /// Daily pool export: one encrypted pack PER TIER (Levels/daily_{tier}.bytes) next to the
+        /// campaign pack. levelSetId is the stable "Daily{Tier}" — analytics keys on the Daily
+        /// prefix, and pool rotation means the set never changes identity, so none of the
+        /// append-only levelSetId ceremony of the campaign export applies. Slot = pack index.
+        /// Returns false when the pool is missing, has gaps, or doesn't match the expected size.
+        /// </summary>
+        public static bool ExportDailyTier(string sourceFolder, string tierName, int expectedCount)
+        {
+            var levels = GatherNumberedLevels(sourceFolder, "Daily" + tierName);
+            if (levels == null) return false;
+            if (levels.Count != expectedCount)
             {
-                if (string.IsNullOrWhiteSpace(levelSetId)) return;
-                ExportResolved(sourceFolder, setName, levels, levelSetId.Trim());
-            });
+                Debug.LogError($"[Levels] Daily export aborted - Daily{tierName} has {levels.Count} level(s), pool needs {expectedCount}.");
+                return false;
+            }
+
+            EnsureFolder(TargetFolder);
+            byte[] plain = LevelPack.EncodePlain(levels, "Daily" + tierName);
+            byte[] file = LevelPack.Encrypt(plain);
+            string path = $"{TargetFolder}/{DailyPackName(tierName)}.bytes";
+            File.WriteAllBytes(path, file);
+            AssetDatabase.ImportAsset(path);
+            Debug.Log($"[Levels] Packed {levels.Count} daily levels -> {path}: {file.Length / 1024f:0.0} KB shipped (levelSetId Daily{tierName})");
+            return true;
+        }
+
+        /// <summary>Resource name of a tier's daily pack (no extension). The runtime loader
+        /// (DailyChallengeManager) must build the same name from the tier's name.</summary>
+        public static string DailyPackName(string tierName) => $"daily_{tierName.ToLowerInvariant()}";
+
+        const string DailyTiersPath = ResourcesRoot + "/DailyChallengeTiers.asset";
+
+        /// <summary>
+        /// (Re)generates the SHIPPED runtime slice of the daily config — epoch + tier progress
+        /// ranges — from the authoring asset. Runs with every daily export so the two can never
+        /// drift; the asset is never hand-edited. DailyChallengeManager loads it from Resources.
+        /// </summary>
+        public static void ExportDailyTiersConfig(DailyChallengeCurveConfig cfg)
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<DailyChallengeTiersConfig>(DailyTiersPath);
+            bool fresh = asset == null;
+            if (fresh) asset = ScriptableObject.CreateInstance<DailyChallengeTiersConfig>();
+
+            asset.epochDate = cfg.epochDate;
+            asset.tiers = new DailyChallengeTiersConfig.Tier[cfg.tiers.Length];
+            for (int i = 0; i < cfg.tiers.Length; i++)
+                asset.tiers[i] = new DailyChallengeTiersConfig.Tier
+                {
+                    name = cfg.tiers[i].name,
+                    progressMin = cfg.tiers[i].progressMin,
+                    progressMax = cfg.tiers[i].progressMax,
+                };
+
+            if (fresh)
+            {
+                EnsureFolder(ResourcesRoot);
+                AssetDatabase.CreateAsset(asset, DailyTiersPath);
+            }
+            else EditorUtility.SetDirty(asset);
+            Debug.Log($"[Levels] Daily tiers config -> {DailyTiersPath} ({cfg.tiers.Length} tier(s), epoch {cfg.epochDate})");
         }
 
         static void ExportResolved(string sourceFolder, string setName, System.Collections.Generic.IList<LevelPack.Level> levels, string levelSetId)

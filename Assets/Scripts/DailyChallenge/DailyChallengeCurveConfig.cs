@@ -18,8 +18,8 @@ namespace QueensPuzzle
     /// same-weekday slots aren't clones and builds reproduce. Milestones (0.85–1.00) never
     /// appear in dailies.
     /// </summary>
-    [CreateAssetMenu(fileName = "DailyCurve", menuName = "QueensPuzzle/Daily Curve", order = 2)]
-    public class DailyCurveConfig : ScriptableObject
+    [CreateAssetMenu(fileName = "DailyChallengeCurve", menuName = "QueensPuzzle/Daily Challenge Curve", order = 2)]
+    public class DailyChallengeCurveConfig : ScriptableObject
     {
         [Serializable]
         public class Tier

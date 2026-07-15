@@ -4,7 +4,7 @@ using UnityEngine;
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Daily Challenge pool builder: pick a <see cref="DailyCurveConfig"/> and fill each tier's
+    /// Daily Challenge pool builder: pick a <see cref="DailyChallengeCurveConfig"/> and fill each tier's
     /// pool (Assets/Levels/Sets/Daily{tier}, auto-created) through the same
     /// <see cref="PoolBuildRunner"/> the campaign uses — same generator, rater and gates, only
     /// the target list differs. Living under Sets/ also puts the daily pools in the campaign
@@ -14,23 +14,23 @@ namespace QueensPuzzle
     /// never the byte-identical twin of a campaign level. Export to per-tier packs is a separate
     /// step (the current exporter ships one levels.bytes only).
     /// </summary>
-    public class DailyBuilderWindow : EditorWindow
+    public class DailyChallengeBuilderWindow : EditorWindow
     {
         const string SetsRoot = "Assets/Levels/Sets";
         const int SeedStride = 10_000_000;   // per-tier seed offset — keeps tier pools disjoint
 
-        DailyCurveConfig config;
+        DailyChallengeCurveConfig config;
         int seedBase = 100_000_000;
         bool skipExisting = true;
         bool overrideOffTol = true;
         int threadCount = Mathf.Max(1, System.Environment.ProcessorCount - 1);
 
-        [MenuItem("QueensPuzzle/Daily Builder")]
-        static void Open() => GetWindow<DailyBuilderWindow>("Daily Builder");
+        [MenuItem("QueensPuzzle/Daily Challenge Builder")]
+        static void Open() => GetWindow<DailyChallengeBuilderWindow>("Daily Challenge Builder");
 
         void OnGUI()
         {
-            config = (DailyCurveConfig)EditorGUILayout.ObjectField("Daily config", config, typeof(DailyCurveConfig), false);
+            config = (DailyChallengeCurveConfig)EditorGUILayout.ObjectField("Daily config", config, typeof(DailyChallengeCurveConfig), false);
             seedBase = EditorGUILayout.IntField("Seed base", seedBase);
             skipExisting = EditorGUILayout.Toggle("Skip existing", skipExisting);
             overrideOffTol = EditorGUILayout.Toggle("Override off-tolerance", overrideOffTol);
@@ -39,7 +39,7 @@ namespace QueensPuzzle
             if (config == null || config.campaign == null)
             {
                 EditorGUILayout.HelpBox(config == null
-                    ? "Assign a DailyCurve asset (Create → QueensPuzzle → Daily Curve)."
+                    ? "Assign a DailyChallengeCurve asset (Create → QueensPuzzle → Daily Challenge Curve)."
                     : "The daily config needs its campaign reference (scale + gates).", MessageType.Info);
                 return;
             }
@@ -68,9 +68,50 @@ namespace QueensPuzzle
                     if (!GenerateTier(i)) break;   // a cancel stops the batch
                 GUIUtility.ExitGUI();
             }
+
+            if (GUILayout.Button("Export all tiers → Resources"))
+            {
+                ExportAllTiers();
+                GUIUtility.ExitGUI();
+            }
         }
 
-        string FolderOf(DailyCurveConfig.Tier tr) => $"{SetsRoot}/Daily{tr.name}";
+        // One pack per tier (daily_{tier}.bytes). Only full pools export — a rotating daily set
+        // must never ship with holes; partial tiers are listed and skipped.
+        void ExportAllTiers()
+        {
+            var lines = new System.Text.StringBuilder();
+            var ready = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < config.tiers.Length; i++)
+            {
+                var tr = config.tiers[i];
+                int built = CountBuilt(FolderOf(tr));
+                bool full = built == tr.PoolSize;
+                if (full) ready.Add(i);
+                lines.AppendLine($"   • Daily{tr.name}:  {built}/{tr.PoolSize}{(full ? "" : "  — SKIPPED (incomplete)")}");
+            }
+            if (ready.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Daily Challenge Builder", $"No tier pool is complete:\n\n{lines}", "OK");
+                return;
+            }
+            if (!EditorUtility.DisplayDialog("Export daily packs — summary",
+                $"One encrypted pack per tier → Resources/Levels/daily_*.bytes\n" +
+                $"+ runtime tiers config → Resources/DailyChallengeTiers.asset\n\n{lines}\nExport {ready.Count} pack(s)?",
+                "Export", "Cancel"))
+                return;
+
+            int done = 0;
+            foreach (int i in ready)
+                if (LevelResourcesExporter.ExportDailyTier(FolderOf(config.tiers[i]), config.tiers[i].name, config.tiers[i].PoolSize))
+                    done++;
+            LevelResourcesExporter.ExportDailyTiersConfig(config);   // regenerated every export — never drifts
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[DailyBuilder] exported {done}/{ready.Count} daily pack(s) + tiers config");
+        }
+
+        string FolderOf(DailyChallengeCurveConfig.Tier tr) => $"{SetsRoot}/Daily{tr.name}";
 
         static int CountBuilt(string folder)
         {
@@ -89,7 +130,7 @@ namespace QueensPuzzle
             var scan = PoolBuildRunner.Scan(config.GetTierTargets(i), folder, skipExisting, overrideOffTol);
             if (scan.open.Count == 0)
             {
-                EditorUtility.DisplayDialog("Daily Builder", $"{tr.name}: pool is full and inside tolerance.", "OK");
+                EditorUtility.DisplayDialog("Daily Challenge Builder", $"{tr.name}: pool is full and inside tolerance.", "OK");
                 return true;
             }
 
