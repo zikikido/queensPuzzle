@@ -2106,7 +2106,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2871b35a2dc0fe841afbbda1224ffcde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _maxVolume: 0.05
+  _maxVolume: 0.1
   _playlist: {fileID: 11400000, guid: 9da4049b767adbf448531178ee0f693d, type: 2}
 --- !u!4 &4042388086523939282
 Transform:
