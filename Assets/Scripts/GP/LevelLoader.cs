@@ -4,8 +4,8 @@ using UnityEngine;
 namespace qp {
     /// <summary>
     /// Resolves which LevelData to play. In the editor a level the Level Builder handed over for
-    /// playtesting wins; otherwise the player's current level (AppData.LevelIdx), clamped to
-    /// MaxLevels so reaching the end keeps showing the last level.
+    /// playtesting wins; otherwise the player's current level (AppData.LevelIdx). Past the end
+    /// of the pack the game is endless — see <see cref="PackIndex"/>.
     /// </summary>
     public static class LevelLoader {
 
@@ -37,9 +37,42 @@ namespace qp {
 #endif
             if (!EnsurePack()) return null;
 
-            // the current level, clamped so past-the-end keeps showing the last one
-            int idx = Mathf.Clamp(AppData.LevelIdx, 0, _packCount - 1);
-            return LevelPack.Decode(_pack, idx);
+            return LevelPack.Decode(_pack, PackIndex(Mathf.Max(0, AppData.LevelIdx)));
+        }
+
+        // Levels per wave in the campaign curve (CampaignCurveConfig wave templates).
+        const int WaveLen = 20;
+
+        // Maps the ever-growing LevelIdx to a pack index. Within the pack it's 1:1; past the
+        // end the game turns endless: the last tenth of the pack loops forever, whole waves
+        // shuffled per lap (so laps differ but the difficulty rhythm inside a wave survives).
+        // Seeded by lap number only — every player sees the same levels in the same order.
+        static int PackIndex(int levelIdx) {
+            if (levelIdx < _packCount) return levelIdx;
+
+            int waves = _packCount / 10 / WaveLen;   // whole waves in the loop region
+            if (waves < 1) return _packCount - 1;    // pack too small to loop — old clamp behavior
+
+            int loopLen = waves * WaveLen;
+            int past = levelIdx - _packCount;
+            int lap = past / loopLen;
+            int pos = past % loopLen;
+
+            // Fisher-Yates over the wave blocks, seeded by lap — deterministic across players.
+            var perm = new int[waves];
+            for (int i = 0; i < waves; i++) perm[i] = i;
+            for (int i = waves - 1; i > 0; i--) {
+                int j = (int)(Hash((uint)lap * 0x9E3779B9u + (uint)i) % (uint)(i + 1));
+                (perm[i], perm[j]) = (perm[j], perm[i]);
+            }
+            return _packCount - loopLen + perm[pos / WaveLen] * WaveLen + pos % WaveLen;
+        }
+
+        static uint Hash(uint x) {   // lowbias32 — same deterministic hash the campaign curve uses
+            x ^= x >> 16; x *= 0x7feb352d;
+            x ^= x >> 15; x *= 0x846ca68b;
+            x ^= x >> 16;
+            return x;
         }
 
         static bool EnsurePack() {

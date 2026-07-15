@@ -7,7 +7,7 @@ namespace qp {
     public class MBLevelButton : MonoBehaviour {
 
         public void OnEnable() {
-            int n = Mathf.Min(AppData.LevelIdx + 1, LevelLoader.LevelCount);   // next level, capped at the max
+            int n = AppData.LevelIdx + 1;   // endless: keeps counting past the pack size
             transform.RecursiveFindChild<TMP_Text>("$Text").text = $"Level {n}";
         }
 
