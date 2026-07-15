@@ -145,6 +145,19 @@ namespace QueensPuzzle
         [Tooltip("Wall/grind gates are skipped below this weight so onboarding is not rejected.")]
         public int gateMinWeight = 100;
 
+        /// <summary>The gate fields above as plain data — what the pool builder consumes.</summary>
+        public GenerationGates Gates => new GenerationGates
+        {
+            maxTrials = maxTrials,
+            maxPeakShare = maxPeakShare,
+            minWeightPerStep = minWeightPerStep,
+            maxPaidSteps = maxPaidSteps,
+            milestoneMaxPaidSteps = milestoneMaxPaidSteps,
+            maxStartShare = maxStartShare,
+            peakMaxStartShare = peakMaxStartShare,
+            gateMinWeight = gateMinWeight,
+        };
+
         public LevelTarget GetTarget(int level)
         {
             if (level < 1) throw new ArgumentOutOfRangeException(nameof(level));
@@ -218,7 +231,7 @@ namespace QueensPuzzle
 
         // Keep the rotation size when the target is feasible on it; otherwise the smallest
         // size whose range holds the target (so easy learning slots drop to small boards).
-        int FitSize(int targetWeight, int preferred)
+        public int FitSize(int targetWeight, int preferred)
         {
             foreach (var r in sizeWeightRanges)
                 if (r.size == preferred && targetWeight >= r.minWeight && targetWeight <= r.maxWeight)
@@ -230,7 +243,7 @@ namespace QueensPuzzle
             return best;
         }
 
-        Role RoleOf(float d) =>
+        public Role RoleOf(float d) =>
             d <= breatherCeil ? Role.Breather :
             d < 0.30f ? Role.Normal :
             d < 0.55f ? Role.Build : Role.Peak;

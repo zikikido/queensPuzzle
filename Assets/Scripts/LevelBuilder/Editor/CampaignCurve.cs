@@ -1,14 +1,14 @@
 namespace QueensPuzzle
 {
     /// <summary>
-    /// Build-time accept/reject for generated levels against a <see cref="CampaignCurveConfig"/>.
-    /// All tunables live on the config asset; this only wires them to <see cref="WeightRater"/>
-    /// reports (editor-only, hence not on the config class itself).
+    /// Build-time accept/reject for generated levels against <see cref="GenerationGates"/>.
+    /// All tunables live on the curve config asset (exposed as its Gates property); this only
+    /// wires them to <see cref="WeightRater"/> reports (editor-only, hence not on the config class).
     /// </summary>
     public static class CampaignCurve
     {
         /// <summary>Accept/reject one rated candidate for a slot. Board size must match separately.</summary>
-        public static bool PassesGates(CampaignCurveConfig c, in CampaignCurveConfig.LevelTarget t, in WeightRater.Report rep)
+        public static bool PassesGates(in GenerationGates c, in CampaignCurveConfig.LevelTarget t, in WeightRater.Report rep)
         {
             if (!rep.solved || rep.trials > c.maxTrials) return false;
             if (rep.weight < t.minWeight || rep.weight > t.maxWeight) return false;

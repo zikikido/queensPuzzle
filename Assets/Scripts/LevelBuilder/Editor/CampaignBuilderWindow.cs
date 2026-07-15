@@ -35,12 +35,6 @@ namespace QueensPuzzle
         (int, int, int, Object) offTolKey;          // (from, to, setIdx, config) the count was made for
         int threadCount = Mathf.Max(1, System.Environment.ProcessorCount - 1);
 
-        // shared with worker threads during generation
-        int genNextSeed;
-        long genAttempts;
-        bool genStop;
-        int[] genSizes;
-
         // graph data, rebuilt only on Show graph
         int[] weights;
         byte[] roles;
@@ -187,25 +181,16 @@ namespace QueensPuzzle
         }
 
         // generate → rate → fit into any open slot at a FIXED ±matchTol — no widening,
-        // a board that fits nothing is discarded.
+        // a board that fits nothing is discarded. The build core lives in PoolBuildRunner.
         void GenerateLevels()
         {
             from = Mathf.Max(1, from);
             to = Mathf.Max(from, to);
 
-            var open = new System.Collections.Generic.List<CampaignCurveConfig.LevelTarget>();
-            int newCount = 0, offTol = 0, overwrite = 0;
-            for (int l = from; l <= to; l++)
-            {
-                var t = config.GetTarget(l);
-                var existing = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
-                // slot is open when: no asset yet · skip-existing is off · or the existing
-                // level sits outside its tolerance window and override is on
-                if (existing == null) { open.Add(t); newCount++; }
-                else if (overrideOffTol && (existing.weight < t.minWeight || existing.weight > t.maxWeight)) { open.Add(t); offTol++; }
-                else if (!skipExisting) { open.Add(t); overwrite++; }
-            }
-            if (open.Count == 0)
+            var targets = new System.Collections.Generic.List<CampaignCurveConfig.LevelTarget>(to - from + 1);
+            for (int l = from; l <= to; l++) targets.Add(config.GetTarget(l));
+            var scan = PoolBuildRunner.Scan(targets, OutputFolder, skipExisting, overrideOffTol);
+            if (scan.open.Count == 0)
             {
                 EditorUtility.DisplayDialog("Campaign Builder", "All levels in this range already exist and are inside tolerance.", "OK");
                 return;
@@ -214,88 +199,27 @@ namespace QueensPuzzle
             if (!EditorUtility.DisplayDialog("Generate levels — summary",
                 $"Set:  {SetName}\n" +
                 $"Range:  {from}–{to}\n\n" +
-                $"To build:  {open.Count} level(s)\n" +
-                $"   • new (missing):  {newCount}\n" +
-                $"   • override off-tolerance:  {offTol}\n" +
-                $"   • overwrite existing:  {overwrite}\n\n" +
+                $"To build:  {scan.open.Count} level(s)\n" +
+                $"   • new (missing):  {scan.newCount}\n" +
+                $"   • override off-tolerance:  {scan.offTol}\n" +
+                $"   • overwrite existing:  {scan.overwrite}\n\n" +
                 $"Tolerance:  ±{config.matchTol * 100:0}% (fixed)\n" +
                 $"Threads:  {threadCount}   ·   Seed base:  {seedBase}",
                 "Go", "Cancel"))
                 return;
 
-            EnsureFolder(OutputFolder);
-            var queue = new System.Collections.Concurrent.ConcurrentQueue<(int[] region, int[] cols, int seed, WeightRater.Report rep, int size)>();
-            int made = 0;
-
-            // workers: generate + rate off the main thread (TryGenerateRaw and Rate are thread-safe)
-            genNextSeed = seedBase - 1;
-            genAttempts = 0;
-            genStop = false;
-            genSizes = SizesOf(open);
-            var workers = new System.Threading.Thread[threadCount];
-            for (int w = 0; w < workers.Length; w++)
-            {
-                workers[w] = new System.Threading.Thread(() =>
+            var (made, attempts) = PoolBuildRunner.Run(config.Gates, scan.open, OutputFolder,
+                new PoolBuildRunner.Options
                 {
-                    while (!System.Threading.Volatile.Read(ref genStop))
-                    {
-                        if (queue.Count > 256) { System.Threading.Thread.Sleep(5); continue; }   // backpressure
-                        int[] sizes = System.Threading.Volatile.Read(ref genSizes);
-                        if (sizes.Length == 0) break;
-                        int s = System.Threading.Interlocked.Increment(ref genNextSeed);
-                        int size = sizes[(s - seedBase) % sizes.Length];
-                        bool ok = LevelGenerator.TryGenerateRaw(size, s, 250, out int[] region, out int[] cols, out _);
-                        System.Threading.Interlocked.Increment(ref genAttempts);
-                        if (!ok) continue;
-                        var rep = WeightRater.Rate(size, region, cols);
-                        if (rep.trials > 0) continue;   // guess wall — discarded on the worker
-                        queue.Enqueue((region, cols, s, rep, size));
-                    }
-                }) { IsBackground = true, Name = $"CampaignGen{w}" };
-                workers[w].Start();
-            }
+                    threadCount = threadCount,
+                    seedBase = seedBase,
+                    title = "Generating campaign levels",
+                    tolLabel = $"tol ±{config.matchTol * 100:0}%",
+                });
 
-            try
-            {
-                AssetDatabase.StartAssetEditing();   // files are still written per level; Unity imports them once at the end
-                while (open.Count > 0)
-                {
-                    long attempts = System.Threading.Interlocked.Read(ref genAttempts);
-                    if (EditorUtility.DisplayCancelableProgressBar("Generating campaign levels",
-                        $"filled {made} · open {open.Count} · boards {attempts} · threads {threadCount} · tol ±{config.matchTol * 100:0}%",
-                        made / (float)(made + open.Count))) break;
-
-                    bool filled = false;
-                    while (open.Count > 0 && queue.TryDequeue(out var c))
-                    {
-                        int slot = FindSlot(open, c.size, c.rep);
-                        if (slot >= 0)
-                        {
-                            SaveLevel(open[slot], c.region, c.cols, c.rep.weight, c.seed);
-                            open.RemoveAt(slot);
-                            made++;
-                            filled = true;
-                        }
-                        // no fit at ±matchTol → the board is discarded; the window never widens
-                    }
-
-                    if (filled) genSizes = SizesOf(open);   // workers switch to the sizes still needed
-
-                    System.Threading.Thread.Sleep(10);   // let workers produce; keep the editor responsive
-                }
-            }
-            finally
-            {
-                genStop = true;
-                foreach (var t in workers) t.Join(2000);
-                AssetDatabase.StopAssetEditing();
-                EditorUtility.ClearProgressBar();
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-                offTolCount = -1;   // recount after the build
-                RefreshSetStats();
-            }
-            Debug.Log($"[CampaignBuilder] filled {made} level(s), {open.Count} still open, {System.Threading.Interlocked.Read(ref genAttempts)} boards generated at tol ±{config.matchTol * 100:0}%");
+            offTolCount = -1;   // recount after the build
+            RefreshSetStats();
+            Debug.Log($"[CampaignBuilder] filled {made} level(s), {scan.open.Count} still open, {attempts} boards generated at tol ±{config.matchTol * 100:0}%");
         }
 
         // ---- colors: find & fix close colors on touching regions --------------------------
@@ -493,54 +417,6 @@ namespace QueensPuzzle
                 if (lvl == null) continue;
                 var t = config.GetTarget(l);
                 if (lvl.weight < t.minWeight || lvl.weight > t.maxWeight) offTolCount++;
-            }
-        }
-
-        static int[] SizesOf(System.Collections.Generic.List<CampaignCurveConfig.LevelTarget> open)
-        {
-            var sizes = new int[open.Count];
-            for (int i = 0; i < open.Count; i++) sizes[i] = open[i].boardSize;
-            return sizes;
-        }
-
-        // Rarest fit wins (milestone > peak > build > normal > breather) so easy slots
-        // don't eat the rare heavy boards.
-        int FindSlot(System.Collections.Generic.List<CampaignCurveConfig.LevelTarget> open, int size,
-            in WeightRater.Report rep)
-        {
-            int best = -1, bestPrio = -1;
-            for (int i = 0; i < open.Count; i++)
-            {
-                var t = open[i];
-                if (t.boardSize != size) continue;
-                if (!CampaignCurve.PassesGates(config, t, rep)) continue;
-                int prio = (int)t.role;
-                if (prio > bestPrio) { bestPrio = prio; best = i; }
-            }
-            return best;
-        }
-
-        void SaveLevel(in CampaignCurveConfig.LevelTarget t, int[] region, int[] cols, int weight, int seed)
-        {
-            var data = ScriptableObject.CreateInstance<LevelData>();
-            data.size = t.boardSize;
-            data.regions = region;
-            data.solutionColumns = cols;
-            data.weight = weight;
-            data.seed = seed;
-            AssetDatabase.CreateAsset(data, $"{OutputFolder}/{t.level}.asset");
-        }
-
-        static void EnsureFolder(string path)
-        {
-            if (AssetDatabase.IsValidFolder(path)) return;
-            string[] parts = path.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(cur, parts[i]);
-                cur = next;
             }
         }
 
