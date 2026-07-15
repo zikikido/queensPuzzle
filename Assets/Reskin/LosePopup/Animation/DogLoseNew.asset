@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c82cf32d3a947f3973666c2de902093, type: 3}
+  m_Name: DogLoseNew
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: 805b95aa87e7c414286bd03007080286, type: 3}
+  - {fileID: 21300000, guid: 70a952096d112814fb1957d118a5fa1f, type: 3}
+  - {fileID: 21300000, guid: 52d41eb67a385e54cabfb39a67e2ce0c, type: 3}
+  - {fileID: 21300000, guid: 746de0b0548ba5f41a15457ffa41ff4f, type: 3}
+  - {fileID: 21300000, guid: 813b847a196ac3644bda1b08a3e241fd, type: 3}
+  - {fileID: 21300000, guid: af860c22e52d49c4b8309f14fbb52e5a, type: 3}
+  - {fileID: 21300000, guid: c18022377c92f584b84ddccbeee29504, type: 3}
+  - {fileID: 21300000, guid: 34f416e775adb6f4080f9747b9f7f5b8, type: 3}
+  - {fileID: 21300000, guid: 805b95aa87e7c414286bd03007080286, type: 3}
+  - {fileID: 21300000, guid: 70a952096d112814fb1957d118a5fa1f, type: 3}
+  - {fileID: 21300000, guid: 52d41eb67a385e54cabfb39a67e2ce0c, type: 3}
+  - {fileID: 21300000, guid: 746de0b0548ba5f41a15457ffa41ff4f, type: 3}
+  - {fileID: 21300000, guid: 813b847a196ac3644bda1b08a3e241fd, type: 3}
+  - {fileID: 21300000, guid: af860c22e52d49c4b8309f14fbb52e5a, type: 3}
+  - {fileID: 21300000, guid: 7434db3d7c3196c44a8fb6f2d66189cc, type: 3}
+  - {fileID: 21300000, guid: 34f416e775adb6f4080f9747b9f7f5b8, type: 3}
+  frameDurations:
+  - 0.5
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.2
+  - 0.1
+  - 0.5
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.5
+  _length: 0

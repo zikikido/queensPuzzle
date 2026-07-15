@@ -1897,7 +1897,7 @@ GameObject:
   - component: {fileID: 151873485466603172}
   - component: {fileID: 2788718602704504439}
   m_Layer: 0
-  m_Name: FailPopup
+  m_Name: LosePopup
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
