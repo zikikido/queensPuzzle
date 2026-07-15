@@ -56,7 +56,7 @@ namespace QueensPuzzle
         [MenuItem("QueensPuzzle/Campaign Builder")]
         static void Open() => GetWindow<CampaignBuilderWindow>("Campaign Builder");
 
-        void OnEnable() => RefreshSets();
+        void OnEnable() { wantsMouseMove = true; RefreshSets(); }
         void OnFocus() { RefreshSets(); offTolCount = -1; }   // catches set/level changes done outside the window
 
         void RefreshSets()
@@ -589,11 +589,13 @@ namespace QueensPuzzle
 
         void DrawGraph(Rect r)
         {
-            if (Event.current.type != EventType.Repaint) return;
-
             const float padL = 44, padR = 8, padT = 8, padB = 20;
             var plot = new Rect(r.x + padL, r.y + padT, r.width - padL - padR, r.height - padT - padB);
             if (plot.width < 20 || plot.height < 20) return;
+
+            var e = Event.current;
+            if (e.type == EventType.MouseMove && plot.Contains(e.mousePosition)) Repaint();
+            if (e.type != EventType.Repaint) return;
             if (line == null || r != cachedRect) RebuildScreenCache(plot, r);
 
             bool pro = EditorGUIUtility.isProSkin;
@@ -658,8 +660,42 @@ namespace QueensPuzzle
                 float x = plot.xMin + (lvl - dataFrom) / (float)Mathf.Max(1, count - 1) * plot.width;
                 GUI.Label(new Rect(x - 24, plot.yMax + 2, 48, 16), lvl.ToString(), xlab);
             }
+
+            DrawGraphHover(plot, ink, blue, red);
         }
 
+        void DrawGraphHover(Rect plot, Color ink, Color blue, Color red)
+        {
+            if (weights == null || weights.Length == 0 || !plot.Contains(Event.current.mousePosition)) return;
+
+            int n = weights.Length;
+            int i = Mathf.Clamp(Mathf.RoundToInt((Event.current.mousePosition.x - plot.xMin) / Mathf.Max(1f, plot.width) * Mathf.Max(1, n - 1)), 0, n - 1);
+            int level = dataFrom + i;
+            int weight = weights[i];
+            var p = ToScreen(plot, i, n, weight);
+            bool milestone = roles != null && i < roles.Length && roles[i] == (byte)CampaignCurveConfig.Role.Milestone;
+
+            var marker = milestone ? red : blue;
+            EditorGUI.DrawRect(new Rect(p.x - 1f, plot.yMin, 2f, plot.height), new Color(marker.r, marker.g, marker.b, 0.28f));
+            EditorGUI.DrawRect(new Rect(p.x - 4f, p.y - 4f, 8f, 8f), marker);
+
+            string text = milestone
+                ? $"Level {level}  |  weight {weight}  |  milestone"
+                : $"Level {level}  |  weight {weight}";
+            var style = new GUIStyle(EditorStyles.helpBox)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 11,
+                padding = new RectOffset(7, 7, 3, 3)
+            };
+            style.normal.textColor = ink;
+
+            Vector2 size = style.CalcSize(new GUIContent(text));
+            var box = new Rect(Event.current.mousePosition.x + 12f, Event.current.mousePosition.y - size.y - 10f, size.x + 10f, size.y + 6f);
+            if (box.xMax > plot.xMax) box.x = Event.current.mousePosition.x - box.width - 12f;
+            if (box.yMin < plot.yMin) box.y = Event.current.mousePosition.y + 12f;
+            GUI.Label(box, text, style);
+        }
         // Two points per pixel column (max then min) — spikes and breathers both survive
         // decimation, and the polyline stays ≤ 2 * plot.width points no matter the range.
         void RebuildScreenCache(Rect plot, Rect full)
