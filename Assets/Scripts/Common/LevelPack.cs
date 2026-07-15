@@ -215,13 +215,29 @@ namespace QueensPuzzle
             return k;
         }
 
+        // 16-byte IV derived from the content, so identical input encrypts to identical output.
+        static byte[] DeterministicIV(byte[] content)
+        {
+            using (var sha = SHA256.Create())
+            {
+                byte[] hash = sha.ComputeHash(content);
+                var iv = new byte[16];
+                Array.Copy(hash, iv, 16);
+                return iv;
+            }
+        }
+
         public static byte[] Encrypt(byte[] plain)
         {
             byte[] packed = Gzip(plain);
             using (var aes = Aes.Create())
             {
                 aes.Key = Key();
-                aes.GenerateIV();
+                // Deterministic IV derived from the content (not GenerateIV's randomness) so an
+                // unchanged pool re-exports to byte-identical output - no git churn. Different
+                // content still gets a different IV. The IV was never the secret (see Key()), so
+                // this costs no meaningful security; Decrypt reads it back from the first 16 bytes.
+                aes.IV = DeterministicIV(packed);
                 using (var enc = aes.CreateEncryptor())
                 {
                     byte[] cipher = enc.TransformFinalBlock(packed, 0, packed.Length);

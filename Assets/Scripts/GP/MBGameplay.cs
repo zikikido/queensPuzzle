@@ -78,9 +78,19 @@ namespace qp {
         public MBCell CellAt(int row, int col) =>
             _cells != null && row >= 0 && row < _n && col >= 0 && col < _n ? _cells[row, col] : null;
 
+        // Daily runs save/report under the DAY index and the daily attempts counter —
+        // campaign runs under the level index and AppData.LevelAttempts.
+        static int ProgressKey => DailyChallengeManager.InDailyRun
+            ? DailyChallengeManager.DayIndex : AppData.LevelIdx.Value;
+        static int AttemptsCount => DailyChallengeManager.InDailyRun
+            ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
+
         void Awake() {
             instance = this;
             GPSFX.Load();   // pull the GP clips in now, not on the first sound
+
+            // daily timer: +1s per tick, only while the board is actually playable
+            InvokeRepeating(nameof(DailyTick), 1f, 1f);
 
             // The tutorial object may be left disabled in the scene; wake it so its Awake runs and
             // registers MBToturial.instance (it puts itself back to sleep after its layout pass).
@@ -129,6 +139,15 @@ namespace qp {
             GPSFX.Release();   // next scene load frees the GP clips; reloads lazily if needed
         }
 
+        // The daily clock runs only while the level actually plays: not during build/bloom,
+        // not under popups (InputLocks), not after the solve — and restart/fail never resets it.
+        void DailyTick() {
+            if (!DailyChallengeManager.InDailyRun || !_ready || InputLocks > 0) return;
+            if (DailyChallengeManager.State.solved) return;
+            DailyChallengeManager.AddPlayTime(1f);
+            _topBar?.SetTimeProgress(DailyChallengeManager.State.timeSec);
+        }
+
 
         IEnumerator Start() {
             WireBoostButtons();
@@ -156,7 +175,7 @@ namespace qp {
                         CommonSFX.Play(GPSFX.Instance.Hint);
                         AppData.LastPlayData.hintsUsed++;
                         AppData.LastPlayData.Save();
-                        Analytics.BoostUsed("hint", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                        Analytics.BoostUsed("hint", ProgressKey, AttemptsCount);
                         return true;
                     }
                     return false;
@@ -185,7 +204,7 @@ namespace qp {
 
         void CountQueenBoost() {
             AppData.LastPlayData.queenBoostsUsed++;
-            Analytics.BoostUsed("queen", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            Analytics.BoostUsed("queen", ProgressKey, AttemptsCount);
         }
 
         // Place a correct queen from a boost and advance the game (as a manual correct placement).
@@ -251,7 +270,7 @@ namespace qp {
             if (any) {
                 AppData.LastPlayData.undosUsed++;   // before SaveBoard — it persists the counter too
                 SaveBoard();
-                Analytics.BoostUsed("undo", AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                Analytics.BoostUsed("undo", ProgressKey, AttemptsCount);
                 Haptics.Play(GameHaptic.Tap);
             }
             return any;
@@ -331,6 +350,10 @@ namespace qp {
 
             _reviewPrepareStarted = false;   // each board build may pre-fetch the review flow once
 
+            // each mode owns its save slot — a daily never touches the campaign board save
+            bool daily = DailyChallengeManager.InDailyRun;
+            AppData.LastPlayData = LastPlayData.Load(daily);
+
             var board = transform.RecursiveFindChild("$Board") as RectTransform;
             var cellPrefab = MBCell.LoadFromResource();
 
@@ -349,7 +372,7 @@ namespace qp {
             _cells = new MBCell[n, n];
             _undo.Clear(); _stroke = null;   // fresh board, nothing to undo
 
-            _topBar.Init(_n);
+            _topBar.Init(_n, daily);
 
             // load the cells into $Board — n x n grid, centered on the board, row 0 on top
             for (int r = 0; r < n; r++) {
@@ -373,16 +396,18 @@ namespace qp {
             if (!RestoreBoard()) {
                 // attempts counter: fresh level → 1; a new attempt on the same level (retry) → +1.
                 // A restored board is the SAME attempt — resuming the app never counts.
-                if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
+                if (daily) {
+                    DailyChallengeManager.BumpAttempt();
+                } else if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
                     AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
                     AppData.LevelAttempts.Value = 1;
                 } else {
                     AppData.LevelAttempts.Value++;
                 }
-                AppData.LastPlayData = LastPlayData.StartFresh(AppData.LevelIdx.Value);
+                AppData.LastPlayData = LastPlayData.StartFresh(ProgressKey, daily);
                 RevealQueens(level);
 
-                Analytics.GameStart(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                Analytics.GameStart(ProgressKey, AttemptsCount);
             }
 
             _topBar.SetWrongMoves(AppData.LastPlayData.bonesLost);
@@ -534,7 +559,7 @@ namespace qp {
             var sb = new System.Text.StringBuilder(_n * _n);
             foreach (var cell in _cells) sb.Append(StateChar(cell.State));
             var data = AppData.LastPlayData;
-            data.forLevelIdx = AppData.LevelIdx.Value;
+            data.forLevelIdx = ProgressKey;   // level index, or the day index on a daily
             data.levelHash = _levelHash;
             data.board = sb.ToString();
             data.Save();   // one write: board + the attempt's counters
@@ -554,7 +579,7 @@ namespace qp {
 
         // Re-apply the saved marks (wrong queens included) when the same level reopens.
         bool RestoreBoard() {
-            if (AppData.LastPlayData.forLevelIdx != AppData.LevelIdx.Value) return false;
+            if (AppData.LastPlayData.forLevelIdx != ProgressKey) return false;
             // an app update can redesign a level at the same index and size — the save is for a
             // DIFFERENT puzzle then (stale queens → false win / stuck board), so reject it
             if (AppData.LastPlayData.levelHash != _levelHash) return false;
@@ -704,10 +729,11 @@ namespace qp {
             _ready = false;              // stop input
             PlayQueens(MBCell.QueenState.HAPPY);   // the whole board celebrates, in sync
             Ads.HideBanner();            // banner off while the win popup is up
-            Analytics.GameWin(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);   // before LevelIdx++
+            Analytics.GameWin(ProgressKey, AttemptsCount);   // before LevelIdx++/OnSolved
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
-            AppData.LevelIdx.Value++;    // advance progress (persisted)
+            if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();   // timer stops, TOP % fixed
+            else AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
             if (_winPopup == null)
                 _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
             Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
@@ -732,7 +758,7 @@ namespace qp {
             _ready = false;   // stop input; Continue or Reset decides what's next
             PlayQueens(MBCell.QueenState.CRY);   // the board mourns (overrides the disappointment)
             Ads.HideBanner();            // banner off while the fail popup is up
-            Analytics.GameLose(AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            Analytics.GameLose(ProgressKey, AttemptsCount);
 
             // Failed → the attempt is over: quitting now restarts the level fresh.
             // But Continue may revive it — it waits in the stash until the popup decides.
@@ -763,12 +789,12 @@ namespace qp {
         // Fail-continue: every bone returns, but the wrong queens stay on the board — they're
         // permanent X's now. Re-saves the board that Fail() invalidated.
         public void ContinueAfterFail() {
-            AppData.LastPlayData = LastPlayData.Unstash();   // the attempt Fail() invalidated is alive again
+            AppData.LastPlayData = LastPlayData.Unstash(DailyChallengeManager.InDailyRun);   // the attempt Fail() invalidated is alive again
             AppData.LastPlayData.bonesLost = 0;
             AppData.LastPlayData.livesAdded += GameConfig.BonesAddedAfterRewarded;
             PlayQueens(MBCell.QueenState.IDLE);   // Cry holds its last frame — un-freeze the mourning
             SaveBoard();
-            Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+            Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded, ProgressKey, AttemptsCount);
             _topBar?.SetWrongMoves(0);
             _ready = true;
 

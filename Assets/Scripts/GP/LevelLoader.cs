@@ -45,12 +45,51 @@ namespace qp {
                 }
             }
 #endif
+            if (DailyChallengeManager.InDailyRun) return LoadDailyLevel();
+
             if (!EnsurePack()) return null;
 
             int packIndex = PackIndex(Mathf.Max(0, AppData.LevelIdx));
             var packedLevel = LevelPack.Decode(_pack, packIndex);
             SetCurrentIdentity(_levelSetId, packIndex, packedLevel);
             return packedLevel;
+        }
+
+        // ---- daily challenge: one pack per tier, slot = day index % pool size --------------
+
+        // The current tier's daily pack, decrypted once and kept until the tier changes
+        // (tiers only move forward, and mid-day the tier is locked anyway).
+        static byte[] _dailyPack;
+        static int _dailyCount;
+        static string _dailySetId = UnknownLevelSetId;
+        static string _dailyTier;
+
+        static LevelPack.Level LoadDailyLevel() {
+            string tier = DailyChallengeManager.TierName;
+            if (_dailyPack == null || _dailyTier != tier) {
+                var ta = Resources.Load<TextAsset>("Levels/daily_" + tier.ToLowerInvariant());
+                if (ta == null) {
+                    Common.CDebug.LogError($"[LevelLoader] Resources/Levels/daily_{tier.ToLowerInvariant()}.bytes not found - run the daily export.");
+                    return null;
+                }
+                try {
+                    _dailyPack = LevelPack.Decrypt(ta.bytes);
+                    _dailyCount = LevelPack.Count(_dailyPack);
+                    _dailySetId = LevelPack.LevelSetId(_dailyPack);
+                    _dailyTier = tier;
+                } catch (System.Exception e) {
+                    Common.CDebug.LogError("[LevelLoader] daily pack unreadable: " + e.Message);
+                    _dailyPack = null;
+                    return null;
+                }
+                Resources.UnloadAsset(ta);
+            }
+            if (_dailyCount <= 0) return null;
+
+            int slot = ((DailyChallengeManager.DayIndex % _dailyCount) + _dailyCount) % _dailyCount;
+            var level = LevelPack.Decode(_dailyPack, slot);
+            SetCurrentIdentity(_dailySetId, slot, level);   // analytics: level_set_id = "DailyTierX"
+            return level;
         }
 
         static void SetCurrentIdentity(string levelSetId, int packIndex, LevelPack.Level level) {

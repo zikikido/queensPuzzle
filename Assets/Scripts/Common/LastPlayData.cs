@@ -13,11 +13,18 @@ namespace qp {
     [Serializable]
     public class LastPlayData {
 
-        // Common's JSON-in-PlayerPrefs saver does the persistence
+        // Common's JSON-in-PlayerPrefs saver does the persistence. Two independent slots: the
+        // campaign attempt and the daily attempt — starting a daily must never wipe an
+        // in-progress campaign board (and vice versa). `daily` picks the slot.
         static readonly PlayerPrefsHelper.ObjectHolder<LastPlayData> _holder
             = new PlayerPrefsHelper.ObjectHolder<LastPlayData>("qp_last_play");
+        static readonly PlayerPrefsHelper.ObjectHolder<LastPlayData> _dailyHolder
+            = new PlayerPrefsHelper.ObjectHolder<LastPlayData>("qp_last_play_daily");
 
-        public int forLevelIdx = -1;   // which level this save belongs to; -1 = no valid save
+        static PlayerPrefsHelper.ObjectHolder<LastPlayData> HolderOf(bool daily) => daily ? _dailyHolder : _holder;
+
+        public bool daily;             // which slot this attempt lives in (serialized with the blob)
+        public int forLevelIdx = -1;   // level index (campaign) or day index (daily); -1 = no valid save
         public int levelHash;          // LevelData.ContentHash() of that level — a redesigned level rejects the stale save
         public string board = "";      // one char per cell (0/X/Q/W); "" = no saved board
 
@@ -28,13 +35,13 @@ namespace qp {
         public int livesAdded;         // fail-continue grants (+3 each, later: video/coins)
         public int bonesLost;          // lives lost; not derivable from cells (continue keeps wrong queens)
 
-        public static LastPlayData Load() => _holder.Value ?? new LastPlayData();
+        public static LastPlayData Load(bool daily = false) => HolderOf(daily).Value ?? new LastPlayData { daily = daily };
 
-        public void Save() => _holder.Save(this);
+        public void Save() => HolderOf(daily).Save(this);
 
-        /// <summary>A zeroed attempt on the given level, saved immediately.</summary>
-        public static LastPlayData StartFresh(int levelIdx) {
-            var data = new LastPlayData { forLevelIdx = levelIdx };
+        /// <summary>A zeroed attempt on the given level (or daily day), saved immediately.</summary>
+        public static LastPlayData StartFresh(int levelIdx, bool daily = false) {
+            var data = new LastPlayData { forLevelIdx = levelIdx, daily = daily };
             data.Save();
             return data;
         }
@@ -54,8 +61,8 @@ namespace qp {
         public void Stash() => _stash = (LastPlayData)MemberwiseClone();
 
         /// <summary>The stashed attempt, alive and saved again; falls back to Load() when empty.</summary>
-        public static LastPlayData Unstash() {
-            var data = _stash ?? Load();
+        public static LastPlayData Unstash(bool daily = false) {
+            var data = _stash ?? Load(daily);
             _stash = null;
             data.Save();
             return data;

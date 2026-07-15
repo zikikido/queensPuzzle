@@ -54,7 +54,7 @@ namespace qp {
         // ---- derived, nothing stored ----------------------------------------------------
 
         public static EDailyChallengeStatus Status =>
-            !IsUnlocked ? EDailyChallengeStatus.Lock :
+            !IsUnlocked || Tiers == null ? EDailyChallengeStatus.Lock :   // no shipped config = feature off
             _state.dayIndex == DayIndex && _state.solved ? EDailyChallengeStatus.Done :
             EDailyChallengeStatus.Active;
 
@@ -102,6 +102,7 @@ namespace qp {
                 _state.dayIndex = DayIndex;
                 _state.tier = Tiers.TierOf(DailyProgress);
                 _state.timeSec = 0f;
+                _state.attempts = 0;
                 _state.solved = false;
                 _state.topPct = 0;
                 _state.Save();
@@ -111,6 +112,14 @@ namespace qp {
 
         /// <summary>Back to lobby/campaign — the daily save blob stays for a same-day resume.</summary>
         public static void ExitDaily() => InDailyRun = false;
+
+        /// <summary>A fresh daily board began (first start, restart, retry after fail) — the
+        /// daily counterpart of AppData.LevelAttempts. Resets with the day (StartDaily).</summary>
+        public static void BumpAttempt() {
+            if (_state.dayIndex != DayIndex) return;   // StartDaily always runs first
+            _state.attempts++;
+            _state.Save();
+        }
 
         /// <summary>GP ticks this only while the board is actively playing. Persists on every
         /// call — feed it accumulated chunks (~once per second / on pause), not per frame.</summary>
@@ -128,6 +137,12 @@ namespace qp {
             _state.topPct = FakeTopPct(_state.timeSec);
             _state.Save();
             _boardsSolved.Value++;
+        }
+
+        /// <summary>Solve-time display shared by the lobby card and the top bar: "12:34", "1:02:34".</summary>
+        public static string FormatTime(float sec) {
+            int s = sec < 0f ? 0 : (int)Math.Round(sec);
+            return s >= 3600 ? $"{s / 3600}:{s / 60 % 60:00}:{s % 60:00}" : $"{s / 60}:{s % 60:00}";
         }
 
         // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time:

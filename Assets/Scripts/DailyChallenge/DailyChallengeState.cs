@@ -20,6 +20,7 @@ namespace qp {
         public int dayIndex = -1;   // which calendar day (days since epoch) this blob is for; -1 = never played
         public int tier = -1;       // tier locked for that day
         public float timeSec;       // accumulated ACTIVE play time — pauses off-board, continues across restarts/fails
+        public int attempts;        // boards started today (restarts/fails; a restore is the same attempt)
         public bool solved;
         public int topPct;          // "TOP X %" — fake for now (see DailyChallengeManager.FakeTopPct)
 

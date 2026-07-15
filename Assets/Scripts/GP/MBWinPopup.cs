@@ -30,8 +30,10 @@ namespace qp {
         // $FirstTry celebrates winning the level on the first attempt (counter kept in AppData;
         // it only resets when a NEW level starts, so it's still valid while the popup shows).
         void OnEnable() {
+            int attempts = DailyChallengeManager.InDailyRun
+                ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
             var firstTry = transform.RecursiveFindChild("$FirstTry");
-            if (firstTry != null) firstTry.gameObject.SetActive(AppData.LevelAttempts.Value <= 1);
+            if (firstTry != null) firstTry.gameObject.SetActive(attempts <= 1);
 
             transform.RecursiveFindChild<ParticleSystem>("$ConfityParticleSystem").Play();
         }
@@ -44,21 +46,27 @@ namespace qp {
             if (!_showing) gameObject.SetActive(false);   // layout pass only — hidden until Win()
         }
 
-        // Rebuild the board with the now-current level (LevelIdx was advanced on win) — no scene
-        // reload, so the scene and the banner ad stay loaded.
+        // Campaign: rebuild the board with the now-current level (LevelIdx was advanced on win) —
+        // no scene reload, so the scene and the banner ad stay loaded.
+        // Daily: there is no next level today — back to the lobby (which shows the Done card).
         void Next() {
             _showing = false;
             gameObject.SetActive(false);
 
             // Interstitial between levels, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
-            // Show it first, then rebuild the next level when it closes.
+            // Show it first, then continue when it closes.
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
-                Ads.ShowInterstitial(Replay);
+                Ads.ShowInterstitial(Continue);
             else
-                Replay();
+                Continue();
         }
 
-        void Replay() {
+        void Continue() {
+            if (DailyChallengeManager.InDailyRun) {
+                DailyChallengeManager.ExitDaily();
+                Navigator.Go(Navigator.Lobby);
+                return;
+            }
             var gp = FindAnyObjectByType<MBGameplay>();
             if (gp != null) gp.Replay();
         }

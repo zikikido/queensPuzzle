@@ -60,7 +60,9 @@ namespace qp {
             } else {
                 Ads.WatchToEarn(() => {
                     boost.Value += GameConfig.BoosterAddedAfterRewarded;
-                    Analytics.BoostEarned(BoostType.ToString().ToLower(), AppData.LevelIdx.Value, AppData.LevelAttempts.Value);
+                    int lvl = DailyChallengeManager.InDailyRun ? DailyChallengeManager.DayIndex : AppData.LevelIdx.Value;
+                    int att = DailyChallengeManager.InDailyRun ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
+                    Analytics.BoostEarned(BoostType.ToString().ToLower(), lvl, att);
                 });
             }
         }

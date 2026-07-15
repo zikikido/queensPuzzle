@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6865ecb2da3c1d4589b937dc326395b, type: 3}
+  m_Name: DailyChallengeTiers
+  m_EditorClassIdentifier: 
+  epochDate: 2026-01-05
+  tiers:
+  - name: Tier2
+    progressMin: 21
+    progressMax: 50
+  - name: Tier3
+    progressMin: 51
+    progressMax: 100
+  - name: Tier4
+    progressMin: 101
+    progressMax: 150
+  - name: Tier5
+    progressMin: 151
+    progressMax: 200
+  - name: Endless
+    progressMin: 201
+    progressMax: 2147483647

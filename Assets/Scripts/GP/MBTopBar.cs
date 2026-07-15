@@ -22,16 +22,29 @@ namespace qp {
         // How many wrong moves end the level (one bone each).
         public int MaxWrongMoves => _bones.Length;
 
+        private GameObject _withoutTime, _withTime;   // bottom row: campaign layout / daily layout with the timer
+        private TMPro.TMP_Text _timeProgress;
+
         private void Awake() {
             transform.RecursiveFindChild("$QueensProgressText", out _queensProgressText);
             _foundHex = ColorUtility.ToHtmlStringRGB(_queenFoundCLR);
 
             _canvasGroup = GetComponent<CanvasGroup>();
 
+            var withoutTime = transform.RecursiveFindChild("$WithoutTime");
+            var withTime = transform.RecursiveFindChild("$WithTime");
+            _withoutTime = withoutTime.gameObject;
+            _withTime = withTime.gameObject;
+            _timeProgress = withTime.transform.RecursiveFindChild<TMPro.TMP_Text>("$TimeProgress");
+
             _settingsBtn = transform.RecursiveFindChild<Button>("$SettingsBtn");
             _settingsBtn.onClick.AddListener(OpenSettings);
 
-            transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => { Ads.HideBanner(); Navigator.Go(Navigator.Lobby); });
+            transform.RecursiveFindChild<Button>("$BackBtn").onClick.AddListener(() => {
+                DailyChallengeManager.ExitDaily();   // leaving GP ends the daily run (the day's save stays)
+                Ads.HideBanner();
+                Navigator.Go(Navigator.Lobby);
+            });
 
             // interactable=false (CanvasGroup) only blocks clicks — no gray-out on our buttons
             foreach (var btn in GetComponentsInChildren<Button>(true)) {
@@ -65,12 +78,23 @@ namespace qp {
             _settings.Open();   // plays the in animation (plain SetActive would skip it)
         }
 
-        // Set the level's queen target and reset the display to 0/total.
-        public void Init(int queensInBoard) {
+        // Set the level's queen target and reset the display to 0/total. A daily run shows the
+        // date instead of a level number and swaps the bottom row to the timer layout.
+        public void Init(int queensInBoard, bool showTimeProgress) {
             _queensInBoard = queensInBoard;
             _setQueensProgress(0);
 
-            transform.RecursiveFindChild<TMPro.TMP_Text>("$LevelText").text = (AppData.LevelIdx + 1).ToString();
+            transform.RecursiveFindChild<TMPro.TMP_Text>("$LevelText").text =
+                showTimeProgress ? DailyChallengeManager.NiceDate : (AppData.LevelIdx + 1).ToString();
+
+            _withoutTime.SetActive(!showTimeProgress);
+            _withTime.SetActive(showTimeProgress);
+            if (showTimeProgress) SetTimeProgress(DailyChallengeManager.State.timeSec);
+        }
+
+        // The daily timer readout — MBGameplay ticks it once per second while the board plays.
+        public void SetTimeProgress(float seconds) {
+            if (_timeProgress != null) _timeProgress.text = DailyChallengeManager.FormatTime(seconds);
         }
 
         // How many queens are correctly placed right now.

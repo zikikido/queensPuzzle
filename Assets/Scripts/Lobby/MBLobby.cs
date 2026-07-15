@@ -25,6 +25,7 @@ namespace qp {
 
         // Start the player's current level (AppData.LevelIdx). LevelLoader reads that index.
         void PlayCurrentLevel() {
+            DailyChallengeManager.ExitDaily();   // campaign play — make sure no daily run is flagged
 #if UNITY_EDITOR
             // the lobby launches by index — drop any Level Builder playtest token so it isn't reused
             UnityEditor.SessionState.EraseString(LevelLoader.PlayLevelGuidKey);
