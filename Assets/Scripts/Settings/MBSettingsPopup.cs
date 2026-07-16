@@ -25,7 +25,7 @@ namespace qp {
         /// <summary>Fired after the out animation finished and the popup deactivated itself.</summary>
         public event Action Closed;
 
-        MBSwitch _sound, _vibration;
+        MBSwitch _sound, _vibration, _music;
         Button _bg;              // $BG — fades
         Transform _popup;        // $Popup — pops
         CanvasGroup _popupGroup; // fades with the pop, so no scaling from zero
@@ -67,6 +67,7 @@ namespace qp {
         protected virtual void Awake() {
             _sound = transform.RecursiveFindChild("$Sounds").GetComponentInChildren<MBSwitch>();
             _vibration = transform.RecursiveFindChild("$Vibration").GetComponentInChildren<MBSwitch>();
+            _music = transform.RecursiveFindChild("$Music")?.GetComponentInChildren<MBSwitch>();
 
             _bg = transform.RecursiveFindChild<Button>("$BG");
             transform.RecursiveFindChild<Button>("$XButton").onClick.AddListener(Close);
@@ -94,6 +95,10 @@ namespace qp {
             _sound?.Init(MBSFX.Instance == null || !MBSFX.Instance.Mute, on => {
                 RegisterCodeTap(1);
                 if (MBSFX.Instance != null) MBSFX.Instance.Mute = !on;
+            });
+
+            _music?.Init(MBMusic.BG == null || !MBMusic.BG.Mute, on => {
+                if (MBMusic.BG != null) MBMusic.BG.Mute = !on;
             });
 
             _vibration?.Init(AppData.Haptics.Value, on => {
