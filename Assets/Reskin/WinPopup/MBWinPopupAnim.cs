@@ -9,7 +9,7 @@ namespace qp {
     /// so MBWinPopup itself carries no skin-specific references.
     /// </summary>
     [RequireComponent(typeof(Animator))]
-    public class MBWinPopupAnim : MonoBehaviour {
+    public class MBWinPopupAnim : MonoBehaviour, IPopupAnim {
 
         static readonly int ShowState = Animator.StringToHash("Show");
 
@@ -21,12 +21,14 @@ namespace qp {
             _char = transform.RecursiveFindChild<MBSpriteFlipbook>("$Char");
         }
 
-        // The popup is re-enabled for every win (and once more by the layout pass in
-        // MBWinPopup.Start), so the Animator would otherwise resume wherever it left off.
-        // Update(0) evaluates frame 0 right away — without it the first frame shows rest values.
-        void OnEnable() {
+        /// <summary>Rewinds and plays the show cascade. Driven by MBWinPopup.Show.</summary>
+        public void PlayIn() {
             _animator.Play(ShowState, 0, 0f);
-            _animator.Update(0f);
+
+            // Evaluate frame 0 now, or the popup renders one frame at rest values before the
+            // Animator's own update lands. Guarded because Update asserts on m_DidAwake if the
+            // Animator has not awoken yet.
+            if (_animator.isInitialized) _animator.Update(0f);
         }
 
         /// <summary>Animation event. Starts the character flipbook; its controller chains In -> Idle.</summary>

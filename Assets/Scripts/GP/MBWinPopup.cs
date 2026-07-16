@@ -13,6 +13,7 @@ namespace qp {
             _showing = true;
             _group.alpha = 1f;   // whatever the layout pass left behind, a real show is opaque
             gameObject.SetActive(true);
+            GetComponent<IPopupAnim>()?.PlayIn();   // the reskin animates the open, if it has one
         }
 
         // Same trick as the tutorial: stay ACTIVE but invisible for the first frames so the UI

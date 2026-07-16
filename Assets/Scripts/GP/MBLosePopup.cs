@@ -28,6 +28,9 @@ namespace qp {
                 int remaining = MBGameplay.instance != null ? MBGameplay.instance.Remaining : 0;
                 _remainingText.text = $"Remaining: <color=#{hex}>{remaining}</color>";
             }
+
+            // Last: the content above is final before the first animated frame is drawn.
+            GetComponent<IPopupAnim>()?.PlayIn();   // the reskin animates the open, if it has one
         }
 
         // Same trick as the win popup: stay ACTIVE but invisible for the first frames so the UI

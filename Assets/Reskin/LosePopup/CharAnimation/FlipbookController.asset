@@ -16,7 +16,7 @@ MonoBehaviour:
   states:
   - name: In
     anim: {fileID: 11400000, guid: a93ad42280d3e1b4da73a47de5fe0696, type: 2}
-    loop: 1
+    loop: 0
     loopDelay: 0
     next: 
     nextDelay: 0
