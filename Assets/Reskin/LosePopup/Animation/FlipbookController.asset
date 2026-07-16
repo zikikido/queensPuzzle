@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bff5bde23b634c45ab87c7b3eafba1e5, type: 3}
+  m_Name: FlipbookController
+  m_EditorClassIdentifier: 
+  defaultState: 
+  states:
+  - name: In
+    anim: {fileID: 11400000, guid: e161a88c405ec614aa5b9606ba4c922d, type: 2}
+    loop: 1
+    loopDelay: 0
+    next: 
+    nextDelay: 0
