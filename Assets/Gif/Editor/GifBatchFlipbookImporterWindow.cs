@@ -42,6 +42,13 @@ namespace Kido.GifImporter.Editor
             public Texture2D PreviewTexture;
         }
 
+        sealed class GenerationPlan
+        {
+            public string AssetPath;
+            public string[] SpritePaths;
+            public float[] Durations;
+        }
+
         readonly List<GifItem> _items = new List<GifItem>();
         readonly Dictionary<string, FrameCandidate> _analysisLibrary = new Dictionary<string, FrameCandidate>();
         Vector2 _scroll;
@@ -53,8 +60,9 @@ namespace Kido.GifImporter.Editor
         bool _fuzzyDuplicates;
         float _fuzzyTolerance = 0.015f;
         bool _showSpriteLibrary = true;
-        bool _autoPlay = true;
+        bool _autoPlay;
         bool _analysisDirty = true;
+        bool _outputFolderPinned;
 
         [MenuItem("Tools/Kido/GIF Batch Flipbook Importer")]
         public static void Open() => GetWindow<GifBatchFlipbookImporterWindow>("GIF → Flipbooks");
@@ -339,7 +347,7 @@ namespace Kido.GifImporter.Editor
                 catch (Exception ex) { item.Error = ex.Message; }
                 _items.Add(item);
             }
-            if (!AssetDatabase.IsValidFolder(_outputFolder)) _outputFolder = DefaultOutputFolder();
+            if (!_outputFolderPinned || !AssetDatabase.IsValidFolder(_outputFolder)) _outputFolder = DefaultOutputFolder();
             MarkAnalysisDirty();
             Repaint();
         }
@@ -426,57 +434,85 @@ namespace Kido.GifImporter.Editor
                 var existing = BuildExistingLibrary(imagesFolder);
                 var current = new List<FrameCandidate>(existing.Values);
                 int created = 0, reused = 0, updated = 0, unchanged = 0;
+                var plans = new List<GenerationPlan>(_items.Count);
 
-                for (int gi = 0; gi < _items.Count; gi++)
+                // Every import of a sprite repacks the whole sprite atlas from scratch, so the work is
+                // split into three phases and the AssetDatabase is held closed for as long as possible.
+                // Phase 1 only writes PNG bytes to disk; nothing is imported until StopAssetEditing.
+                AssetDatabase.StartAssetEditing();
+                try
                 {
-                    var item = _items[gi];
-                    EditorUtility.DisplayProgressBar("Import GIF animations", Path.GetFileName(item.Path), gi / (float)Math.Max(1, _items.Count));
-                    string animName = Sanitize(Path.GetFileNameWithoutExtension(item.Path));
-                    string assetPath = CombineAsset(_outputFolder, animName + ".asset");
-                    var spritePaths = new string[item.Data.Frames.Count];
-                    var durations = new float[item.Data.Frames.Count];
-
-                    for (int fi = 0; fi < item.Data.Frames.Count; fi++)
+                    for (int gi = 0; gi < _items.Count; gi++)
                     {
-                        var f = item.Data.Frames[fi];
-                        durations[fi] = EffectiveDuration(f);
-                        string hash = HashFrame(f.Width, f.Height, f.Rgba);
-                        FrameCandidate match = null;
-                        if (_ignoreDuplicates)
+                        var item = _items[gi];
+                        EditorUtility.DisplayProgressBar("Import GIF animations", "Writing frames: " + Path.GetFileName(item.Path), gi / (float)Math.Max(1, _items.Count) * 0.7f);
+                        string animName = Sanitize(Path.GetFileNameWithoutExtension(item.Path));
+                        var plan = new GenerationPlan
                         {
-                            match = current.FirstOrDefault(x => x.Hash == hash);
-                            if (match == null && _fuzzyDuplicates)
-                                match = current.FirstOrDefault(x => x.Width == f.Width && x.Height == f.Height && FuzzyDifference(x.Rgba, f.Rgba) <= _fuzzyTolerance);
+                            AssetPath = CombineAsset(_outputFolder, animName + ".asset"),
+                            SpritePaths = new string[item.Data.Frames.Count],
+                            Durations = new float[item.Data.Frames.Count]
+                        };
+
+                        for (int fi = 0; fi < item.Data.Frames.Count; fi++)
+                        {
+                            var f = item.Data.Frames[fi];
+                            plan.Durations[fi] = EffectiveDuration(f);
+                            string hash = HashFrame(f.Width, f.Height, f.Rgba);
+                            FrameCandidate match = null;
+                            if (_ignoreDuplicates)
+                            {
+                                match = current.FirstOrDefault(x => x.Hash == hash);
+                                if (match == null && _fuzzyDuplicates)
+                                    match = current.FirstOrDefault(x => x.Width == f.Width && x.Height == f.Height && FuzzyDifference(x.Rgba, f.Rgba) <= _fuzzyTolerance);
+                            }
+                            if (match != null) { plan.SpritePaths[fi] = match.AssetPath; reused++; continue; }
+
+                            string imagePath = CombineAsset(imagesFolder, hash.Substring(0, 20) + ".png");
+                            if (!File.Exists(AssetPathToAbsolute(imagePath))) { WritePng(imagePath, f.Width, f.Height, f.Rgba); created++; }
+                            var c = new FrameCandidate { Hash = hash, Width = f.Width, Height = f.Height, Rgba = f.Rgba, AssetPath = imagePath };
+                            current.Add(c);
+                            plan.SpritePaths[fi] = imagePath;
                         }
-                        if (match != null) { spritePaths[fi] = match.AssetPath; reused++; continue; }
-
-                        string imagePath = CombineAsset(imagesFolder, hash.Substring(0, 20) + ".png");
-                        if (!File.Exists(AssetPathToAbsolute(imagePath))) { WritePng(imagePath, f.Width, f.Height, f.Rgba); created++; }
-                        var c = new FrameCandidate { Hash = hash, Width = f.Width, Height = f.Height, Rgba = f.Rgba, AssetPath = imagePath };
-                        current.Add(c);
-                        spritePaths[fi] = imagePath;
+                        plans.Add(plan);
                     }
+                }
+                finally { AssetDatabase.StopAssetEditing(); }
 
-                    AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                    foreach (string p in spritePaths.Distinct()) ConfigureSpriteImporter(p);
-                    AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                    var sprites = spritePaths.Select(p => AssetDatabase.LoadAssetAtPath<Sprite>(p)).ToArray();
+                // Phase 2: import every new PNG at once. They arrive as plain textures, not sprites, so
+                // this pass costs no atlas work. The importer settings that do turn them into sprites are
+                // then batched into a single reimport, which repacks the atlas exactly once.
+                EditorUtility.DisplayProgressBar("Import GIF animations", "Importing frames", 0.75f);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                var allSpritePaths = plans.SelectMany(p => p.SpritePaths).Distinct().ToArray();
+                EditorUtility.DisplayProgressBar("Import GIF animations", "Packing sprites", 0.85f);
+                AssetDatabase.StartAssetEditing();
+                try { foreach (string p in allSpritePaths) ConfigureSpriteImporter(p); }
+                finally { AssetDatabase.StopAssetEditing(); }
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
-                    var anim = AssetDatabase.LoadAssetAtPath<qp.SOFlipbookAnim>(assetPath);
+                // Phase 3: the sprites exist now, so link them into the animation assets.
+                for (int gi = 0; gi < plans.Count; gi++)
+                {
+                    var plan = plans[gi];
+                    EditorUtility.DisplayProgressBar("Import GIF animations", "Writing animations", 0.9f + gi / (float)Math.Max(1, plans.Count) * 0.1f);
+                    var sprites = plan.SpritePaths.Select(p => AssetDatabase.LoadAssetAtPath<Sprite>(p)).ToArray();
+
+                    var anim = AssetDatabase.LoadAssetAtPath<qp.SOFlipbookAnim>(plan.AssetPath);
                     if (anim == null)
                     {
                         anim = ScriptableObject.CreateInstance<qp.SOFlipbookAnim>();
                         anim.frames = sprites;
-                        anim.frameDurations = durations;
-                        AssetDatabase.CreateAsset(anim, assetPath);
+                        anim.frameDurations = plan.Durations;
+                        AssetDatabase.CreateAsset(anim, plan.AssetPath);
                         updated++;
                     }
-                    else if (Same(anim, sprites, durations)) unchanged++;
+                    else if (Same(anim, sprites, plan.Durations)) unchanged++;
                     else
                     {
                         Undo.RecordObject(anim, "Update Flipbook Animation");
                         anim.frames = sprites;
-                        anim.frameDurations = durations;
+                        anim.frameDurations = plan.Durations;
                         EditorUtility.SetDirty(anim);
                         updated++;
                     }
@@ -593,16 +629,21 @@ namespace Kido.GifImporter.Editor
             string asset = AbsoluteToAssetPath(abs);
             if (string.IsNullOrEmpty(asset)) { if (!string.IsNullOrEmpty(abs)) EditorUtility.DisplayDialog("Invalid folder", "Choose a folder inside this project's Assets folder.", "OK"); return; }
             _outputFolder = asset;
+            _outputFolderPinned = true;
             EditorPrefs.SetString(LastOutputKey, asset);
         }
 
+        // Defaults to the folder of the most recently added GIF that lives inside Assets. An explicit
+        // pick via Choose… pins the folder and stops it following later additions.
         string DefaultOutputFolder()
         {
+            for (int i = _items.Count - 1; i >= 0; i--)
+            {
+                string folder = AbsoluteToAssetPath(Path.GetDirectoryName(_items[i].Path));
+                if (AssetDatabase.IsValidFolder(folder)) return folder;
+            }
             string last = EditorPrefs.GetString(LastOutputKey, "");
-            if (AssetDatabase.IsValidFolder(last)) return last;
-            if (_items.Count == 0) return "Assets";
-            string asset = AbsoluteToAssetPath(Path.GetDirectoryName(_items[0].Path));
-            return AssetDatabase.IsValidFolder(asset) ? asset : "Assets";
+            return AssetDatabase.IsValidFolder(last) ? last : "Assets";
         }
 
         string GetBrowseDirectory() => _items.Count > 0 ? Path.GetDirectoryName(_items.Last().Path) : AssetPathToAbsolute(AssetDatabase.IsValidFolder(_outputFolder) ? _outputFolder : "Assets");
@@ -629,18 +670,19 @@ namespace Kido.GifImporter.Editor
             return dst;
         }
 
+        // Only writes the .meta; the caller's single Refresh does the actual import. Reimporting here
+        // would repack the sprite atlas once per frame.
         static void ConfigureSpriteImporter(string path)
         {
             var imp = AssetImporter.GetAtPath(path) as TextureImporter;
             if (imp == null) return;
-            bool changed = imp.textureType != TextureImporterType.Sprite || imp.spriteImportMode != SpriteImportMode.Single || imp.mipmapEnabled || !imp.alphaIsTransparency;
             imp.textureType = TextureImporterType.Sprite;
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.alphaIsTransparency = true;
             imp.mipmapEnabled = false;
             imp.filterMode = FilterMode.Bilinear;
             imp.textureCompression = TextureImporterCompression.Uncompressed;
-            if (changed) imp.SaveAndReimport();
+            AssetDatabase.WriteImportSettingsIfDirty(path);
         }
 
         static string HashFrame(int width, int height, byte[] rgba)
