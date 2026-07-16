@@ -1,0 +1,51 @@
+using Coffee.UIExtensions;
+using Common;
+using UnityEngine;
+
+namespace qp {
+    /// <summary>
+    /// Reskin-side show visuals for the win popup: rewinds the Animator on every open and
+    /// receives the animation events fired by WinPopupShow.anim. Lives in the reskin folder
+    /// so MBWinPopup itself carries no skin-specific references.
+    /// </summary>
+    [RequireComponent(typeof(Animator))]
+    public class MBWinPopupAnim : MonoBehaviour {
+
+        static readonly int ShowState = Animator.StringToHash("Show");
+
+        Animator _animator;
+        MBSpriteFlipbook _char;
+
+        void Awake() {
+            _animator = GetComponent<Animator>();
+            _char = transform.RecursiveFindChild<MBSpriteFlipbook>("$Char");
+        }
+
+        // The popup is re-enabled for every win (and once more by the layout pass in
+        // MBWinPopup.Start), so the Animator would otherwise resume wherever it left off.
+        // Update(0) evaluates frame 0 right away — without it the first frame shows rest values.
+        void OnEnable() {
+            _animator.Play(ShowState, 0, 0f);
+            _animator.Update(0f);
+        }
+
+        /// <summary>Animation event. Starts the character flipbook; its controller chains In -> Idle.</summary>
+        public void PlayCharIn() {
+            if (_char != null) _char.Play("In");
+        }
+
+        /// <summary>Animation event. Fires the particle system named by the event's string argument.</summary>
+        public void PlayPS(string psName) {
+            var t = transform.RecursiveFindChild(psName);
+            if (t == null) return;
+
+            // UIParticle wraps the emitter to render it inside the canvas and owns its play
+            // state — going straight to ParticleSystem.Play would bypass that bookkeeping.
+            var uip = t.GetComponent<UIParticle>();
+            if (uip != null) { uip.Play(); return; }
+
+            var ps = t.GetComponent<ParticleSystem>();
+            if (ps != null) ps.Play();
+        }
+    }
+}

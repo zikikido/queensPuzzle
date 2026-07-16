@@ -34,8 +34,6 @@ namespace qp {
                 ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
             var firstTry = transform.RecursiveFindChild("$FirstTry");
             if (firstTry != null) firstTry.gameObject.SetActive(attempts <= 1);
-
-            transform.RecursiveFindChild<ParticleSystem>("$ConfityParticleSystem").Play();
         }
 
         IEnumerator Start() {

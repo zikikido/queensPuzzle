@@ -112,8 +112,9 @@ namespace qp {
         }
 
         // ---- debug-mode codes: Sound = 1, Vibration = 2 (tapped in this popup) --------------
-        // Not in debug mode: the long code (max 2s between taps) turns AppData.DebugMode on.
-        // In debug mode: the short code within 2s total opens the debug window.
+        // Not in debug mode: the long code turns AppData.DebugMode on.
+        // In debug mode: the short code opens the debug window.
+        // Both allow max 2s between taps.
         static readonly int[] EnterCode = { 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 2 };
         static readonly int[] OpenCode = { 1, 1, 2, 2 };
         const float CodeTapGap = 2f;
@@ -129,7 +130,7 @@ namespace qp {
                     Haptics.Play(GameHaptic.Happy);   // you're in — the OnGUI badge shows it too
                 }
             }
-            else if (TailMatches(OpenCode) && TotalWithin(OpenCode.Length, CodeTapGap)) {
+            else if (TailMatches(OpenCode) && GapsWithin(OpenCode.Length, CodeTapGap)) {
                 MBDebugWin.Open();
             }
         }
@@ -146,9 +147,6 @@ namespace qp {
                 if (_codeTaps[i].time - _codeTaps[i - 1].time > maxGap) return false;
             return true;
         }
-
-        bool TotalWithin(int count, float window) =>
-            _codeTaps[_codeTaps.Count - 1].time - _codeTaps[_codeTaps.Count - count].time <= window;
 
         // "you are in debug mode" badge while the popup is up (IMGUI: no prefab change needed)
         void OnGUI() {

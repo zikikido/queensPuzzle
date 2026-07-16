@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c82cf32d3a947f3973666c2de902093, type: 3}
+  m_Name: WinDog
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: 8110d721e8911f543a752270cbd8710e, type: 3}
+  - {fileID: 21300000, guid: 78920d2cff7f4c140b94a0e31d45f4ed, type: 3}
+  - {fileID: 21300000, guid: b797cefe1ac2f054ba87a84b8b716e95, type: 3}
+  - {fileID: 21300000, guid: 2572a4639ff432541a5945b89da0158e, type: 3}
+  - {fileID: 21300000, guid: b73440099872e7343adf976401ac1c70, type: 3}
+  - {fileID: 21300000, guid: a833309850589df47bab7bd2182a5cec, type: 3}
+  - {fileID: 21300000, guid: a833309850589df47bab7bd2182a5cec, type: 3}
+  - {fileID: 21300000, guid: 78920d2cff7f4c140b94a0e31d45f4ed, type: 3}
+  - {fileID: 21300000, guid: b797cefe1ac2f054ba87a84b8b716e95, type: 3}
+  - {fileID: 21300000, guid: 2572a4639ff432541a5945b89da0158e, type: 3}
+  - {fileID: 21300000, guid: b73440099872e7343adf976401ac1c70, type: 3}
+  - {fileID: 21300000, guid: a833309850589df47bab7bd2182a5cec, type: 3}
+  - {fileID: 21300000, guid: b75f5a3ffe2485e47896a427e91b0416, type: 3}
+  - {fileID: 21300000, guid: 8993e599b63bc734680fcd36de31f286, type: 3}
+  frameDurations:
+  - 0.2
+  - 0.1
+  - 0.1
+  - 0.2
+  - 0.1
+  - 0.2
+  - 0.2
+  - 0.1
+  - 0.03
+  - 0.2
+  - 0.1
+  - 0.2
+  - 0.1
+  - 1
+  _length: 2.58
