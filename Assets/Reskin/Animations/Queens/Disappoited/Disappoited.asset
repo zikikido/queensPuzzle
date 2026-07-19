@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c82cf32d3a947f3973666c2de902093, type: 3}
+  m_Name: Disappoited
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: 5a1faa43965976e47983640c8e2be621, type: 3}
+  - {fileID: 21300000, guid: 67310c3821fc4d248ab388a60385104b, type: 3}
+  - {fileID: 21300000, guid: 19497a8bb6c6ba943ac969dfe3d022a2, type: 3}
+  - {fileID: 21300000, guid: 90460c06c3ba3324b96fe83d29a0c16e, type: 3}
+  - {fileID: 21300000, guid: 7a9a07a1dea4d3f45b5a0f7dde82c9f0, type: 3}
+  - {fileID: 21300000, guid: e8c48e869894fcb48afc8676a0545766, type: 3}
+  - {fileID: 21300000, guid: eb75e1d35a963b548803617b0353094e, type: 3}
+  - {fileID: 21300000, guid: e8c48e869894fcb48afc8676a0545766, type: 3}
+  - {fileID: 21300000, guid: 7a9a07a1dea4d3f45b5a0f7dde82c9f0, type: 3}
+  - {fileID: 21300000, guid: 90460c06c3ba3324b96fe83d29a0c16e, type: 3}
+  - {fileID: 21300000, guid: c5b6d962a10db3c4dbbda3f1c043475e, type: 3}
+  - {fileID: 21300000, guid: 5a1412ae348f5274cbf4372e99d57848, type: 3}
+  - {fileID: 21300000, guid: c5b6d962a10db3c4dbbda3f1c043475e, type: 3}
+  - {fileID: 21300000, guid: 90460c06c3ba3324b96fe83d29a0c16e, type: 3}
+  - {fileID: 21300000, guid: 7a9a07a1dea4d3f45b5a0f7dde82c9f0, type: 3}
+  - {fileID: 21300000, guid: e8c48e869894fcb48afc8676a0545766, type: 3}
+  - {fileID: 21300000, guid: eb75e1d35a963b548803617b0353094e, type: 3}
+  - {fileID: 21300000, guid: e8c48e869894fcb48afc8676a0545766, type: 3}
+  - {fileID: 21300000, guid: 7a9a07a1dea4d3f45b5a0f7dde82c9f0, type: 3}
+  - {fileID: 21300000, guid: 90460c06c3ba3324b96fe83d29a0c16e, type: 3}
+  - {fileID: 21300000, guid: 5a1faa43965976e47983640c8e2be621, type: 3}
+  frameDurations:
+  - 0.5
+  - 0.03
+  - 0.2
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.1
+  - 0.03
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.1
+  - 0.03
+  - 0.03
+  - 0.03
+  - 0.5
+  _length: 2.0899997

@@ -25,7 +25,7 @@ namespace qp {
         public void PlayIn() {
             // Clear the previous run's last frame so the dog opens on the neutral "In" first frame
             // instead of flashing the stale pose until PlayCharIn fires later in the cascade.
-            if (_char != null) _char.ShowFirst("In");
+            if (_char != null) _char.StartFrame("In");
 
             _animator.Play(ShowState, 0, 0f);
 

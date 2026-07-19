@@ -47,11 +47,11 @@ namespace qp {
         }
 
         /// <summary>
-        /// Show a state's first frame immediately, without starting playback. Used to clear a
-        /// stale last frame when a popup reopens, so the character sits on the neutral opening
-        /// pose until Play() actually runs the animation.
+        /// Show a state's first frame immediately, without starting playback. Used to seed the
+        /// starting pose — e.g. a Queen begins on the Idle first frame, or a popup clears a stale
+        /// last frame on reopen — until Play() actually runs the animation.
         /// </summary>
-        public void ShowFirst(string stateName) {
+        public void StartFrame(string stateName) {
             var s = _controller != null ? _controller.Find(stateName) : null;
             if (s == null || s.anim == null || s.anim.frames == null || s.anim.frames.Length == 0) return;
             _state = null;   // stop any current playback so Update() won't overwrite this frame

@@ -282,7 +282,7 @@ namespace Kido.GifImporter.Editor
                 _compareExisting = EditorGUILayout.Toggle("Reuse existing Images sprites", _compareExisting);
                 _fuzzyDuplicates = EditorGUILayout.Toggle("Fuzzy duplicate matching", _fuzzyDuplicates);
                 using (new EditorGUI.DisabledScope(!_fuzzyDuplicates))
-                    _fuzzyTolerance = EditorGUILayout.Slider("Fuzzy tolerance", _fuzzyTolerance, 0.001f, 0.10f);
+                    _fuzzyTolerance = EditorGUILayout.Slider("Fuzzy tolerance", _fuzzyTolerance, 0.001f, 0.5f);
             }
             if (EditorGUI.EndChangeCheck()) MarkAnalysisDirty();
             if (!Mathf.Approximately(oldFallback, _zeroFallback))
@@ -367,7 +367,7 @@ namespace Kido.GifImporter.Editor
             if (_analysisDirty)
                 EditorGUILayout.HelpBox("Analysis is not built or is out of date. Click Build Analysis when you want to calculate unique/shared sprites. It no longer runs automatically.", MessageType.Info);
             else
-                EditorGUILayout.LabelField($"Ready: {_analysisLibrary.Count} unique sprites across {_items.Count} GIFs.", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField($"Ready: {_analysisLibrary.Values.Distinct().Count()} unique sprites across {_items.Count} GIFs.", EditorStyles.miniLabel);
             EditorGUILayout.EndVertical();
         }
 
@@ -399,11 +399,29 @@ namespace Kido.GifImporter.Editor
                         : HashFrame(f.Width, f.Height, f.Rgba);
                     if (!_analysisLibrary.TryGetValue(h, out var c))
                     {
-                        c = new FrameCandidate { Hash = h, Width = f.Width, Height = f.Height, Rgba = f.Rgba };
-                        _analysisLibrary.Add(h, c);
+                        // Mirror the import's dedup so the preview counts match what Generate()
+                        // produces: an exact-hash miss can still reuse a visually-close candidate
+                        // when fuzzy matching is on. Without this the preview only ever reflects
+                        // exact duplicates and looks broken at any tolerance.
+                        if (_ignoreDuplicates && _fuzzyDuplicates)
+                            c = _analysisLibrary.Values.FirstOrDefault(x =>
+                                x.Width == f.Width && x.Height == f.Height &&
+                                FuzzyDifference(x.Rgba, f.Rgba) <= _fuzzyTolerance);
+                        if (c == null)
+                            c = new FrameCandidate { Hash = h, Width = f.Width, Height = f.Height, Rgba = f.Rgba };
+                        _analysisLibrary[h] = c;   // map this exact hash to the (possibly reused) candidate
                     }
                     c.Uses.Add($"{animName} — frame {i}");
                 }
+            }
+            // Unique-sprite count per GIF is the number of DISTINCT candidates its frames map to
+            // (fuzzy-merged frames share a candidate), not the count of distinct exact hashes.
+            foreach (var item in _items.Where(x => x.Data != null))
+            {
+                var used = new HashSet<FrameCandidate>();
+                for (int i = 0; i < item.Data.Frames.Count; i++)
+                    if (_analysisLibrary.TryGetValue(FrameHash(item, i), out var c)) used.Add(c);
+                item.UniqueSpriteCount = used.Count;
             }
             foreach (var item in _items.Where(x => x.Data != null))
                 item.SharedSpriteCount = CountSpritesSharedWithOtherAnimations(item);

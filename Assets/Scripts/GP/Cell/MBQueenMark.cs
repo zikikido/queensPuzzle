@@ -26,6 +26,8 @@ namespace qp {
 
         public override void ActIn() {
             gameObject.SetActive(true);
+            if (_flipbook == null) _flipbook = GetComponent<MBSpriteFlipbook>();
+            _flipbook.StartFrame("Idle");   // begin on the Idle first frame
             GetComponent<MBMarkPopIn>().PopIn();
             MBGameplay.instance.QueenMarkPS.Play(transform.position);
         }
