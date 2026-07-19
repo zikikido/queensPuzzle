@@ -43,6 +43,7 @@ namespace qp {
                     }
                     EditorGUILayout.PropertyField(nameProp);
                     EditorGUILayout.PropertyField(s.FindPropertyRelative("anim"));
+                    EditorGUILayout.PropertyField(s.FindPropertyRelative("speed"));
                     EditorGUILayout.PropertyField(loopProp);
 
                     if (loopProp.boolValue) {    // loop → no next, just the rest between cycles

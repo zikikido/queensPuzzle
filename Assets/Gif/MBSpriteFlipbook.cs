@@ -27,6 +27,9 @@ namespace qp {
         public SOFlipbookController Controller => _controller;
         public string CurrentState => _state != null ? _state.name : null;
 
+        // Per-state playback speed; guarded so a 0 (or negative) never divides to infinity.
+        static float Speed(SOFlipbookController.State s) => s.speed > 0.01f ? s.speed : 1f;
+
         void Awake() {
             _image = GetComponent<Image>();
             if (_image == null) _sr = GetComponent<SpriteRenderer>();
@@ -43,7 +46,7 @@ namespace qp {
         /// <summary>Total length (seconds) of a state's clip; 0 when the state is unknown.</summary>
         public float StateLength(string stateName) {
             var s = _controller != null ? _controller.Find(stateName) : null;
-            return s != null && s.anim != null ? s.anim.Length : 0f;
+            return s != null && s.anim != null ? s.anim.Length / Speed(s) : 0f;
         }
 
         /// <summary>
@@ -73,7 +76,7 @@ namespace qp {
             _frame = -1;   // force the first Show to apply
             _waitNext = _done = false;
             if (s.loop) { BuildCycle(); SyncToClock(); }
-            else { _left = s.anim.DurationOf(0); Show(0); }
+            else { _left = s.anim.DurationOf(0) / Speed(s); Show(0); }
         }
 
         // Cumulative frame end-times over one loop cycle; the loop delay extends the first
@@ -83,7 +86,7 @@ namespace qp {
             _ends = new float[anim.frames.Length];
             float t = 0f;
             for (int i = 0; i < anim.frames.Length; i++) {
-                t += anim.DurationOf(i) + (i == 0 ? _state.loopDelay : 0f);
+                t += (anim.DurationOf(i) + (i == 0 ? _state.loopDelay : 0f)) / Speed(_state);
                 _ends[i] = t;
             }
             _cycle = t;
@@ -100,10 +103,10 @@ namespace qp {
                 if (_frame >= _state.anim.frames.Length - 1) {
                     if (string.IsNullOrEmpty(_state.next)) { _done = true; return; }   // hold last frame
                     _waitNext = true;
-                    _left += _state.nextDelay;   // 0 delay → chains this same frame
+                    _left += _state.nextDelay / Speed(_state);   // 0 delay → chains this same frame
                 } else {
                     Show(_frame + 1);
-                    _left += _state.anim.DurationOf(_frame);
+                    _left += _state.anim.DurationOf(_frame) / Speed(_state);
                 }
             }
         }

@@ -15,6 +15,8 @@ namespace qp {
         public class State {
             public string name;           // Play("name") plays this state
             public SOFlipbookAnim anim;   // the frames + timings
+            [Tooltip("Playback speed: 1 = normal, 2 = twice as fast, 0.5 = half speed. Scales frame durations and the loop/next delays.")]
+            public float speed = 1f;      // time scale for this state
             public bool loop;             // loops forever (no next)
             public float loopDelay;       // looping: extra rest on the first frame between cycles
             public string next = "";      // not looping: state to enter when done; empty = hold the last frame
