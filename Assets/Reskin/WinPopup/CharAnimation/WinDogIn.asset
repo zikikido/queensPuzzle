@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c82cf32d3a947f3973666c2de902093, type: 3}
+  m_Name: WinDogIn
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: 6e600bd0869737947922798ecc7e2593, type: 3}
+  - {fileID: 21300000, guid: 200f61e5cc0b9ad40bfdb1525ba783bd, type: 3}
+  - {fileID: 21300000, guid: 4f65c534d3617934387803d5e6452d91, type: 3}
+  - {fileID: 21300000, guid: 237cbab6d435e404489f83a7df8db7c6, type: 3}
+  - {fileID: 21300000, guid: cd06840e7d8e61e45b60ca5f214e36b4, type: 3}
+  - {fileID: 21300000, guid: 28d1080e4a27adb42992bae300a342a4, type: 3}
+  - {fileID: 21300000, guid: e67e62c51abcf3e47886f884c7954215, type: 3}
+  - {fileID: 21300000, guid: f178e42b10b64d84fa78bc048e547403, type: 3}
+  - {fileID: 21300000, guid: cdbee9281fe83fd4798d9a47791780b2, type: 3}
+  - {fileID: 21300000, guid: 55df173d30b84cc49848ff8fb2f4c09d, type: 3}
+  - {fileID: 21300000, guid: 181cd4e6547c0eb47a0574dae1d870dd, type: 3}
+  - {fileID: 21300000, guid: 46c807f09016a0048b2f363edb54b98d, type: 3}
+  - {fileID: 21300000, guid: 729ccb284a547c04e8023314c16922b4, type: 3}
+  - {fileID: 21300000, guid: d8c366ce043fb2147ba3fe9b1d6e1d68, type: 3}
+  - {fileID: 21300000, guid: 0df31a8f7d2805d4daac1fb4fa3b8028, type: 3}
+  - {fileID: 21300000, guid: 264e2bcfe5862494aad953ef443767cb, type: 3}
+  - {fileID: 21300000, guid: 414d5b4181f40694589fc7fcd87bc89a, type: 3}
+  - {fileID: 21300000, guid: 46b7625d18bf72f4792d79f64a005ab1, type: 3}
+  - {fileID: 21300000, guid: 634be416ad23bcc41b993f80d8cbc1e3, type: 3}
+  - {fileID: 21300000, guid: ffbaa371ad1b899419b161d853f546ad, type: 3}
+  - {fileID: 21300000, guid: aa203f897b9950245a8ecf0ba10ea5eb, type: 3}
+  - {fileID: 21300000, guid: 937bdb6cf137aed40bf9e01b94f153d6, type: 3}
+  - {fileID: 21300000, guid: dfdf5153d0235fa498d8ce4e586fa455, type: 3}
+  - {fileID: 21300000, guid: addb49a8a4d71e24a8e4587cc5442e7f, type: 3}
+  - {fileID: 21300000, guid: 02bc7700869b5d848bb59cc7bdb73cf2, type: 3}
+  - {fileID: 21300000, guid: 5261f9903c6c214458d7fa5956659020, type: 3}
+  - {fileID: 21300000, guid: 5261f9903c6c214458d7fa5956659020, type: 3}
+  frameDurations:
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.1
+  _length: 0

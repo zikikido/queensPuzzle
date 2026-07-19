@@ -15,14 +15,8 @@ MonoBehaviour:
   defaultState: 
   states:
   - name: In
-    anim: {fileID: 11400000, guid: b73889003ad5882469e0dd96d9f814c0, type: 2}
+    anim: {fileID: 11400000, guid: 12068656300eb2742a837438e4c060a6, type: 2}
     loop: 0
-    loopDelay: 0
-    next: Idle
-    nextDelay: 0
-  - name: Idle
-    anim: {fileID: 11400000, guid: bd4e9c3fbf4866b4ab24b42735a7e8c9, type: 2}
-    loop: 1
     loopDelay: 0
     next: 
     nextDelay: 0

@@ -46,6 +46,20 @@ namespace qp {
             return s != null && s.anim != null ? s.anim.Length : 0f;
         }
 
+        /// <summary>
+        /// Show a state's first frame immediately, without starting playback. Used to clear a
+        /// stale last frame when a popup reopens, so the character sits on the neutral opening
+        /// pose until Play() actually runs the animation.
+        /// </summary>
+        public void ShowFirst(string stateName) {
+            var s = _controller != null ? _controller.Find(stateName) : null;
+            if (s == null || s.anim == null || s.anim.frames == null || s.anim.frames.Length == 0) return;
+            _state = null;   // stop any current playback so Update() won't overwrite this frame
+            _frame = -1;
+            if (_image != null) _image.sprite = s.anim.frames[0];
+            else if (_sr != null) _sr.sprite = s.anim.frames[0];
+        }
+
         /// <summary>Play a state by name (case-insensitive), e.g. Play("Happy").</summary>
         public void Play(string stateName) {
             var s = _controller != null ? _controller.Find(stateName) : null;

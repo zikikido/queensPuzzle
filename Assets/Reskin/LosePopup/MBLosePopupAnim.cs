@@ -22,6 +22,10 @@ namespace qp {
 
         /// <summary>Rewinds and plays the show cascade. Driven by MBFailPopup.Show.</summary>
         public void PlayIn() {
+            // Clear the previous run's last frame so the dog opens on the neutral "In" first frame
+            // instead of flashing the stale pose until PlayCharIn fires later in the cascade.
+            if (_char != null) _char.ShowFirst("In");
+
             _animator.Play(ShowState, 0, 0f);
 
             // Evaluate frame 0 now, or the popup renders one frame at rest values before the
