@@ -24,6 +24,7 @@ namespace qp {
 
         private GameObject _withoutTime, _withTime;   // bottom row: campaign layout / daily layout with the timer
         private TMPro.TMP_Text _timeProgress;
+        private MBLevelCenterizer _levelCenterizer;   // keeps "Level <n>" centered as the digit count changes
 
         private void Awake() {
             transform.RecursiveFindChild("$QueensProgressText", out _queensProgressText);
@@ -36,6 +37,8 @@ namespace qp {
             _withoutTime = withoutTime.gameObject;
             _withTime = withTime.gameObject;
             _timeProgress = withTime.transform.RecursiveFindChild<TMPro.TMP_Text>("$TimeProgress");
+
+            _levelCenterizer = GetComponentInChildren<MBLevelCenterizer>(true);
 
             _settingsBtn = transform.RecursiveFindChild<Button>("$SettingsBtn");
             _settingsBtn.onClick.AddListener(OpenSettings);
@@ -84,8 +87,9 @@ namespace qp {
             _queensInBoard = queensInBoard;
             _setQueensProgress(0);
 
-            transform.RecursiveFindChild<TMPro.TMP_Text>("$LevelText").text =
-                showTimeProgress ? DailyChallengeManager.NiceDate : (AppData.LevelIdx + 1).ToString();
+            var levelText = showTimeProgress ? DailyChallengeManager.NiceDate : (AppData.LevelIdx + 1).ToString();
+            transform.RecursiveFindChild<TMPro.TMP_Text>("$LevelText").text = levelText;
+            _levelCenterizer.Recenter(levelText);
 
             _withoutTime.SetActive(!showTimeProgress);
             _withTime.SetActive(showTimeProgress);
