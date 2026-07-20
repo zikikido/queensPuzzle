@@ -10,9 +10,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 #app{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2.2vh 4vw calc(2.2vh + env(safe-area-inset-bottom));gap:1vh}
 
 #top{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
-#logo{display:flex;align-items:center;gap:7px}
-#logo img{width:auto;height:clamp(28px,5.2vh,44px);display:block}
-#logo span{font-size:clamp(15px,2.4vh,21px);font-weight:800;letter-spacing:-.2px}
+#logoImg{width:clamp(78px,13vh,124px);height:auto;display:block;flex:0 0 auto}
 #counter{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 13px 6px 8px;box-shadow:0 2px 0 #BBD9E2}
 #counter img{width:clamp(18px,2.9vh,24px);height:auto;display:block}
 #count{font-size:clamp(14px,2.2vh,19px);font-weight:800;min-width:1.1em;text-align:center}
@@ -24,11 +22,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 #note.hide{opacity:0}
 
 #stage{flex:0 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;position:relative}
-#board{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);background:#BFDDE5;padding:var(--gap);border-radius:12px;box-shadow:0 3px 0 #9FC6D2;position:relative}
-.cell{position:relative;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:filter .25s}
+#board{display:grid;gap:var(--gap);background:#BFDDE5;padding:var(--gap);border-radius:12px;box-shadow:0 3px 0 #9FC6D2;position:relative;touch-action:none}
+.cell{position:relative;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .25s}
 .cell>img{width:86%;height:auto;display:block;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
 .cell>img.x{width:52%;filter:none;opacity:.72}
-.cell.dim{filter:brightness(.42) saturate(.55)}
+/* fade toward the pale background rather than darkening — on a light theme,
+   brightness() turns yellow to olive and pink to brown */
+.cell.dim{opacity:.26}
 .cell.lit{z-index:2}
 .cell.lit::after{content:"";position:absolute;inset:-2px;border-radius:6px;border:3px solid #fff;opacity:0;animation:pulse 1.3s ease-in-out infinite;pointer-events:none}
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:.95}}
@@ -46,7 +46,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 #dbl{position:absolute;z-index:7;background:#fff;color:#48908F;font-size:clamp(12px,1.9vh,16px);font-weight:800;padding:6px 13px;border-radius:999px;white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;transform:translate(-50%,0);box-shadow:0 2px 0 #BBD9E2}
 #dbl.on{opacity:1}
 
-#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(12px,2.1vh,18px);font-family:inherit;font-size:clamp(16px,2.7vh,23px);font-weight:800;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
+#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(9px,1.7vh,15px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.18}
+#cta .lbl{font-size:clamp(16px,2.7vh,23px);font-weight:800}
+#cta .sub{font-size:clamp(11px,1.7vh,14px);font-weight:700;opacity:.74}
 #cta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
 @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 
@@ -64,7 +66,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 <body>
 <div id="app">
   <div id="top">
-    <div id="logo"><img id="logoImg" alt=""><span>Pawdoku</span></div>
+    <img id="logoImg" alt="Pawdoku">
     <div id="counter"><img id="pawImg" alt=""><span id="count">5</span></div>
   </div>
   <div id="mid">
@@ -75,15 +77,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
       <div id="dbl">Double tap</div>
     </div>
   </div>
-  <button id="cta">Play now</button>
+  <button id="cta"><span class="lbl">Play now</span><span class="sub">9,000+ more puzzles waiting</span></button>
 </div>
 
 <div id="win">
   <div id="winCard">
     <img id="winImg" alt="">
     <h2>Nice one!</h2>
-    <p>9,000+ more puzzles waiting</p>
-    <button id="winCta">Play now</button>
+    <p id="winSub">9,000+ more puzzles waiting</p>
+    <button id="winCta">Play next</button>
   </div>
 </div>
 
@@ -91,13 +93,49 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 var ART={puppy:"__PUPPY__",happy:"__HAPPY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",finger:"__FINGER__"};
 var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
 
-var N=6;
-var REGIONS=[0,0,0,0,2,2, 1,0,1,1,2,2, 1,1,1,1,2,2, 1,5,3,1,1,2, 4,5,3,1,5,2, 5,5,5,5,5,2];
-var COLORS=["#F8D636","#B185CF","#7DC9D9","#FF808E","#67D2AB","#F9A55F"];
-var NAMES=["Yellow","Purple","Blue","Pink","Green","Orange"];
-var SOLUTION=[1,3,5,2,0,4];
-var START_ROW=2;
-var DOUBLE_MS=300;
+/* ---- SFX ----------------------------------------------------------------
+   Nothing here is load-bearing: browsers block audio until the first gesture
+   and many ad impressions run muted, so every play() is best-effort and the
+   ad has to read correctly in silence. */
+var SFX={tap:"__SFX_TAP__",puppy:"__SFX_PUPPY__",wrong:"__SFX_WRONG__",
+         levelwin:"__SFX_LEVELWIN__",win:"__SFX_WIN__"};
+var sounds={},audioOn=false,lastTapSound=0;
+
+function initAudio(){
+  if(audioOn) return;
+  audioOn=true;
+  for(var k in SFX){
+    try{
+      var a=new Audio("data:audio/mpeg;base64,"+SFX[k]);
+      a.preload='auto';a.volume=k==='tap'?0.35:0.6;
+      sounds[k]=a;
+    }catch(e){}
+  }
+}
+function play(k){
+  var a=sounds[k];
+  if(!a) return;
+  if(k==='tap'){                       // drag-painting would machine-gun this
+    var now=Date.now();
+    if(now-lastTapSound<70) return;
+    lastTapSound=now;
+  }
+  try{a.currentTime=0;var p=a.play();if(p&&p.catch)p.catch(function(){});}catch(e){}
+}
+
+/* ==== LEVELS (generated by pick_level.py - do not hand-edit) ==== */
+var LEVELS=[
+{n:6,regions:[0,0,0,0,2,2, 1,0,1,1,2,2, 1,1,1,1,2,2, 1,5,3,1,1,2, 4,5,3,1,5,2, 5,5,5,5,5,2],colors:["#F8D636","#B185CF","#7DC9D9","#FF808E","#67D2AB","#F9A55F"],names:["Yellow","Purple","Blue","Pink","Green","Orange"],solution:[1,3,5,2,0,4],start:2,order:["touch","color","rowcol"]}
+];
+/* ==== END LEVELS ==== */
+
+// the game uses 0.3s, but a browser tap carries more overhead than native input
+// and a thumb on glass is slower than a mouse — 400ms is far more forgiving
+var DOUBLE_MS=400;
+
+/* the current level's data, swapped in by loadLevel */
+var N,REGIONS,COLORS,NAMES,SOLUTION,START_ROW,RULE_ORDER,TUTORIAL;
+var levelIdx=0;
 
 var EMPTY=0,X=1,PUPPY=2;
 var state=[],cells=[];
@@ -155,11 +193,9 @@ function forcedPuppy(){
   return null;
 }
 
-var TUTORIAL=[
-  {rule:"touch",  note:"Puppies <b>cannot touch</b>"},
-  {rule:"color",  note:"1 puppy per <b>color</b>"},
-  {rule:"rowcol", note:"1 puppy per <b>row and column</b>"}
-];
+var RULE_NOTE={touch:"Puppies <b>cannot touch</b>",
+               color:"1 puppy per <b>color</b>",
+               rowcol:"1 puppy per <b>row and column</b>"};
 
 function setNote(html){
   var el=document.getElementById('note'),t=document.getElementById('noteText');
@@ -167,8 +203,27 @@ function setNote(html){
   setTimeout(function(){t.innerHTML=html;el.classList.remove('hide');},120);
 }
 
-function build(){
+/* Swap in a level and rebuild the board for it. The tutorial runs on the first
+   level only — after that the rules are known, so later levels open straight
+   into free play with the hint hand. */
+function loadLevel(n){
+  var L=LEVELS[n];
+  levelIdx=n;
+  N=L.n;REGIONS=L.regions;COLORS=L.colors;NAMES=L.names;
+  SOLUTION=L.solution;START_ROW=L.start;RULE_ORDER=L.order;
+  TUTORIAL=RULE_ORDER.map(function(r){return {rule:r,note:RULE_NOTE[r]};});
+
+  document.getElementById('win').classList.remove('on');
+  clearNudge();hideHand();closeStep();
+  won=false;busy=false;
+  lastCell=-1;lastTime=0;pointerDown=false;
+  stepIdx=n===0?0:TUTORIAL.length;   // only the first level teaches
+  seatedAny=n>0;                     // later levels hint by rule instead of naming the colour
+
   var b=document.getElementById('board');
+  while(b.firstChild) b.removeChild(b.firstChild);
+  b.style.gridTemplateColumns='repeat('+N+',1fr)';   // board size follows the level, not the CSS
+  cells=[];state=[];
   for(var r=0;r<N;r++)for(var c=0;c<N;c++){
     var d=document.createElement('div');
     d.className='cell';
@@ -176,11 +231,20 @@ function build(){
     d.dataset.i=idx(r,c);
     b.appendChild(d);cells.push(d);state.push(EMPTY);
   }
-  b.addEventListener('pointerdown',onDown);
-  b.addEventListener('pointerover',onOver);
-  window.addEventListener('pointerup',onUp);
   seat(idx(START_ROW,SOLUTION[START_ROW]),PUPPY,false);
   updateCount();fitBoard();
+
+  if(n===0) setTimeout(nextRuleStep,900);
+  else freePlay();
+}
+
+function build(){
+  var b=document.getElementById('board');
+  b.addEventListener('pointerdown',onDown,{passive:false});
+  b.addEventListener('pointermove',onMove,{passive:false});
+  window.addEventListener('pointerup',onUp);
+  window.addEventListener('pointercancel',onUp);   // iOS cancels on scroll/gesture takeover
+  loadLevel(0);
 }
 
 function seat(i,what,animate){
@@ -213,7 +277,8 @@ function openStep(s){
 }
 function closeStep(){
   step=null;hideHand();
-  for(var i=0;i<N*N;i++) cells[i].classList.remove('dim','lit');
+  // walk `cells`, not N*N — loadLevel calls this before the new board exists
+  for(var i=0;i<cells.length;i++) cells[i].classList.remove('dim','lit');
 }
 function stepDone(){
   return step?pendingCell()<0:false;
@@ -254,9 +319,20 @@ function allowed(i,what){
   return what===step.target||what===X;
 }
 
+function cellFrom(e){
+  // touch events never retarget mid-drag, so resolve by coordinate rather than
+  // trusting e.target — that's what made drag-painting a no-op on iOS
+  var el=document.elementFromPoint(e.clientX,e.clientY);
+  return el&&el.closest?el.closest('.cell'):null;
+}
+
 function onDown(e){
+  initAudio();   // first gesture is the only moment the browser will let us
   var t=e.target.closest?e.target.closest('.cell'):null;
   if(!t||busy||won) return;
+  // iOS ignores user-scalable=no; without this the second tap is eaten by
+  // double-tap-to-zoom instead of reaching us
+  if(e.cancelable) e.preventDefault();
   var i=+t.dataset.i;
   var now=Date.now();
 
@@ -272,11 +348,10 @@ function onDown(e){
   paintMode=state[i]===EMPTY?X:EMPTY;
   paint(i);
 }
-function onOver(e){
-  if(!pointerDown) return;
-  var t=e.target.closest?e.target.closest('.cell'):null;
-  if(!t||busy||won) return;
-  paint(+t.dataset.i);
+function onMove(e){
+  if(!pointerDown||busy||won) return;
+  var t=cellFrom(e);
+  if(t) paint(+t.dataset.i);
 }
 function onUp(){pointerDown=false;}
 
@@ -285,6 +360,7 @@ function paint(i){
   if(!allowed(i,X)){reject(i);return;}
   if(state[i]===paintMode) return;
   seat(i,paintMode,paintMode===X);
+  play('tap');
   if(step){
     if(stepDone()) advance();
     else showHand(pendingCell(),step.target===PUPPY);   // move on to the next unmarked cell
@@ -301,7 +377,7 @@ function paint(i){
 function tryPuppy(i){
   if(!allowed(i,PUPPY)||(step&&step.target!==PUPPY)){reject(i);return;}
   if(i%N!==SOLUTION[Math.floor(i/N)]){reject(i);return;}
-  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();
+  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();play('puppy');
   if(step){if(stepDone()) advance();return;}
   seatedAny=true;
   busy=true;
@@ -309,6 +385,7 @@ function tryPuppy(i){
 }
 
 function reject(i){
+  play('wrong');
   var el=cells[i];
   el.classList.add('shake');
   setTimeout(function(){el.classList.remove('shake');},380);
@@ -339,20 +416,15 @@ function freePlay(){
   if(n===N){doWin();return;}
   var f=forcedPuppy();
   if(!f){
-    // the player X'd a cell a puppy belongs on — clear it, the way the game's WrongX hint does
-    for(var r=0;r<N;r++){
-      var j=idx(r,SOLUTION[r]);
-      if(state[j]===X) seat(j,EMPTY,false);
+    // Nothing forced: usually an X sitting where a puppy belongs. Never silently
+    // delete the player's marks — point at one and let them clear it, the way
+    // the game's WrongX hint does.
+    if(wrongX()>=0){setNote(WRONG_X_NOTE);armNudge(NUDGE_MS);return;}
+    for(var k=0;k<N;k++){
+      var m=idx(k,SOLUTION[k]);
+      if(state[m]!==PUPPY){setNote("Seat the next puppy");showHand(m,true);return;}
     }
-    f=forcedPuppy();
-    if(!f){
-      // nothing forced and the board isn't finished — never claim a win, just point
-      for(var k=0;k<N;k++){
-        var m=idx(k,SOLUTION[k]);
-        if(state[m]!==PUPPY){setNote("Seat the next puppy");showHand(m,true);return;}
-      }
-      doWin();return;
-    }
+    doWin();return;
   }
   // Don't hand them the answer the moment a puppy lands — that's the deduction
   // they're here to make. Only the first one is named, to teach the double tap.
@@ -363,6 +435,17 @@ function freePlay(){
 
 var NUDGE_MS=2500,REVEAL_MS=4000;
 var nudgeTimer=null,seatedAny=false;
+var WRONG_X_NOTE="A puppy belongs here — <b>clear this X</b>";
+
+/* a square a puppy belongs on that the player has X'd — the game's WrongX hint.
+   One at a time: clearing it is the player's move, not something we do for them. */
+function wrongX(){
+  for(var r=0;r<N;r++){
+    var i=idx(r,SOLUTION[r]);
+    if(state[i]===X) return i;
+  }
+  return -1;
+}
 
 /* The next square to mark, one rule at a time so the marking reads as reasoning
    rather than a scatter: every row cell first (left to right), then every column
@@ -395,7 +478,13 @@ function armNudge(delay){
   nudgeTimer=setTimeout(function(){
     if(won) return;
     var f=forcedPuppy();
-    if(!f) return;
+    if(!f){
+      // Nothing deducible — almost always an X where a puppy belongs. Point at it
+      // and keep pointing; bailing here is what used to leave the board stuck.
+      var w=wrongX();
+      if(w>=0){setNote(WRONG_X_NOTE);showHand(w,false);armNudge(NUDGE_MS);}
+      return;
+    }
     // The colour is never named while a single ruled-out square is still unmarked.
     // Keep pointing at the next one, every NUDGE_MS, for as long as it takes.
     var m=nextToMark();
@@ -410,8 +499,11 @@ function clearNudge(){
   if(nudgeTimer){clearTimeout(nudgeTimer);nudgeTimer=null;}
 }
 
+function lastLevel(){return levelIdx>=LEVELS.length-1;}
+
 function doWin(){
-  won=true;closeStep();
+  won=true;closeStep();clearNudge();hideHand();
+  play(lastLevel()?'win':'levelwin');   // the final one gets the bigger sting
   setNote("Every puppy is home!");
   var q=queens();
   for(var k=0;k<q.length;k++){
@@ -420,7 +512,18 @@ function doWin(){
       if(img){img.src="data:image/png;base64,"+ART.happy;img.className='pop';}
     },d*95);})(idx(q[k][0],q[k][1]),k);
   }
+  // more levels to play -> carry on; the final win is the one that sells
+  var btn=document.getElementById('winCta');
+  btn.textContent=lastLevel()?"Play now":"Play next";
+  document.getElementById('winSub').textContent=lastLevel()
+    ? "9,000+ more puzzles waiting"
+    : "Level "+(levelIdx+2)+" of "+LEVELS.length;
   setTimeout(function(){document.getElementById('win').classList.add('on');},1150);
+}
+
+function onWinButton(){
+  if(lastLevel()) goStore();
+  else loadLevel(levelIdx+1);
 }
 
 function fitBoard(){
@@ -442,7 +545,7 @@ function goStore(){
   try{window.open(STORE,'_blank');}catch(e){}
 }
 document.getElementById('cta').addEventListener('click',goStore);
-document.getElementById('winCta').addEventListener('click',goStore);
+document.getElementById('winCta').addEventListener('click',onWinButton);
 
 document.getElementById('logoImg').src="data:image/png;base64,"+ART.logo;
 document.getElementById('pawImg').src="data:image/png;base64,"+ART.paw;
@@ -452,7 +555,7 @@ document.getElementById('fingerImg').src="data:image/png;base64,"+ART.finger;
 window.addEventListener('resize',fitBoard);
 window.addEventListener('orientationchange',function(){setTimeout(fitBoard,120);});
 
-function start(){build();setTimeout(nextRuleStep,900);}
+function start(){build();}
 if(window.mraid&&mraid.getState&&mraid.getState()==='loading'){mraid.addEventListener('ready',start);}else{start();}
 </script>
 </body>
