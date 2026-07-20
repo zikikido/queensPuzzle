@@ -34,7 +34,7 @@ VARIANTS = os.path.join(ROOT, "src", "levels")
 PALETTE = [
     ("#F8D636", "Yellow"), ("#B185CF", "Purple"), ("#7DC9D9", "Blue"),
     ("#FF808E", "Pink"),   ("#67D2AB", "Green"),  ("#F9A55F", "Orange"),
-    ("#439BBB", "Cyan"),   ("#B7877C", "Brown"),  ("#8E8EC1", "Gray"),
+    ("#C8D0FF", "Purple"), ("#FF93D1", "Pink"),   ("#A9D056", "Green"),
     ("#E4B2A1", "Beige"),
 ]
 
