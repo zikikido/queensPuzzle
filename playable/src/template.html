@@ -26,6 +26,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 .cell{position:relative;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .25s}
 .cell>img{width:86%;height:auto;display:block;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
 .cell>img.x{width:52%;filter:none;opacity:.72}
+
+/* Sprite-sheet puppy: a clipped window with the strip slid across it. translateX
+   is compositor-driven, unlike background-position, which would repaint all six
+   puppies every frame. Keyframes are generated from Idle.gif's own per-frame
+   durations, so the holds and blinks land exactly as they do in game. */
+.pup{width:86%;aspect-ratio:__IDLE_ASPECT__;overflow:hidden;position:relative;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
+.pup img{position:absolute;top:0;left:0;height:100%;width:auto;max-width:none;display:block;
+         animation:idle __IDLE_DURATION__ step-end infinite;will-change:transform}
+__IDLE_KEYFRAMES__
 /* fade toward the pale background rather than darkening — on a light theme,
    brightness() turns yellow to olive and pink to brown */
 .cell.dim{opacity:.26}
@@ -90,7 +99,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 </div>
 
 <script>
-var ART={puppy:"__PUPPY__",happy:"__HAPPY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",finger:"__FINGER__"};
+var ART={happy:"__HAPPY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",finger:"__FINGER__",
+         idleSheet:"__IDLE_SHEET__"};
 var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
 
 /* ---- SFX ----------------------------------------------------------------
@@ -252,10 +262,33 @@ function seat(i,what,animate){
   var el=cells[i];
   while(el.firstChild) el.removeChild(el.firstChild);
   if(what===EMPTY) return;
+
+  if(what===X){
+    var x=document.createElement('img');
+    x.src="data:image/png;base64,"+ART.xmark;
+    x.className=animate?'x pop':'x';
+    el.appendChild(x);
+    return;
+  }
+
+  var wrap=document.createElement('div');
+  wrap.className=animate?'pup pop':'pup';
   var img=document.createElement('img');
-  img.src="data:image/png;base64,"+(what===PUPPY?ART.puppy:ART.xmark);
-  if(what===X) img.className='x';
-  if(animate) img.classList.add('pop');
+  img.src="data:image/png;base64,"+ART.idleSheet;
+  // stagger the loop so six puppies don't blink in unison
+  img.style.animationDelay=(-Math.random()*2.6).toFixed(2)+'s';
+  wrap.appendChild(img);
+  el.appendChild(wrap);
+}
+
+/* on win, drop the idle loop for the still happy face */
+function cheer(i){
+  var el=cells[i];
+  if(!el.firstChild) return;
+  while(el.firstChild) el.removeChild(el.firstChild);
+  var img=document.createElement('img');
+  img.src="data:image/png;base64,"+ART.happy;
+  img.className='pop';
   el.appendChild(img);
 }
 
@@ -507,10 +540,7 @@ function doWin(){
   setNote("Every puppy is home!");
   var q=queens();
   for(var k=0;k<q.length;k++){
-    (function(i,d){setTimeout(function(){
-      var img=cells[i].firstChild;
-      if(img){img.src="data:image/png;base64,"+ART.happy;img.className='pop';}
-    },d*95);})(idx(q[k][0],q[k][1]),k);
+    (function(i,d){setTimeout(function(){cheer(i);},d*95);})(idx(q[k][0],q[k][1]),k);
   }
   // more levels to play -> carry on; the final win is the one that sells
   var btn=document.getElementById('winCta');

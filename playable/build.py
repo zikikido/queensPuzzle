@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 
-from PIL import Image
+from PIL import Image, ImageSequence
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RESKIN = os.path.normpath(os.path.join(ROOT, "..", "Assets", "Reskin"))
@@ -51,6 +51,58 @@ def audio_sources():
     }
 
 
+def encode_gif_anim(state, width, colors=64):
+    """Rebuild a GIF's animation exactly: dedupe to unique frames, lay them in one
+    strip, and emit CSS keyframes carrying the GIF's own per-frame durations.
+
+    The timing matters. Idle is 15 steps over 2.77s but two of them are 1s holds
+    with 30ms flicks between - a flat steps() loop turns a puppy that sits still
+    and blinks into one that morphs continuously.
+    """
+    path = os.path.join(RESKIN, "Animations", "Queens", state, "%s.gif" % state)
+    if not os.path.exists(path):
+        sys.exit("missing animation gif: %s" % path)
+
+    gif = Image.open(path)
+    uniq, seq, durs = [], [], []
+    for frame in ImageSequence.Iterator(gif):
+        rgba = frame.convert("RGBA")
+        key = rgba.tobytes()
+        idx = next((i for i, u in enumerate(uniq) if u[0] == key), None)
+        if idx is None:
+            uniq.append((key, rgba.copy()))
+            idx = len(uniq) - 1
+        seq.append(idx)
+        durs.append(frame.info.get("duration", 100))
+
+    ims = [im for _, im in uniq]
+    h = round(ims[0].height * width / ims[0].width)
+    ims = [i.resize((width, h), Image.LANCZOS) for i in ims]
+    strip = Image.new("RGBA", (width * len(ims), h))
+    for n, im in enumerate(ims):
+        strip.paste(im, (n * width, 0), im)
+    buf = io.BytesIO()
+    strip.quantize(colors=colors, method=Image.Quantize.FASTOCTREE).save(buf, "PNG", optimize=True)
+    raw = buf.getvalue()
+
+    # step-end holds each value until the next stop, so one stop per sequence entry
+    total = sum(durs)
+    stops, t = [], 0
+    for frame_idx, d in zip(seq, durs):
+        pct = t / total * 100.0
+        stops.append("%.3f%%{transform:translateX(-%.4f%%)}" % (pct, frame_idx * 100.0 / len(ims)))
+        t += d
+    stops.append("100%%{transform:translateX(-%.4f%%)}" % (seq[0] * 100.0 / len(ims)))
+    css = "@keyframes %s{%s}" % (state.lower(), "".join(stops))
+
+    return {
+        "b64": base64.b64encode(raw).decode(), "raw": len(raw),
+        "css": css, "aspect": "%d/%d" % (width, h),
+        "duration": "%.3fs" % (total / 1000.0),
+        "unique": len(ims), "steps": len(seq),
+    }
+
+
 def encode_audio(path, bitrate):
     """Downmix to 22kHz mono MP3 - inaudible quality loss on short SFX, ~20x smaller."""
     out = os.path.join(tempfile.gettempdir(), "pawdoku_sfx_%d.mp3" % abs(hash(path)))
@@ -74,8 +126,7 @@ def sources():
     if not idle or not happy:
         sys.exit("no puppy frames found under %s" % RESKIN)
     return {
-        "PUPPY": (idle[5], 104, 96),
-        "HAPPY": (happy[4], 104, 96),
+        "HAPPY": (happy[4], 104, 96),   # still frame for the win card
         # the real wordmark lives outside the reskin folder
         "LOGO": (os.path.join(ROOT, "..", "Assets", "Pictures", "Lobby", "Logo.png"), 248, 64),
         "PAW": (pic("PawIcon.png"), 72, 96),
@@ -136,6 +187,15 @@ def main():
         b64, raw = encode(path, width, colors)
         art[key] = b64
         print("  %-12s %6.1f KB png -> %6.1f KB base64" % (key.lower(), raw / 1024, len(b64) / 1024))
+
+    idle = encode_gif_anim("Idle", 104)
+    art["IDLE_SHEET"] = idle["b64"]
+    art["IDLE_KEYFRAMES"] = idle["css"]
+    art["IDLE_ASPECT"] = idle["aspect"]
+    art["IDLE_DURATION"] = idle["duration"]
+    print("  %-12s %d frames / %d steps over %s  %6.1f KB png -> %6.1f KB base64" %
+          ("idle_anim", idle["unique"], idle["steps"], idle["duration"],
+           idle["raw"] / 1024, len(idle["b64"]) / 1024))
 
     for key, (path, bitrate) in audio_sources().items():
         if not os.path.exists(path):
