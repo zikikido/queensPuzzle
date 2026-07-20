@@ -343,8 +343,61 @@ function showHand(i,isDouble){
   }else d.classList.remove('on');
 }
 function hideHand(){
+  stopSweep();
   document.getElementById('hand').classList.remove('on');
   document.getElementById('dbl').classList.remove('on');
+}
+
+/* ---- sweeping hand: demonstrate a drag instead of pointing cell by cell ----
+   Mirrors MBToturial.SweepHand — glide across the run, pause at the end, repeat. */
+var SWEEP_PER_CELL=350,SWEEP_PAUSE=400,sweepTimer=null;
+
+function placeHand(i){
+  var h=document.getElementById('hand');
+  var st=document.getElementById('stage').getBoundingClientRect();
+  var r=cells[i].getBoundingClientRect();
+  h.style.left=(r.left-st.left+r.width*0.5)+'px';
+  h.style.top=(r.top-st.top+r.height*0.5)+'px';
+}
+function stopSweep(){
+  if(sweepTimer){clearTimeout(sweepTimer);sweepTimer=null;}
+  document.getElementById('hand').style.transition='';
+}
+
+/* every still-unmarked cell the same rule covers on this line, in reading order */
+function markRun(m){
+  var r0=Math.floor(m.cell/N),c0=m.cell%N,out=[];
+  for(var k=0;k<N;k++){
+    var i=(m.rule==='row')?r0*N+k:k*N+c0;
+    if(state[i]!==EMPTY) continue;
+    if(!attacked(Math.floor(i/N),i%N)) continue;
+    out.push(i);
+  }
+  return out;
+}
+
+function sweepHand(list){
+  stopSweep();
+  var h=document.getElementById('hand'),d=document.getElementById('dbl');
+  h.classList.add('on');h.classList.remove('dbl');d.classList.remove('on');
+  var n=0;
+  h.style.transition='none';
+  placeHand(list[0]);
+  function glide(){
+    n++;
+    if(n<list.length){
+      h.style.transition='left '+SWEEP_PER_CELL+'ms linear,top '+SWEEP_PER_CELL+'ms linear';
+      placeHand(list[n]);
+      sweepTimer=setTimeout(glide,SWEEP_PER_CELL);
+      return;
+    }
+    sweepTimer=setTimeout(function(){          // pause at the end, then jump back and repeat
+      h.style.transition='none';
+      n=0;placeHand(list[0]);
+      sweepTimer=setTimeout(glide,60);
+    },SWEEP_PAUSE);
+  }
+  sweepTimer=setTimeout(glide,SWEEP_PER_CELL);
 }
 
 /* ---- input: tap = X, double tap on the same cell = puppy ---- */
@@ -523,7 +576,14 @@ function armNudge(delay){
     // The colour is never named while a single ruled-out square is still unmarked.
     // Keep pointing at the next one, every NUDGE_MS, for as long as it takes.
     var m=nextToMark();
-    if(seatedAny&&m){setNote(MARK_NOTE[m.rule]);showHand(m.cell,false);armNudge(NUDGE_MS);return;}
+    if(seatedAny&&m){
+      setNote(MARK_NOTE[m.rule]);
+      // a row or column is a drag, not a series of pokes - show it as one
+      var run=(m.rule==='row'||m.rule==='col')?markRun(m):[m.cell];
+      if(run.length>1){sweepHand(run);return;}   // self-looping, no re-arm needed
+      showHand(m.cell,false);armNudge(NUDGE_MS);
+      return;
+    }
     setNote("1 puppy per color "+tinted(f.region));
     showHand(f.cell,true);
   },delay);
