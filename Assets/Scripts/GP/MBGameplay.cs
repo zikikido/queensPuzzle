@@ -741,7 +741,7 @@ namespace qp {
 
             
             float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
-            StartCoroutine(ShowWinPopupAfter(happyLen > 0f ? happyLen : 3f));
+            StartCoroutine(ShowWinPopupAfter((happyLen > 0f ? happyLen : 3f) * 0.5f));   // popup at half the celebration
 
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
             CommonSFX.Play(GPSFX.Instance.Win);
