@@ -391,38 +391,102 @@ namespace QueensPuzzle
         }
 
         /// <summary>
-        /// n palette colours, every pair at least colorMinDist apart. Seeded by level number so a
-        /// level always gets the same set, while neighbouring levels get different ones — the point
-        /// is variety across the campaign, not one "best" set repeated everywhere.
+        /// n palette colours that are both far apart AND look like a set. Seeded by level number,
+        /// so a level always gets the same colours while neighbours get different ones.
+        ///
+        /// Distance alone is not enough: a set can be perfectly distinguishable and still ugly —
+        /// hues bunched on one side of the wheel, or a pale cream sitting next to a dark green.
+        /// So we generate many valid sets and keep the one that also reads as balanced.
         /// </summary>
         int[] PickSpreadColors(int n, int seed, Vector3[] lab)
         {
             if (n > lab.Length) return null;
             var rng = new System.Random(seed);
-            var order = new int[lab.Length];
-            var picked = new int[n];
+            int[] best = null;
+            float bestScore = float.NegativeInfinity;
 
-            for (int attempt = 0; attempt < 400; attempt++)
+            for (int attempt = 0; attempt < 600; attempt++)
             {
-                for (int i = 0; i < order.Length; i++) order[i] = i;
-                for (int i = order.Length - 1; i > 0; i--)   // Fisher-Yates
-                {
-                    int j = rng.Next(i + 1);
-                    int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
-                }
-
-                int count = 0;
-                foreach (int c in order)
-                {
-                    bool ok = true;
-                    for (int k = 0; k < count && ok; k++)
-                        if (Vector3.Distance(lab[c], lab[picked[k]]) < colorMinDist) ok = false;
-                    if (!ok) continue;
-                    picked[count++] = c;
-                    if (count == n) return (int[])picked.Clone();
-                }
+                var set = TrySpreadSet(n, rng, lab);
+                if (set == null) continue;
+                float s = HarmonyScore(set, lab);
+                if (s > bestScore) { bestScore = s; best = set; }
+                if (best != null && attempt > 250) break;   // enough candidates seen
             }
-            return null;   // no spread set exists at this threshold — lower the slider
+            return best;   // null => no spread set at this threshold, lower the slider
+        }
+
+        /// One greedy attempt: shuffle the palette, take colours that clear colorMinDist.
+        int[] TrySpreadSet(int n, System.Random rng, Vector3[] lab)
+        {
+            var order = new int[lab.Length];
+            for (int i = 0; i < order.Length; i++) order[i] = i;
+            for (int i = order.Length - 1; i > 0; i--)   // Fisher-Yates
+            {
+                int j = rng.Next(i + 1);
+                int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+            }
+
+            var picked = new int[n];
+            int count = 0;
+            foreach (int c in order)
+            {
+                bool ok = true;
+                for (int k = 0; k < count && ok; k++)
+                    if (Vector3.Distance(lab[c], lab[picked[k]]) < colorMinDist) ok = false;
+                if (!ok) continue;
+                picked[count++] = c;
+                if (count == n) return picked;
+            }
+            return null;
+        }
+
+        /// Higher is prettier. Rewards separation and even hue spacing; punishes mixing very
+        /// light with very dark, and mixing vivid with washed-out.
+        float HarmonyScore(int[] set, Vector3[] lab)
+        {
+            int n = set.Length;
+
+            float minDist = float.MaxValue;
+            for (int i = 0; i < n; i++)
+                for (int j = i + 1; j < n; j++)
+                    minDist = Mathf.Min(minDist, Vector3.Distance(lab[set[i]], lab[set[j]]));
+
+            // lightness and chroma consistency — the two that decide whether a board looks like a set
+            float lSum = 0f, cSum = 0f;
+            var chroma = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                var v = lab[set[i]];
+                chroma[i] = Mathf.Sqrt(v.y * v.y + v.z * v.z);
+                lSum += v.x; cSum += chroma[i];
+            }
+            float lMean = lSum / n, cMean = cSum / n, lVar = 0f, cVar = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float dl = lab[set[i]].x - lMean; lVar += dl * dl;
+                float dc = chroma[i] - cMean;     cVar += dc * dc;
+            }
+            float lSd = Mathf.Sqrt(lVar / n), cSd = Mathf.Sqrt(cVar / n);
+
+            // hue evenness: gaps around the wheel should be similar
+            var hues = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                var v = lab[set[i]];
+                float h = Mathf.Atan2(v.z, v.y) * Mathf.Rad2Deg;
+                hues[i] = h < 0f ? h + 360f : h;
+            }
+            System.Array.Sort(hues);
+            float ideal = 360f / n, gapVar = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float gap = (i == n - 1 ? hues[0] + 360f : hues[i + 1]) - hues[i];
+                gapVar += (gap - ideal) * (gap - ideal);
+            }
+            float gapSd = Mathf.Sqrt(gapVar / n) / ideal;
+
+            return minDist * 2.0f - gapSd * 0.20f - lSd * 0.55f - cSd * 0.55f;
         }
 
         // Existing levels in range whose weight sits outside their slot's tolerance window.

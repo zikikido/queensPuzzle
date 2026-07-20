@@ -18,4 +18,4 @@ MonoBehaviour:
   weight: 256
   seed: 702
   revealedRows: 
-  regionColors: 
+  regionColors: 0b0000000f00000005000000100000000d000000030000000a000000010000000c00000008000000
