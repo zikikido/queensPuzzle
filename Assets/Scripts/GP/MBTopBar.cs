@@ -26,6 +26,9 @@ namespace qp {
         private TMPro.TMP_Text _timeProgress;
         private MBLevelCenterizer _levelCenterizer;   // keeps "Level <n>" centered as the digit count changes
 
+        private GameObject _levelStrech, _dateStrech;   // top row: "Level <n>" (campaign) / the date (daily)
+        private TMPro.TMP_Text _levelText, _dateText;
+
         private void Awake() {
             transform.RecursiveFindChild("$QueensProgressText", out _queensProgressText);
             _foundHex = ColorUtility.ToHtmlStringRGB(_queenFoundCLR);
@@ -39,6 +42,13 @@ namespace qp {
             _timeProgress = withTime.transform.RecursiveFindChild<TMPro.TMP_Text>("$TimeProgress");
 
             _levelCenterizer = GetComponentInChildren<MBLevelCenterizer>(true);
+
+            var levelStrech = transform.RecursiveFindChild("%LevelStrech");
+            var dateStrech = transform.RecursiveFindChild("%DateStrech");
+            _levelStrech = levelStrech.gameObject;
+            _dateStrech = dateStrech.gameObject;
+            _levelText = levelStrech.RecursiveFindChild<TMPro.TMP_Text>("$LevelText");
+            _dateText = dateStrech.RecursiveFindChild<TMPro.TMP_Text>("$Date");
 
             _settingsBtn = transform.RecursiveFindChild<Button>("$SettingsBtn");
             _settingsBtn.onClick.AddListener(OpenSettings);
@@ -87,9 +97,16 @@ namespace qp {
             _queensInBoard = queensInBoard;
             _setQueensProgress(0);
 
-            var levelText = showTimeProgress ? DailyChallengeManager.NiceDate : (AppData.LevelIdx + 1).ToString();
-            transform.RecursiveFindChild<TMPro.TMP_Text>("$LevelText").text = levelText;
-            _levelCenterizer.Recenter(levelText);
+            _levelStrech.SetActive(!showTimeProgress);
+            _dateStrech.SetActive(showTimeProgress);
+
+            if (showTimeProgress) {
+                _dateText.text = DailyChallengeManager.NiceDate;
+            } else {
+                var levelText = (AppData.LevelIdx + 1).ToString();
+                _levelText.text = levelText;
+                _levelCenterizer.Recenter(levelText);
+            }
 
             _withoutTime.SetActive(!showTimeProgress);
             _withTime.SetActive(showTimeProgress);
