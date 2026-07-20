@@ -57,6 +57,12 @@ namespace qp {
         // Boot task (stage after MAX): subscribe callbacks and kick off loading. Returns
         // immediately — ad loading happens in the background, the boot never waits on it.
         public static void Init() {
+#if UNITY_EDITOR
+            // Editor stubs are fixed-size debug prefabs (the banner one is a hardcoded 168px strip),
+            // not a preview of the real ad — they only misrepresent the layout. Must run before
+            // CreateBanner(), which is where the stub gets instantiated.
+            MaxSdk.DisableStubAds();
+#endif
             if (_runner == null) {
                 var go = new GameObject("$Ads");
                 UnityEngine.Object.DontDestroyOnLoad(go);
