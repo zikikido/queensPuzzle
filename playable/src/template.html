@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Pawdoku</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#2E6B6B}
+#app{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2.2vh 4vw calc(2.2vh + env(safe-area-inset-bottom));gap:1vh}
+
+#top{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
+#logo{display:flex;align-items:center;gap:7px}
+#logo img{width:auto;height:clamp(28px,5.2vh,44px);display:block}
+#logo span{font-size:clamp(15px,2.4vh,21px);font-weight:800;letter-spacing:-.2px}
+#counter{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 13px 6px 8px;box-shadow:0 2px 0 #BBD9E2}
+#counter img{width:clamp(18px,2.9vh,24px);height:auto;display:block}
+#count{font-size:clamp(14px,2.2vh,19px);font-weight:800;min-width:1.1em;text-align:center}
+
+/* note + board travel together as one vertically-centred group */
+#mid{flex:1 1 auto;width:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7vh}
+/* two lines are always reserved so the board never resizes when the note changes */
+#note{flex:0 0 auto;font-size:clamp(17px,3vh,27px);font-weight:800;text-align:center;line-height:1.25;min-height:2.5em;display:flex;align-items:flex-end;padding:0 2vw;color:#48908F;transition:opacity .18s}
+#note.hide{opacity:0}
+
+#stage{flex:0 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;position:relative}
+#board{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);background:#BFDDE5;padding:var(--gap);border-radius:12px;box-shadow:0 3px 0 #9FC6D2;position:relative}
+.cell{position:relative;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:filter .25s}
+.cell>img{width:86%;height:auto;display:block;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
+.cell>img.x{width:52%;filter:none;opacity:.72}
+.cell.dim{filter:brightness(.42) saturate(.55)}
+.cell.lit{z-index:2}
+.cell.lit::after{content:"";position:absolute;inset:-2px;border-radius:6px;border:3px solid #fff;opacity:0;animation:pulse 1.3s ease-in-out infinite;pointer-events:none}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:.95}}
+.pop{animation:pop .28s cubic-bezier(.3,1.7,.6,1)}
+@keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.shake{animation:shake .36s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12%)}40%{transform:translateX(10%)}60%{transform:translateX(-6%)}80%{transform:translateX(3%)}}
+
+#hand{position:absolute;pointer-events:none;z-index:6;opacity:0;transition:opacity .25s;transform-origin:22% 14%}
+#hand.on{opacity:1}
+#hand img{width:clamp(46px,7.4vh,66px);height:auto;display:block;filter:drop-shadow(0 3px 5px rgba(20,60,70,.4));transform-origin:22% 14%;animation:tap 1.5s ease-in-out infinite}
+#hand.dbl img{animation:dbltap 1.5s ease-in-out infinite}
+@keyframes tap{0%,55%,100%{transform:scale(1) rotate(0)}30%{transform:scale(.82) rotate(-7deg)}}
+@keyframes dbltap{0%,40%,100%{transform:scale(1) rotate(0)}12%,28%{transform:scale(.82) rotate(-7deg)}20%{transform:scale(1) rotate(0)}}
+#dbl{position:absolute;z-index:7;background:#fff;color:#48908F;font-size:clamp(12px,1.9vh,16px);font-weight:800;padding:6px 13px;border-radius:999px;white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;transform:translate(-50%,0);box-shadow:0 2px 0 #BBD9E2}
+#dbl.on{opacity:1}
+
+#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(12px,2.1vh,18px);font-family:inherit;font-size:clamp(16px,2.7vh,23px);font-weight:800;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
+#cta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+
+#win{position:absolute;inset:0;background:rgba(60,45,25,.62);display:none;align-items:center;justify-content:center;padding:6vw;z-index:9}
+#win.on{display:flex;animation:fadein .3s}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+#winCard{background:#F2FAFC;border-radius:22px;padding:5vh 7vw;text-align:center;max-width:400px;width:100%;animation:pop .42s cubic-bezier(.3,1.7,.6,1)}
+#winCard img{width:clamp(84px,15vh,124px);height:auto;margin-bottom:1.4vh}
+#winCard h2{font-size:clamp(21px,4vh,31px);font-weight:800;margin-bottom:.5vh}
+#winCard p{font-size:clamp(13px,2.2vh,17px);color:#6FA8A8;margin-bottom:2.6vh;font-weight:700}
+#winCta{width:100%;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(13px,2.3vh,19px);font-family:inherit;font-size:clamp(17px,2.9vh,24px);font-weight:800;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
+#winCta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="logo"><img id="logoImg" alt=""><span>Pawdoku</span></div>
+    <div id="counter"><img id="pawImg" alt=""><span id="count">5</span></div>
+  </div>
+  <div id="mid">
+    <div id="note"><span id="noteText">Tap the squares a puppy can’t sit on</span></div>
+    <div id="stage">
+      <div id="board"></div>
+      <div id="hand"><img id="fingerImg" alt=""></div>
+      <div id="dbl">Double tap</div>
+    </div>
+  </div>
+  <button id="cta">Play now</button>
+</div>
+
+<div id="win">
+  <div id="winCard">
+    <img id="winImg" alt="">
+    <h2>Nice one!</h2>
+    <p>9,000+ more puzzles waiting</p>
+    <button id="winCta">Play now</button>
+  </div>
+</div>
+
+<script>
+var ART={puppy:"__PUPPY__",happy:"__HAPPY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",finger:"__FINGER__"};
+var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
+
+var N=6;
+var REGIONS=[0,0,0,0,2,2, 1,0,1,1,2,2, 1,1,1,1,2,2, 1,5,3,1,1,2, 4,5,3,1,5,2, 5,5,5,5,5,2];
+var COLORS=["#F8D636","#B185CF","#7DC9D9","#FF808E","#67D2AB","#F9A55F"];
+var NAMES=["Yellow","Purple","Blue","Pink","Green","Orange"];
+var SOLUTION=[1,3,5,2,0,4];
+var START_ROW=2;
+var DOUBLE_MS=300;
+
+var EMPTY=0,X=1,PUPPY=2;
+var state=[],cells=[];
+var step=null,stepIdx=0,guiding=true,busy=false,won=false;
+var lastCell=-1,lastTime=0,paintMode=0,pointerDown=false;
+
+function idx(r,c){return r*N+c;}
+function regionAt(r,c){return REGIONS[idx(r,c)];}
+function tinted(g){return '<b style="color:'+COLORS[g]+'">'+NAMES[g]+'</b>';}
+
+function queens(){
+  var q=[];
+  for(var i=0;i<N*N;i++) if(state[i]===PUPPY) q.push([Math.floor(i/N),i%N]);
+  return q;
+}
+
+/* the three base rules, in the solver's QueenScope order */
+function attacks(qr,qc,r,c,rule){
+  if(rule==='touch')  return Math.abs(qr-r)<=1&&Math.abs(qc-c)<=1;
+  if(rule==='color')  return regionAt(qr,qc)===regionAt(r,c);
+  return qr===r||qc===c;
+}
+function ruleCells(rule){
+  var q=queens(),out=[];
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var i=idx(r,c);
+    if(state[i]!==EMPTY) continue;
+    for(var k=0;k<q.length;k++) if(attacks(q[k][0],q[k][1],r,c,rule)){out.push(i);break;}
+  }
+  return out;
+}
+
+/* is this cell ruled out by a puppy already on the board? */
+function attacked(r,c){
+  var q=queens();
+  for(var k=0;k<q.length;k++)
+    if(attacks(q[k][0],q[k][1],r,c,'rowcol')||attacks(q[k][0],q[k][1],r,c,'color')||attacks(q[k][0],q[k][1],r,c,'touch'))
+      return true;
+  return false;
+}
+
+/* A colour with one cell left is a forced puppy. Judged from what the puppies
+   attack, not from the player's X marks — marking is the player's aid, never a
+   requirement, so the deduction has to hold whether or not they bothered. */
+function forcedPuppy(){
+  var seen={};
+  for(var i=0;i<N*N;i++){
+    if(state[i]!==EMPTY) continue;
+    if(attacked(Math.floor(i/N),i%N)) continue;
+    var g=REGIONS[i];
+    if(seen[g]===undefined) seen[g]=[];
+    seen[g].push(i);
+  }
+  for(var g in seen) if(seen[g].length===1) return {cell:seen[g][0],region:+g};
+  return null;
+}
+
+var TUTORIAL=[
+  {rule:"touch",  note:"Puppies <b>cannot touch</b>"},
+  {rule:"color",  note:"1 puppy per <b>color</b>"},
+  {rule:"rowcol", note:"1 puppy per <b>row and column</b>"}
+];
+
+function setNote(html){
+  var el=document.getElementById('note'),t=document.getElementById('noteText');
+  el.classList.add('hide');
+  setTimeout(function(){t.innerHTML=html;el.classList.remove('hide');},120);
+}
+
+function build(){
+  var b=document.getElementById('board');
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var d=document.createElement('div');
+    d.className='cell';
+    d.style.background=COLORS[regionAt(r,c)];
+    d.dataset.i=idx(r,c);
+    b.appendChild(d);cells.push(d);state.push(EMPTY);
+  }
+  b.addEventListener('pointerdown',onDown);
+  b.addEventListener('pointerover',onOver);
+  window.addEventListener('pointerup',onUp);
+  seat(idx(START_ROW,SOLUTION[START_ROW]),PUPPY,false);
+  updateCount();fitBoard();
+}
+
+function seat(i,what,animate){
+  state[i]=what;
+  var el=cells[i];
+  while(el.firstChild) el.removeChild(el.firstChild);
+  if(what===EMPTY) return;
+  var img=document.createElement('img');
+  img.src="data:image/png;base64,"+(what===PUPPY?ART.puppy:ART.xmark);
+  if(what===X) img.className='x';
+  if(animate) img.classList.add('pop');
+  el.appendChild(img);
+}
+
+function updateCount(){
+  var n=0;for(var i=0;i<N*N;i++) if(state[i]===PUPPY) n++;
+  document.getElementById('count').textContent=N-n;
+}
+
+/* ---- guided step presentation: dim everything but the step's cells ---- */
+function openStep(s){
+  step=s;
+  setNote(s.note);
+  for(var i=0;i<N*N;i++){
+    var lit=s.cells.indexOf(i)>=0;
+    cells[i].classList.toggle('dim',!lit&&state[i]!==PUPPY);
+    cells[i].classList.toggle('lit',lit);
+  }
+  showHand(s.cells[0],s.target===PUPPY);
+}
+function closeStep(){
+  step=null;hideHand();
+  for(var i=0;i<N*N;i++) cells[i].classList.remove('dim','lit');
+}
+function stepDone(){
+  return step?pendingCell()<0:false;
+}
+/* the first cell in the step the player hasn't marked yet — where the hand belongs */
+function pendingCell(){
+  if(!step) return -1;
+  for(var k=0;k<step.cells.length;k++) if(state[step.cells[k]]!==step.target) return step.cells[k];
+  return -1;
+}
+
+function showHand(i,isDouble){
+  var h=document.getElementById('hand'),d=document.getElementById('dbl');
+  var st=document.getElementById('stage').getBoundingClientRect();
+  var r=cells[i].getBoundingClientRect();
+  h.style.left=(r.left-st.left+r.width*0.5)+'px';
+  h.style.top=(r.top-st.top+r.height*0.5)+'px';
+  h.classList.add('on');h.classList.toggle('dbl',!!isDouble);
+  if(isDouble){
+    // clear the whole hand, not just the cell — the finger hangs well below it
+    var hh=h.offsetHeight||90;
+    var top=r.top-st.top+r.height*0.5+hh+8;
+    if(top+34>st.height) top=r.top-st.top-38;   // no room underneath — sit above the cell
+    d.style.left=(r.left-st.left+r.width*0.5)+'px';
+    d.style.top=top+'px';
+    d.classList.add('on');
+  }else d.classList.remove('on');
+}
+function hideHand(){
+  document.getElementById('hand').classList.remove('on');
+  document.getElementById('dbl').classList.remove('on');
+}
+
+/* ---- input: tap = X, double tap on the same cell = puppy ---- */
+function allowed(i,what){
+  if(!step) return true;
+  if(step.cells.indexOf(i)<0) return false;
+  return what===step.target||what===X;
+}
+
+function onDown(e){
+  var t=e.target.closest?e.target.closest('.cell'):null;
+  if(!t||busy||won) return;
+  var i=+t.dataset.i;
+  var now=Date.now();
+
+  if(i===lastCell&&now-lastTime<DOUBLE_MS&&state[i]!==PUPPY){
+    lastCell=-1;lastTime=0;
+    tryPuppy(i);
+    return;
+  }
+  lastCell=i;lastTime=now;
+  pointerDown=true;
+
+  if(state[i]===PUPPY){paintMode=0;return;}
+  paintMode=state[i]===EMPTY?X:EMPTY;
+  paint(i);
+}
+function onOver(e){
+  if(!pointerDown) return;
+  var t=e.target.closest?e.target.closest('.cell'):null;
+  if(!t||busy||won) return;
+  paint(+t.dataset.i);
+}
+function onUp(){pointerDown=false;}
+
+function paint(i){
+  if(state[i]===PUPPY) return;
+  if(!allowed(i,X)){reject(i);return;}
+  if(state[i]===paintMode) return;
+  seat(i,paintMode,paintMode===X);
+  if(step){
+    if(stepDone()) advance();
+    else showHand(pendingCell(),step.target===PUPPY);   // move on to the next unmarked cell
+  }
+  else {
+    // player acted — drop the hint, name the rule they're now working through
+    hideHand();
+    var nx=nextToMark();
+    if(nx) setNote(MARK_NOTE[nx.rule]);
+    armNudge(NUDGE_MS);
+  }
+}
+
+function tryPuppy(i){
+  if(!allowed(i,PUPPY)||(step&&step.target!==PUPPY)){reject(i);return;}
+  if(i%N!==SOLUTION[Math.floor(i/N)]){reject(i);return;}
+  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();
+  if(step){if(stepDone()) advance();return;}
+  seatedAny=true;
+  busy=true;
+  setTimeout(function(){busy=false;freePlay();},420);
+}
+
+function reject(i){
+  var el=cells[i];
+  el.classList.add('shake');
+  setTimeout(function(){el.classList.remove('shake');},380);
+}
+
+/* ---- flow ---- */
+function advance(){
+  busy=true;hideHand();
+  setTimeout(function(){
+    closeStep();busy=false;
+    if(stepIdx<TUTORIAL.length) nextRuleStep();
+    else freePlay();
+  },700);
+}
+
+function nextRuleStep(){
+  var t=TUTORIAL[stepIdx++];
+  var list=ruleCells(t.rule);
+  if(!list.length) return nextRuleStep();
+  openStep({cells:list,target:X,note:t.note});
+}
+
+/* the three rules are taught — hand the board over. The nudge below is the only
+   thing left, and it never blocks: it just shows the gesture if the player stalls. */
+function freePlay(){
+  var n=0;
+  for(var i=0;i<N*N;i++) if(state[i]===PUPPY) n++;
+  if(n===N){doWin();return;}
+  var f=forcedPuppy();
+  if(!f){
+    // the player X'd a cell a puppy belongs on — clear it, the way the game's WrongX hint does
+    for(var r=0;r<N;r++){
+      var j=idx(r,SOLUTION[r]);
+      if(state[j]===X) seat(j,EMPTY,false);
+    }
+    f=forcedPuppy();
+    if(!f){
+      // nothing forced and the board isn't finished — never claim a win, just point
+      for(var k=0;k<N;k++){
+        var m=idx(k,SOLUTION[k]);
+        if(state[m]!==PUPPY){setNote("Seat the next puppy");showHand(m,true);return;}
+      }
+      doWin();return;
+    }
+  }
+  // Don't hand them the answer the moment a puppy lands — that's the deduction
+  // they're here to make. Only the first one is named, to teach the double tap.
+  if(seatedAny){var nx=nextToMark();setNote(nx?MARK_NOTE[nx.rule]:"Mark where a puppy can’t sit");}
+  else setNote("1 puppy per color "+tinted(f.region));
+  armNudge(seatedAny?REVEAL_MS:NUDGE_MS);
+}
+
+var NUDGE_MS=2500,REVEAL_MS=4000;
+var nudgeTimer=null,seatedAny=false;
+
+/* The next square to mark, one rule at a time so the marking reads as reasoning
+   rather than a scatter: every row cell first (left to right), then every column
+   cell (top to bottom), then touching, then colour. -1 once all are marked. */
+function nextToMark(){
+  var q=queens(),best=-1,bestRank=99,bestSeq=0;
+  for(var i=0;i<N*N;i++){
+    if(state[i]!==EMPTY) continue;
+    var r=Math.floor(i/N),c=i%N,rank=99;
+    for(var k=0;k<q.length;k++){
+      var qr=q[k][0],qc=q[k][1],t=99;
+      if(qr===r) t=0;
+      else if(qc===c) t=1;
+      else if(Math.abs(qr-r)<=1&&Math.abs(qc-c)<=1) t=2;
+      else if(regionAt(qr,qc)===regionAt(r,c)) t=3;
+      if(t<rank) rank=t;
+    }
+    if(rank===99) continue;
+    var seq=rank===1?c*N+r:i;   // columns run top-to-bottom, everything else left-to-right
+    if(rank<bestRank||(rank===bestRank&&seq<bestSeq)){best=i;bestRank=rank;bestSeq=seq;}
+  }
+  return best<0?null:{cell:best,rule:RULE_OF[bestRank]};
+}
+var RULE_OF=["row","col","touch","color"];
+var MARK_NOTE={row:"1 puppy per <b>row</b>",col:"1 puppy per <b>column</b>",
+               touch:"Puppies <b>cannot touch</b>",color:"1 puppy per <b>color</b>"};
+
+function armNudge(delay){
+  clearNudge();
+  nudgeTimer=setTimeout(function(){
+    if(won) return;
+    var f=forcedPuppy();
+    if(!f) return;
+    // The colour is never named while a single ruled-out square is still unmarked.
+    // Keep pointing at the next one, every NUDGE_MS, for as long as it takes.
+    var m=nextToMark();
+    if(seatedAny&&m){setNote(MARK_NOTE[m.rule]);showHand(m.cell,false);armNudge(NUDGE_MS);return;}
+    setNote("1 puppy per color "+tinted(f.region));
+    showHand(f.cell,true);
+  },delay);
+}
+/* timer only — hiding the hand is the caller's job, otherwise re-arming a hint
+   would immediately hide the hand that hint just put on the board */
+function clearNudge(){
+  if(nudgeTimer){clearTimeout(nudgeTimer);nudgeTimer=null;}
+}
+
+function doWin(){
+  won=true;closeStep();
+  setNote("Every puppy is home!");
+  var q=queens();
+  for(var k=0;k<q.length;k++){
+    (function(i,d){setTimeout(function(){
+      var img=cells[i].firstChild;
+      if(img){img.src="data:image/png;base64,"+ART.happy;img.className='pop';}
+    },d*95);})(idx(q[k][0],q[k][1]),k);
+  }
+  setTimeout(function(){document.getElementById('win').classList.add('on');},1150);
+}
+
+function fitBoard(){
+  var mid=document.getElementById('mid'),note=document.getElementById('note'),b=document.getElementById('board');
+  // #stage is sized by the board, so take the height budget from #mid minus the note
+  var s=Math.min(mid.clientWidth,mid.clientHeight-note.offsetHeight-10);
+  if(s<40)s=240;
+  s=Math.min(s,440);
+  b.style.width=s+'px';
+  b.style.setProperty('--gap',Math.max(2,Math.round(s*0.011))+'px');
+  if(step&&pendingCell()>=0) showHand(pendingCell(),step.target===PUPPY);
+}
+
+function goStore(){
+  try{if(window.mraid&&typeof mraid.open==='function'){mraid.open(STORE);return;}}catch(e){}
+  try{if(typeof install==='function'){install();return;}}catch(e){}
+  try{if(window.parent&&window.parent!==window){window.parent.postMessage('download','*');}}catch(e){}
+  try{if(window.ExitApi&&typeof ExitApi.exit==='function'){ExitApi.exit();return;}}catch(e){}
+  try{window.open(STORE,'_blank');}catch(e){}
+}
+document.getElementById('cta').addEventListener('click',goStore);
+document.getElementById('winCta').addEventListener('click',goStore);
+
+document.getElementById('logoImg').src="data:image/png;base64,"+ART.logo;
+document.getElementById('pawImg').src="data:image/png;base64,"+ART.paw;
+document.getElementById('winImg').src="data:image/png;base64,"+ART.happy;
+document.getElementById('fingerImg').src="data:image/png;base64,"+ART.finger;
+
+window.addEventListener('resize',fitBoard);
+window.addEventListener('orientationchange',function(){setTimeout(fitBoard,120);});
+
+function start(){build();setTimeout(nextRuleStep,900);}
+if(window.mraid&&mraid.getState&&mraid.getState()==='loading'){mraid.addEventListener('ready',start);}else{start();}
+</script>
+</body>
+</html>
