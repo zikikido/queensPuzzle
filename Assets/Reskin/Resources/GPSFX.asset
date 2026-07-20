@@ -21,3 +21,5 @@ MonoBehaviour:
   Fail: {fileID: 8300000, guid: be18dee96eed7d74d96f47524281ed8e, type: 3}
   Hint: {fileID: 8300000, guid: 9cbf0b39e4eb3c847b7c64e4a9186b0f, type: 3}
   BoardStart: {fileID: 8300000, guid: 4428a82fd7a321d4583ee7cfc5c2db61, type: 3}
+  PuppyWin: {fileID: 0}
+  PuppyLose: {fileID: 0}

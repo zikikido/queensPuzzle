@@ -38,5 +38,11 @@ namespace qp {
         public void PlayCharIn() {
             if (_char != null) _char.Play("In");
         }
+
+        /// <summary>Animation event. Whines the lose puppy. Silent while the clip is still a placeholder.</summary>
+        public void PlayPuppySFX() {
+            var clip = GPSFX.Instance.PuppyLose;
+            if (clip != null) CommonSFX.Play(clip);
+        }
     }
 }

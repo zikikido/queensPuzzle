@@ -40,6 +40,12 @@ namespace qp {
             if (_char != null) _char.Play("In");
         }
 
+        /// <summary>Animation event. Barks the win puppy. Silent while the clip is still a placeholder.</summary>
+        public void PlayPuppySFX() {
+            var clip = GPSFX.Instance.PuppyWin;
+            if (clip != null) CommonSFX.Play(clip);
+        }
+
         /// <summary>Animation event. Fires the particle system named by the event's string argument.</summary>
         public void PlayPS(string psName) {
             var t = transform.RecursiveFindChild(psName);
