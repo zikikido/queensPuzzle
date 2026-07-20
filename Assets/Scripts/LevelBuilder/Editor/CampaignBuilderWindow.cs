@@ -242,12 +242,11 @@ namespace QueensPuzzle
                     FindCloseColors();
                     GUIUtility.ExitGUI();
                 }
-                using (new EditorGUI.DisabledScope(colorFindings == null || colorFindings.Count == 0))
-                    if (GUILayout.Button($"Fix ({(colorFindings != null ? CountDistinctLevels() : 0)} levels)"))
-                    {
-                        FixCloseColors();
-                        GUIUtility.ExitGUI();
-                    }
+                if (GUILayout.Button("Recolor all levels"))
+                {
+                    RecolorAllLevels();
+                    GUIUtility.ExitGUI();
+                }
             }
 
             if (colorFindings == null) return;
@@ -341,66 +340,89 @@ namespace QueensPuzzle
             Repaint();
         }
 
-        // Re-colour every offending level: pick distinct palette colors per region so that no
-        // touching pair is closer than the threshold. Prefers each region's current color, so
-        // only the clashing regions change.
-        void FixCloseColors()
+        // Recolour every level in the set: give each board a colour set where EVERY pair is at
+        // least colorMinDist apart, not just the touching ones. Adjacency then stops mattering —
+        // if no two colours on the board are close, no two neighbours can be either.
+        //
+        // Replaces the old repair pass, which only patched levels already below the threshold and
+        // left merely-acceptable boards alone. The palette carries more colours than the largest
+        // board needs, and this spends that slack.
+        void RecolorAllLevels()
         {
+            if (!System.IO.Directory.Exists(OutputFolder)) return;
+            var files = System.IO.Directory.GetFiles(OutputFolder, "*.asset");
+            if (!EditorUtility.DisplayDialog("Recolor all levels",
+                    $"Rewrite region colours on {files.Length} level(s) in {SetName}?\n\n" +
+                    $"Every board gets colours at least {colorMinDist:0.00} apart.\n" +
+                    "Re-export the level pack afterwards.", "Recolor", "Cancel"))
+                return;
+
             var lab = PaletteLab();
-            var levels = new System.Collections.Generic.SortedSet<int>();
-            foreach (var f in colorFindings) levels.Add(f.lvl);
-
             int done = 0, failed = 0;
-            foreach (int l in levels)
+            try
             {
-                var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
-                if (lvl == null) continue;
-                var adj = Adjacency(lvl);
-                int n = lvl.size;
-                var current = new int[n];
-                for (int i = 0; i < n; i++) current[i] = lvl.ColorOf(i);
-
-                var assign = new int[n];
-                for (int i = 0; i < n; i++) assign[i] = -1;
-                if (Solve(0, n, adj, lab, current, assign))
+                for (int i = 0; i < files.Length; i++)
                 {
+                    if (!int.TryParse(System.IO.Path.GetFileNameWithoutExtension(files[i]), out int l)) continue;
+                    if (EditorUtility.DisplayCancelableProgressBar("Recoloring",
+                            $"level {l}  ({done} done, {failed} failed)", (float)i / files.Length))
+                        break;
+
+                    var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
+                    if (lvl == null) continue;
+
+                    var assign = PickSpreadColors(lvl.size, l, lab);
+                    if (assign == null) { failed++; continue; }   // threshold too high for this size
+
                     bool identity = true;
-                    for (int i = 0; i < n; i++) if (assign[i] != i) { identity = false; break; }
-                    Undo.RecordObject(lvl, "Fix close colors");
+                    for (int r = 0; r < lvl.size; r++) if (assign[r] != r) { identity = false; break; }
+                    Undo.RecordObject(lvl, "Recolor level");
                     lvl.regionColors = identity ? null : assign;
                     EditorUtility.SetDirty(lvl);
                     done++;
                 }
-                else failed++;   // no assignment exists at this threshold — lower the slider a bit
             }
+            finally { EditorUtility.ClearProgressBar(); }
+
             AssetDatabase.SaveAssets();
-            Debug.Log($"[CampaignBuilder] colors fixed on {done} level(s), {failed} unsolvable at dE {colorMinDist:0.00}");
-            FindCloseColors();   // refresh the list — should be empty now
+            Debug.Log($"[CampaignBuilder] recoloured {done} level(s), {failed} unsolvable at {colorMinDist:0.00}. " +
+                      "Re-export the level pack to ship it.");
+            FindCloseColors();   // should come back empty
         }
 
-        // Backtracking: distinct colors per region, adjacent regions at least colorMinDist apart.
-        // Candidate order tries the region's current color first (minimal visual change).
-        bool Solve(int region, int n, bool[,] adj, Vector3[] lab, int[] current, int[] assign)
+        /// <summary>
+        /// n palette colours, every pair at least colorMinDist apart. Seeded by level number so a
+        /// level always gets the same set, while neighbouring levels get different ones — the point
+        /// is variety across the campaign, not one "best" set repeated everywhere.
+        /// </summary>
+        int[] PickSpreadColors(int n, int seed, Vector3[] lab)
         {
-            if (region == n) return true;
-            var candidates = new System.Collections.Generic.List<int> { current[region] };
-            for (int c = 0; c < lab.Length; c++) if (c != current[region]) candidates.Add(c);
+            if (n > lab.Length) return null;
+            var rng = new System.Random(seed);
+            var order = new int[lab.Length];
+            var picked = new int[n];
 
-            foreach (int c in candidates)
+            for (int attempt = 0; attempt < 400; attempt++)
             {
-                bool ok = true;
-                for (int other = 0; other < n && ok; other++)
+                for (int i = 0; i < order.Length; i++) order[i] = i;
+                for (int i = order.Length - 1; i > 0; i--)   // Fisher-Yates
                 {
-                    if (assign[other] < 0 || other == region) continue;
-                    if (assign[other] == c) ok = false;   // colors stay distinct on one board
-                    else if (adj[region, other] && Vector3.Distance(lab[c], lab[assign[other]]) < colorMinDist) ok = false;
+                    int j = rng.Next(i + 1);
+                    int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
                 }
-                if (!ok) continue;
-                assign[region] = c;
-                if (Solve(region + 1, n, adj, lab, current, assign)) return true;
-                assign[region] = -1;
+
+                int count = 0;
+                foreach (int c in order)
+                {
+                    bool ok = true;
+                    for (int k = 0; k < count && ok; k++)
+                        if (Vector3.Distance(lab[c], lab[picked[k]]) < colorMinDist) ok = false;
+                    if (!ok) continue;
+                    picked[count++] = c;
+                    if (count == n) return (int[])picked.Clone();
+                }
             }
-            return false;
+            return null;   // no spread set exists at this threshold — lower the slider
         }
 
         // Existing levels in range whose weight sits outside their slot's tolerance window.

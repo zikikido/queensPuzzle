@@ -34,8 +34,8 @@ VARIANTS = os.path.join(ROOT, "src", "levels")
 PALETTE = [
     ("#F8D636", "Yellow"), ("#B185CF", "Purple"), ("#7DC9D9", "Blue"),
     ("#FF808E", "Pink"),   ("#67D2AB", "Green"),  ("#F9A55F", "Orange"),
-    ("#C8D0FF", "Purple"), ("#FF93D1", "Pink"),   ("#A9D056", "Green"),
-    ("#E4B2A1", "Beige"),
+    ("#FFB6C1", "Pink"),   ("#C8D0FF", "Purple"), ("#A9D056", "Green"),
+    ("#FF93D1", "Pink"),
 ]
 
 # tutorial steps outside this range make for a bad ad: too few reads as noise,
