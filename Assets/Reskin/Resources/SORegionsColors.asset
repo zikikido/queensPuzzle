@@ -13,43 +13,43 @@ MonoBehaviour:
   m_Name: SORegionsColors
   m_EditorClassIdentifier: 
   Colors:
-  - Name: Gold
+  - Name: Yellow
     Color: {r: 0.9725491, g: 0.83921576, b: 0.21176472, a: 1}
-  - Name: Violet
+  - Name: Purple
     Color: {r: 0.69411767, g: 0.52156866, b: 0.8117648, a: 1}
-  - Name: Sky
+  - Name: Blue
     Color: {r: 0.4901961, g: 0.78823537, b: 0.85098046, a: 1}
-  - Name: Coral
+  - Name: Pink
     Color: {r: 1, g: 0.5019608, b: 0.5568628, a: 1}
-  - Name: Khaki
+  - Name: Yellow
     Color: {r: 0.8431373, g: 0.7568628, b: 0.34901962, a: 1}
-  - Name: Magenta
+  - Name: Pink
     Color: {r: 0.90196085, g: 0.4039216, b: 0.6, a: 1}
-  - Name: Mint
+  - Name: Green
     Color: {r: 0.4039216, g: 0.8235295, b: 0.67058825, a: 1}
   - Name: Olive
     Color: {r: 0.47058827, g: 0.5529412, b: 0.33333334, a: 1}
-  - Name: Clay
+  - Name: Brown
     Color: {r: 0.7176471, g: 0.5294118, b: 0.48627454, a: 1}
-  - Name: Periwinkle
+  - Name: Blue
     Color: {r: 0.6156863, g: 0.6862745, b: 1, a: 1}
-  - Name: Blush
+  - Name: Pink
     Color: {r: 1, g: 0.7137255, b: 0.7568628, a: 1}
-  - Name: Lavender
+  - Name: Purple
     Color: {r: 0.7843138, g: 0.81568635, b: 1, a: 1}
-  - Name: Apricot
+  - Name: Orange
     Color: {r: 0.97647065, g: 0.64705884, b: 0.37254903, a: 1}
-  - Name: Lime
+  - Name: Green
     Color: {r: 0.6627451, g: 0.81568635, b: 0.3372549, a: 1}
-  - Name: Teal
+  - Name: Cyan
     Color: {r: 0.2627451, g: 0.60784316, b: 0.73333335, a: 1}
-  - Name: Rose
+  - Name: Pink
     Color: {r: 1, g: 0.5764706, b: 0.8196079, a: 1}
-  - Name: Iris
+  - Name: Gray
     Color: {r: 0.5568628, g: 0.5568628, b: 0.7568628, a: 1}
-  - Name: Peach
+  - Name: Beige
     Color: {r: 0.8941177, g: 0.69803923, b: 0.6313726, a: 1}
-  - Name: Orchid
+  - Name: Purple
     Color: {r: 0.8078432, g: 0.60784316, b: 0.9215687, a: 1}
-  - Name: Leaf
+  - Name: Green
     Color: {r: 0.21960786, g: 0.6039216, b: 0.3803922, a: 1}
