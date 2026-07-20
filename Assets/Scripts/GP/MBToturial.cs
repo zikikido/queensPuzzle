@@ -178,7 +178,7 @@ namespace qp {
             _handEnabled = on;
             if (!on) {
                 if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
-                PlayFingerAnim(false);
+                PlayFingerAnim(FingerAnim.None);
                 if (_hand != null) _hand.SetActive(false);
             }
         }
@@ -209,40 +209,81 @@ namespace qp {
             bool doubleTap = target.Value == MBCell.ECellType.QUEEN;
             _hand.SetActive(true);
             if (_doubleTapText != null) _doubleTapText.SetActive(doubleTap);
-            PlayFingerAnim(doubleTap);   // tap-tap only when demonstrating a queen
-
-            if (doubleTap || cells.Count == 1) _hand.transform.position = cells[0].transform.position;
-            else _handSweep = StartCoroutine(SweepHand(cells, target.Value));
+            if (doubleTap || cells.Count == 1) {
+                PlayFingerAnim(doubleTap ? FingerAnim.DoubleTap : FingerAnim.Tap);
+                _hand.transform.position = cells[0].transform.position;
+            }
+            else _handSweep = StartCoroutine(SweepHand(cells, target.Value));   // sweep drives its own finger
         }
 
-        void PlayFingerAnim(bool on) {
+        /// <summary>What the finger should be doing: nothing (it's mid-drag), a single tap
+        /// (pointing at one cell to X), or the tap-tap that seats a puppy.</summary>
+        enum FingerAnim { None, Tap, DoubleTap }
+
+        FingerAnim _fingerMode = FingerAnim.None;
+
+        void PlayFingerAnim(FingerAnim anim) {
+            // SweepHand's pointing branch calls this every frame; restarting the coroutine each
+            // time would reset the press before it moved, leaving the finger frozen.
+            if (anim == _fingerMode && (anim == FingerAnim.None || _fingerAnim != null)) return;
+            _fingerMode = anim;
+
             if (_fingerAnim != null) { StopCoroutine(_fingerAnim); _fingerAnim = null; }
             if (_finger == null) return;
             _finger.localRotation = Quaternion.identity;
-            if (on) _fingerAnim = StartCoroutine(FingerDoubleTap());
+            _finger.localScale = Vector3.one;
+            if (anim == FingerAnim.None) return;
+            PivotAtFingertip();
+            _fingerAnim = StartCoroutine(FingerPress(
+                anim == FingerAnim.DoubleTap ? DoubleKeys : SingleKeys,
+                anim == FingerAnim.DoubleTap ? DoubleVals : SingleVals));
         }
 
-        // tap-tap … pause … tap-tap — a quick press-rotation and back, twice
-        IEnumerator FingerDoubleTap() {
-            const float angle = -27f, press = 0.09f, gap = 0.12f, pause = 0.7f;
+        // The press has to pivot at the fingertip, not the image centre, or the hand swings
+        // instead of pressing. Shifting the pivot moves the graphic, so compensate the anchor.
+        void PivotAtFingertip() {
+            var rt = _finger as RectTransform;
+            if (rt == null) return;
+            var want = new Vector2(0.22f, 0.86f);   // ad's transform-origin: 22% from left, 14% from top
+            if (rt.pivot == want) return;
+            var size = rt.rect.size;
+            var delta = want - rt.pivot;
+            rt.anchoredPosition += new Vector2(delta.x * size.x, delta.y * size.y);
+            rt.pivot = want;
+        }
+
+        // The playable ad's finger, frame for frame: scale to 0.82 with a -7 degree tilt on a
+        // 1.5s eased loop. Values are 0 = resting, 1 = fully pressed; the keys are the ad's own
+        // CSS keyframe stops, so the rhythm matches rather than merely resembling it.
+        const float TapCycle = 1.5f, TapScale = 0.82f, TapAngle = -7f;
+        static readonly float[] SingleKeys = { 0f, 0.30f, 0.55f, 1f };
+        static readonly float[] SingleVals = { 0f, 1f, 0f, 0f };
+        static readonly float[] DoubleKeys = { 0f, 0.12f, 0.20f, 0.28f, 0.40f, 1f };
+        static readonly float[] DoubleVals = { 0f, 1f, 0f, 1f, 0f, 0f };
+
+        IEnumerator FingerPress(float[] keys, float[] vals) {
+            float t = 0f;
             while (true) {
-                yield return FingerTap(angle, press);
-                yield return new WaitForSecondsRealtime(gap);
-                yield return FingerTap(angle, press);
-                yield return new WaitForSecondsRealtime(pause);
+                t += Time.unscaledDeltaTime / TapCycle;
+                if (t >= 1f) t -= 1f;
+                float p = SampleEased(keys, vals, t);
+                _finger.localScale = Vector3.one * Mathf.Lerp(1f, TapScale, p);
+                _finger.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(0f, TapAngle, p));
+                yield return null;
             }
         }
 
-        IEnumerator FingerTap(float angle, float dur) {
-            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
-                _finger.localRotation = Quaternion.Euler(Mathf.Lerp(0f, angle, e / dur), 0f, 0f);
-                yield return null;
+        // piecewise sample with an ease-in-out inside each segment, matching CSS ease-in-out
+        static float SampleEased(float[] keys, float[] vals, float t) {
+            for (int i = 0; i < keys.Length - 1; i++) {
+                if (t < keys[i] || t > keys[i + 1]) continue;
+                float span = keys[i + 1] - keys[i];
+                if (span <= 0f) return vals[i + 1];
+                float u = (t - keys[i]) / span;
+                u = u < 0.5f ? 2f * u * u : 1f - Mathf.Pow(-2f * u + 2f, 2f) * 0.5f;
+                return Mathf.Lerp(vals[i], vals[i + 1], u);
             }
-            for (float e = 0f; e < dur; e += Time.unscaledDeltaTime) {
-                _finger.localRotation = Quaternion.Euler(Mathf.Lerp(angle, 0f, e / dur), 0f, 0f);
-                yield return null;
-            }
-            _finger.localRotation = Quaternion.identity;
+            return vals[vals.Length - 1];
         }
 
         // glide the finger along the cells, looping with a small pause. Every cycle drops the
@@ -261,11 +302,13 @@ namespace qp {
                 // finger on the next cell instead, so we never teach a drag that would
                 // paint over cells in between.
                 if (pending.Count == 1 || !IsContiguousLine(pending)) {
+                    PlayFingerAnim(FingerAnim.Tap);   // pointing, so tap — a still finger reads as broken
                     _hand.transform.position = pending[0].transform.position;
                     yield return null;
                     continue;
                 }
 
+                PlayFingerAnim(FingerAnim.None);      // gliding a drag — a tapping finger would be wrong
                 _hand.transform.position = pending[0].transform.position;
                 for (int i = 0; i < pending.Count - 1; i++) {
                     Vector3 a = pending[i].transform.position, b = pending[i + 1].transform.position;
@@ -423,7 +466,7 @@ namespace qp {
             _allowed.Clear();
             _targets.Clear();
             if (_handSweep != null) { StopCoroutine(_handSweep); _handSweep = null; }
-            PlayFingerAnim(false);
+            PlayFingerAnim(FingerAnim.None);
             if (_hand != null) _hand.SetActive(false);
             ClearCauseDots();
             MBDrapeHoles.Clear();

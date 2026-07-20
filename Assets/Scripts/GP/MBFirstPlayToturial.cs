@@ -16,7 +16,7 @@ namespace qp {
 
         const int GuidedQueens = 3;
         const float StepPause = 0.8f;  // linger on a done step so the player sees what he did
-        const bool ForceRun = false;   // testing: run even when progress is past level 1
+        const bool ForceRun = true;    // TESTING - set back to false before shipping
 
         static Button _hintForFree = null;
 
