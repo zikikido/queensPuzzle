@@ -18,8 +18,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 /* note + board travel together as one vertically-centred group */
 #mid{flex:1 1 auto;width:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7vh}
 /* two lines are always reserved so the board never resizes when the note changes */
-#note{flex:0 0 auto;font-size:clamp(17px,3vh,27px);font-weight:800;text-align:center;line-height:1.25;min-height:2.5em;display:flex;align-items:flex-end;padding:0 2vw;color:#48908F;transition:opacity .18s}
+#note{flex:0 0 auto;width:100%;max-width:460px;min-height:3.1em;display:flex;align-items:center;justify-content:center;padding:0 3vw;transition:opacity .18s}
 #note.hide{opacity:0}
+#noteText{display:block;width:100%;text-align:center;font-size:clamp(17px,3vh,27px);font-weight:800;line-height:1.25;
+  color:#2E6B6B;background:#fff;border-radius:14px;padding:.5em .8em;box-shadow:0 3px 0 #BBD9E2}
+#noteText b{color:#E8743B}                       /* the rule word itself carries the accent */
+#noteText.bump{animation:bump .42s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bump{0%{transform:scale(.9)}55%{transform:scale(1.06)}100%{transform:scale(1)}}
 
 #stage{flex:0 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;position:relative}
 #board{display:grid;gap:var(--gap);background:#BFDDE5;padding:var(--gap);border-radius:12px;box-shadow:0 3px 0 #9FC6D2;position:relative;touch-action:none}
@@ -209,8 +214,15 @@ var RULE_NOTE={touch:"Puppies <b>cannot touch</b>",
 
 function setNote(html){
   var el=document.getElementById('note'),t=document.getElementById('noteText');
+  if(t.innerHTML===html) return;          // same text — don't replay the bump
   el.classList.add('hide');
-  setTimeout(function(){t.innerHTML=html;el.classList.remove('hide');},120);
+  setTimeout(function(){
+    t.innerHTML=html;
+    el.classList.remove('hide');
+    t.classList.remove('bump');
+    void t.offsetWidth;                   // restart the animation
+    t.classList.add('bump');
+  },120);
 }
 
 /* Swap in a level and rebuild the board for it. The tutorial runs on the first
