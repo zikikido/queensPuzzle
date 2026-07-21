@@ -6,6 +6,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 // Android Resolver Dependencies Start
     implementation 'com.applovin.mediation:google-adapter:[25.4.0.0]' // Packages/com.applovin.mediation.adapters.google.android/Editor/Dependencies.xml:4
+    implementation 'com.applovin.mediation:unityads-adapter:4.19.0.0' // Packages/com.applovin.mediation.adapters.unityads.android/Editor/Dependencies.xml:4
     implementation 'com.applovin:applovin-sdk:13.6.3' // Packages/com.applovin.mediation.ads/AppLovin/Editor/Dependencies.xml:4
     implementation 'com.google.android.gms:play-services-base:18.10.0' // Packages/com.google.firebase.app/Firebase/Editor/AppDependencies.xml:20
     implementation 'com.google.android.play:core-common:2.0.4' // Packages/com.google.play.core/Editor/Dependencies.xml:3
