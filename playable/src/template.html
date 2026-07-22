@@ -646,7 +646,7 @@ function freePlay(){
     // Nothing forced: usually an X sitting where a puppy belongs. Never silently
     // delete the player's marks — point at one and let them clear it, the way
     // the game's WrongX hint does.
-    if(wrongX()>=0){setNote(WRONG_X_NOTE);armNudge(NUDGE_MS);return;}
+    if(wrongX()>=0){setNote(WRONG_X_NOTE);offerHelpNow();return;}
     for(var k=0;k<N;k++){
       var m=idx(k,SOLUTION[k]);
       if(state[m]!==PUPPY){setNote("Seat the next puppy");showHand(m,true);return;}
@@ -668,13 +668,14 @@ function advanceNote(){
   if(nx){setNote(MARK_NOTE[nx.rule]);return;}
   var f=forcedPuppy();
   if(f){setNote("1 puppy per color "+tinted(f.region));return;}
-  if(wrongX()>=0){setNote(WRONG_X_NOTE);return;}
+  if(wrongX()>=0){setNote(WRONG_X_NOTE);offerHelpNow();return;}
   setNote("Seat the next puppy");
 }
 
 var NUDGE_MS=2500,REVEAL_MS=4000;
 var seatedAny=false;
-var WRONG_X_NOTE="A puppy belongs here — <b>clear this X</b>";
+// No hand points any more, so the wording can't say "this" — it has to stand alone
+var WRONG_X_NOTE="An <b>X</b> is on a puppy’s square";
 
 /* a square a puppy belongs on that the player has X'd — the game's WrongX hint.
    One at a time: clearing it is the player's move, not something we do for them. */
@@ -730,6 +731,11 @@ function clearHelp(){
 function hideHelp(){
   clearHelp();
   showHelpButton(false);
+}
+/* being blocked isn't the same as thinking — don't make them wait out the timer */
+function offerHelpNow(){
+  clearHelp();
+  if(helpMode()&&!won) showHelpButton(true);
 }
 function onHelp(){
   hideHelp();
