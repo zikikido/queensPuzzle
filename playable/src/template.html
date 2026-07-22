@@ -11,6 +11,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 
 #top{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
 #logoImg{width:clamp(78px,13vh,124px);height:auto;display:block;flex:0 0 auto}
+#right{display:flex;align-items:center;gap:8px}
+#bones{display:none;align-items:center;gap:3px;background:#fff;border-radius:999px;padding:5px 9px;box-shadow:0 2px 0 #BBD9E2}
+#bones.on{display:flex}
+#bones img{width:clamp(17px,2.7vh,23px);height:auto;display:block;transition:opacity .25s}
+#bones img.spent{animation:bonelost .5s}
+@keyframes bonelost{0%{transform:scale(1) rotate(0)}40%{transform:scale(1.35) rotate(-14deg)}100%{transform:scale(1) rotate(0)}}
 #counter{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 13px 6px 8px;box-shadow:0 2px 0 #BBD9E2}
 #counter img{width:clamp(18px,2.9vh,24px);height:auto;display:block}
 #count{font-size:clamp(14px,2.2vh,19px);font-weight:800;min-width:1.1em;text-align:center}
@@ -18,12 +24,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 /* note + board travel together as one vertically-centred group */
 #mid{flex:1 1 auto;width:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7vh}
 /* two lines are always reserved so the board never resizes when the note changes */
-#note{flex:0 0 auto;width:100%;max-width:460px;min-height:3.1em;display:flex;align-items:center;justify-content:center;padding:0 3vw;transition:opacity .18s}
+#note{flex:0 0 auto;width:100%;max-width:460px;display:flex;align-items:center;justify-content:center;padding:0 3vw;transition:opacity .18s}
 #note.hide{opacity:0}
-#noteText{display:block;width:100%;text-align:center;font-size:clamp(17px,3vh,27px);font-weight:800;line-height:1.25;
-  color:#2E6B6B;background:#fff;border-radius:14px;padding:.5em .8em;box-shadow:0 3px 0 #BBD9E2}
+/* the card is always exactly two lines tall (2 x 1.25em + 1em padding), so a one-line
+   message and a two-line one occupy the same space and the board never shifts */
+#noteCard{display:flex;align-items:center;justify-content:center;width:100%;height:3.5em;
+  text-align:center;font-size:clamp(17px,3vh,27px);font-weight:800;line-height:1.25;
+  color:#2E6B6B;background:#fff;border-radius:14px;padding:.25em .8em;box-shadow:0 3px 0 #BBD9E2}
+/* the text MUST live in its own element: as direct children of a flex container,
+   "1 puppy per " and <b>row</b> become separate items and the space between them
+   is discarded — "1 puppy perrow" */
+#noteText{display:block}
 #noteText b{color:#E8743B}                       /* the rule word itself carries the accent */
-#noteText.bump{animation:bump .42s cubic-bezier(.3,1.6,.5,1)}
+#noteCard.bump{animation:bump .42s cubic-bezier(.3,1.6,.5,1)}
 @keyframes bump{0%{transform:scale(.9)}55%{transform:scale(1.06)}100%{transform:scale(1)}}
 
 #stage{flex:0 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;position:relative}
@@ -31,6 +44,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 .cell{position:relative;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .25s}
 .cell>img{width:86%;height:auto;display:block;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
 .cell>img.x{width:52%;filter:none;opacity:.72}
+.cell>img.redx{width:62%;opacity:1;filter:drop-shadow(0 1px 1px rgba(120,20,20,.35))}
 
 /* Sprite-sheet puppy: a clipped window with the strip slid across it. translateX
    is compositor-driven, unlike background-position, which would repaint all six
@@ -48,6 +62,16 @@ __IDLE_KEYFRAMES__
 @keyframes pulse{0%,100%{opacity:.25}50%{opacity:.95}}
 .pop{animation:pop .28s cubic-bezier(.3,1.7,.6,1)}
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+/* wrong puppy: red wash fades in and out under a bone that breaks away — the same
+   beat as the game's MBWorngQueenMark (flash in, mark lands, flash clears) */
+.wrongflash{position:absolute;inset:0;border-radius:4px;background:#E5453F;opacity:0;pointer-events:none;z-index:3;animation:wrongwash .9s ease-in-out forwards}
+@keyframes wrongwash{0%{opacity:0}35%{opacity:.62}65%{opacity:.62}100%{opacity:0}}
+.flybone{position:absolute;left:50%;top:50%;width:62%;height:auto;pointer-events:none;z-index:5;
+  transform:translate(-50%,-50%);animation:bonefly .9s cubic-bezier(.25,.9,.4,1) forwards}
+@keyframes bonefly{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(0)}
+  25%{opacity:1;transform:translate(-50%,-64%) scale(1.15) rotate(-18deg)}
+  100%{opacity:0;transform:translate(-50%,-190%) scale(.85) rotate(-52deg)}}
 .shake{animation:shake .36s}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12%)}40%{transform:translateX(10%)}60%{transform:translateX(-6%)}80%{transform:translateX(3%)}}
 
@@ -59,6 +83,18 @@ __IDLE_KEYFRAMES__
 @keyframes dbltap{0%,40%,100%{transform:scale(1) rotate(0)}12%,28%{transform:scale(.82) rotate(-7deg)}20%{transform:scale(1) rotate(0)}}
 #dbl{position:absolute;z-index:7;background:#fff;color:#48908F;font-size:clamp(12px,1.9vh,16px);font-weight:800;padding:6px 13px;border-radius:999px;white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;transform:translate(-50%,0);box-shadow:0 2px 0 #BBD9E2}
 #dbl.on{opacity:1}
+
+/* Hint button: sits over the board's bottom-right corner, so it never shifts the
+   layout when it appears. Any tap dismisses it, so the cell underneath stays reachable. */
+#help{position:absolute;right:-2px;bottom:-14px;z-index:8;display:none;align-items:center;gap:6px;
+  background:#F8D636;border:none;border-radius:999px;padding:9px 16px 9px 12px;font-family:inherit;
+  font-size:clamp(14px,2.2vh,18px);font-weight:800;color:#6B4A05;cursor:pointer;
+  box-shadow:0 4px 0 #D0A81C,0 6px 14px rgba(90,70,10,.3)}
+#help.on{display:flex;animation:helpIn .45s cubic-bezier(.3,1.7,.6,1),helpPulse 1.5s .45s ease-in-out infinite}
+#help:active{transform:translateY(3px);box-shadow:0 1px 0 #D0A81C}
+#help svg{width:1.15em;height:1.15em;fill:#6B4A05;flex:0 0 auto}
+@keyframes helpIn{0%{opacity:0;transform:scale(.4)}100%{opacity:1;transform:scale(1)}}
+@keyframes helpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
 
 #cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(9px,1.7vh,15px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.18}
 #cta .lbl{font-size:clamp(16px,2.7vh,23px);font-weight:800}
@@ -75,20 +111,33 @@ __IDLE_KEYFRAMES__
 #winCard p{font-size:clamp(13px,2.2vh,17px);color:#6FA8A8;margin-bottom:2.6vh;font-weight:700}
 #winCta{width:100%;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(13px,2.3vh,19px);font-family:inherit;font-size:clamp(17px,2.9vh,24px);font-weight:800;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
 #winCta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
+
+#lose{position:absolute;inset:0;background:rgba(60,45,25,.62);display:none;align-items:center;justify-content:center;padding:6vw;z-index:9}
+#lose.on{display:flex;animation:fadein .3s}
+#loseCard{background:#F2FAFC;border-radius:22px;padding:5vh 7vw;text-align:center;max-width:400px;width:100%;animation:pop .42s cubic-bezier(.3,1.7,.6,1)}
+#loseCard img{width:clamp(84px,15vh,124px);height:auto;margin-bottom:1.4vh}
+#loseCard h2{font-size:clamp(21px,4vh,31px);font-weight:800;margin-bottom:.5vh}
+#loseCard p{font-size:clamp(13px,2.2vh,17px);color:#6FA8A8;margin-bottom:2.6vh;font-weight:700}
+#loseCta{width:100%;background:#F9A55F;border:none;border-radius:14px;box-shadow:0 4px 0 #D07C36;padding:clamp(13px,2.3vh,19px);font-family:inherit;font-size:clamp(17px,2.9vh,24px);font-weight:800;color:#5E3410;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
+#loseCta:active{transform:translateY(3px);box-shadow:0 1px 0 #D07C36}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="top">
     <img id="logoImg" alt="Pawdoku">
-    <div id="counter"><img id="pawImg" alt=""><span id="count">5</span></div>
+    <div id="right">
+      <div id="bones"></div>
+      <div id="counter"><img id="pawImg" alt=""><span id="count">5</span></div>
+    </div>
   </div>
   <div id="mid">
-    <div id="note"><span id="noteText">Tap the squares a puppy can’t sit on</span></div>
+    <div id="note"><div id="noteCard"><span id="noteText">Tap the squares a puppy can’t sit on</span></div></div>
     <div id="stage">
       <div id="board"></div>
       <div id="hand"><img id="fingerImg" alt=""></div>
       <div id="dbl">Double tap</div>
+      <button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button>
     </div>
   </div>
   <button id="cta"><span class="lbl">Play now</span><span class="sub">9,000+ more puzzles waiting</span></button>
@@ -103,9 +152,19 @@ __IDLE_KEYFRAMES__
   </div>
 </div>
 
+<div id="lose">
+  <div id="loseCard">
+    <img id="loseImg" alt="">
+    <h2>Out of bones!</h2>
+    <p>Every puppy needs its own colour</p>
+    <button id="loseCta">Try again</button>
+  </div>
+</div>
+
 <script>
-var ART={happy:"__HAPPY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",finger:"__FINGER__",
-         idleSheet:"__IDLE_SHEET__"};
+var ART={happy:"__HAPPY__",cry:"__CRY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",
+         xmarkRed:"__XMARK_RED__",finger:"__FINGER__",
+         idleSheet:"__IDLE_SHEET__",bone:"__BONE__",boneEmpty:"__BONE_EMPTY__"};
 var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
 
 /* ---- SFX ----------------------------------------------------------------
@@ -152,7 +211,8 @@ var DOUBLE_MS=400;
 var N,REGIONS,COLORS,NAMES,SOLUTION,START_ROW,RULE_ORDER,TUTORIAL;
 var levelIdx=0;
 
-var EMPTY=0,X=1,PUPPY=2;
+// REDX is the game's $RedX: a wrong puppy leaves a red mark that can never be cleared
+var EMPTY=0,X=1,PUPPY=2,REDX=3;
 var state=[],cells=[];
 var step=null,stepIdx=0,guiding=true,busy=false,won=false;
 var lastCell=-1,lastTime=0,paintMode=0,pointerDown=false;
@@ -213,22 +273,23 @@ var RULE_NOTE={touch:"Puppies <b>cannot touch</b>",
                rowcol:"1 puppy per <b>row and column</b>"};
 
 function setNote(html){
-  var el=document.getElementById('note'),t=document.getElementById('noteText');
+  var el=document.getElementById('note'),t=document.getElementById('noteText'),
+      card=document.getElementById('noteCard');
   if(t.innerHTML===html) return;          // same text — don't replay the bump
   el.classList.add('hide');
   setTimeout(function(){
     t.innerHTML=html;
     el.classList.remove('hide');
-    t.classList.remove('bump');
-    void t.offsetWidth;                   // restart the animation
-    t.classList.add('bump');
+    card.classList.remove('bump');
+    void card.offsetWidth;                // restart the animation
+    card.classList.add('bump');
   },120);
 }
 
 /* Swap in a level and rebuild the board for it. The tutorial runs on the first
    level only — after that the rules are known, so later levels open straight
    into free play with the hint hand. */
-function loadLevel(n){
+function loadLevel(n,replay){
   var L=LEVELS[n];
   levelIdx=n;
   N=L.n;REGIONS=L.regions;COLORS=L.colors;NAMES=L.names;
@@ -236,11 +297,15 @@ function loadLevel(n){
   TUTORIAL=RULE_ORDER.map(function(r){return {rule:r,note:RULE_NOTE[r]};});
 
   document.getElementById('win').classList.remove('on');
-  clearNudge();hideHand();closeStep();
+  document.getElementById('lose').classList.remove('on');
+  clearNudge();hideHand();hideHelp();closeStep();
   won=false;busy=false;
+  bones=MAX_BONES;renderBones();   // a fresh board is a fresh set of bones
   lastCell=-1;lastTime=0;pointerDown=false;
-  stepIdx=n===0?0:TUTORIAL.length;   // only the first level teaches
-  seatedAny=n>0;                     // later levels hint by rule instead of naming the colour
+  // only the first level teaches, and never twice — a retry has already seen it
+  var teach=n===0&&!replay&&!SKIP_TUTORIAL;
+  stepIdx=teach?0:TUTORIAL.length;
+  seatedAny=!teach;                  // later levels hint by rule instead of naming the colour
 
   var b=document.getElementById('board');
   while(b.firstChild) b.removeChild(b.firstChild);
@@ -256,7 +321,7 @@ function loadLevel(n){
   seat(idx(START_ROW,SOLUTION[START_ROW]),PUPPY,false);
   updateCount();fitBoard();
 
-  if(n===0) setTimeout(nextRuleStep,900);
+  if(teach) setTimeout(nextRuleStep,900);
   else freePlay();
 }
 
@@ -275,10 +340,10 @@ function seat(i,what,animate){
   while(el.firstChild) el.removeChild(el.firstChild);
   if(what===EMPTY) return;
 
-  if(what===X){
+  if(what===X||what===REDX){
     var x=document.createElement('img');
-    x.src="data:image/png;base64,"+ART.xmark;
-    x.className=animate?'x pop':'x';
+    x.src="data:image/png;base64,"+(what===REDX?ART.xmarkRed:ART.xmark);
+    x.className=(what===REDX?'x redx':'x')+(animate?' pop':'');
     el.appendChild(x);
     return;
   }
@@ -442,7 +507,7 @@ function onDown(e){
   lastCell=i;lastTime=now;
   pointerDown=true;
 
-  if(state[i]===PUPPY){paintMode=0;return;}
+  if(state[i]===PUPPY||state[i]===REDX){paintMode=0;return;}   // neither can be painted over
   paintMode=state[i]===EMPTY?X:EMPTY;
   paint(i);
 }
@@ -454,7 +519,7 @@ function onMove(e){
 function onUp(){pointerDown=false;}
 
 function paint(i){
-  if(state[i]===PUPPY) return;
+  if(state[i]===PUPPY||state[i]===REDX) return;
   if(!allowed(i,X)){reject(i);return;}
   if(state[i]===paintMode) return;
   seat(i,paintMode,paintMode===X);
@@ -464,22 +529,86 @@ function paint(i){
     else showHand(pendingCell(),step.target===PUPPY);   // move on to the next unmarked cell
   }
   else {
-    // player acted — drop the hint, name the rule they're now working through
-    hideHand();
+    // player acted — drop the hint and the offer, name the rule they're working through
+    hideHand();hideHelp();
     var nx=nextToMark();
     if(nx) setNote(MARK_NOTE[nx.rule]);
+    else advanceNote();          // nothing left to mark: they've earned the deduction
     armNudge(NUDGE_MS);
   }
 }
 
 function tryPuppy(i){
+  if(state[i]===REDX) return;                                  // already spent — dead cell
   if(!allowed(i,PUPPY)||(step&&step.target!==PUPPY)){reject(i);return;}
-  if(i%N!==SOLUTION[Math.floor(i/N)]){reject(i);return;}
-  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();play('puppy');
+  // fail mode lets a wrong puppy actually land — but never mid-tutorial, where the
+  // step is teaching a rule and a fail would just be the tutorial's own fault
+  if(i%N!==SOLUTION[Math.floor(i/N)]){
+    if(FAIL_MODE&&!step&&bones>0) wrongQueen(i);
+    else reject(i);
+    return;
+  }
+  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();hideHelp();play('puppy');
   if(step){if(stepDone()) advance();return;}
   seatedAny=true;
   busy=true;
   setTimeout(function(){busy=false;freePlay();},420);
+}
+
+/* ---- fail mode: 3 bones, a wrong puppy costs one ---- */
+var MAX_BONES=3,bones=MAX_BONES;
+
+function renderBones(){
+  var host=document.getElementById('bones');
+  host.classList.toggle('on',!!FAIL_MODE);
+  if(!FAIL_MODE) return;
+  while(host.firstChild) host.removeChild(host.firstChild);
+  for(var k=0;k<MAX_BONES;k++){
+    var img=document.createElement('img');
+    img.src="data:image/png;base64,"+(k<bones?ART.bone:ART.boneEmpty);
+    if(k>=bones) img.style.opacity=.45;
+    host.appendChild(img);
+  }
+}
+
+function wrongQueen(i){
+  busy=true;clearNudge();hideHand();hideHelp();play('wrong');
+  var el=cells[i];
+
+  seat(i,PUPPY,true);                       // it lands, so the mistake is the player's to see
+  var flash=document.createElement('div');
+  flash.className='wrongflash';
+  el.appendChild(flash);
+  var bone=document.createElement('img');
+  bone.className='flybone';
+  bone.src="data:image/png;base64,"+ART.bone;
+  el.appendChild(bone);
+  el.classList.add('shake');
+
+  bones--;
+  var spent=document.getElementById('bones').children[bones];
+  if(spent){spent.src="data:image/png;base64,"+ART.boneEmpty;spent.style.opacity=.45;spent.className='spent';}
+
+  setTimeout(function(){
+    el.classList.remove('shake');
+    if(flash.parentNode) flash.parentNode.removeChild(flash);
+    if(bone.parentNode) bone.parentNode.removeChild(bone);
+    seat(i,REDX,false);                     // the mark stays, and stays locked
+    busy=false;
+    if(bones<=0) doLose();
+    else{setNote("Careful — that costs a <b>bone</b>");armNudge(NUDGE_MS);}
+  },900);
+}
+
+function doLose(){
+  won=true;                                 // stop input and the hint loop
+  closeStep();clearNudge();hideHand();hideHelp();
+  setTimeout(function(){document.getElementById('lose').classList.add('on');},350);
+}
+
+function retry(){
+  document.getElementById('lose').classList.remove('on');
+  loadLevel(levelIdx,true);                 // same level, fresh board, no tutorial
 }
 
 function reject(i){
@@ -526,13 +655,25 @@ function freePlay(){
   }
   // Don't hand them the answer the moment a puppy lands — that's the deduction
   // they're here to make. Only the first one is named, to teach the double tap.
-  if(seatedAny){var nx=nextToMark();setNote(nx?MARK_NOTE[nx.rule]:"Mark where a puppy can’t sit");}
+  if(seatedAny) advanceNote();
   else setNote("1 puppy per color "+tinted(f.region));
   armNudge(seatedAny?REVEAL_MS:NUDGE_MS);
 }
 
+/* The note that fits the board right now: the rule still being marked, or — once
+   every ruled-out square is marked — the colour that deduction leaves. Without this
+   the text froze on the last rule, since nothing else updates it in free play. */
+function advanceNote(){
+  var nx=nextToMark();
+  if(nx){setNote(MARK_NOTE[nx.rule]);return;}
+  var f=forcedPuppy();
+  if(f){setNote("1 puppy per color "+tinted(f.region));return;}
+  if(wrongX()>=0){setNote(WRONG_X_NOTE);return;}
+  setNote("Seat the next puppy");
+}
+
 var NUDGE_MS=2500,REVEAL_MS=4000;
-var nudgeTimer=null,seatedAny=false;
+var seatedAny=false;
 var WRONG_X_NOTE="A puppy belongs here — <b>clear this X</b>";
 
 /* a square a puppy belongs on that the player has X'd — the game's WrongX hint.
@@ -571,9 +712,39 @@ var RULE_OF=["row","col","touch","color"];
 var MARK_NOTE={row:"1 puppy per <b>row</b>",col:"1 puppy per <b>column</b>",
                touch:"Puppies <b>cannot touch</b>",color:"1 puppy per <b>color</b>"};
 
+/* The Hint button comes up BEFORE the automatic hand, on every level: something to
+   tap is what keeps a stuck player from leaving. The hand still follows if they
+   ignore it, so nobody can stall out. Mirrors the game's $HintForFree button. */
+var HELP_MS=1500,helpTimer=null;
+function helpMode(){return !step;}   // guided steps already show the hand
+
+function showHelpButton(on){
+  document.getElementById('help').classList.toggle('on',!!on);
+}
+/* cancels the pending offer but leaves a button that's already up — re-arming while
+   the hand is on screen must not make it blink */
+function clearHelp(){
+  if(helpTimer){clearTimeout(helpTimer);helpTimer=null;}
+}
+/* the player acted (or the level ended): take the offer away entirely */
+function hideHelp(){
+  clearHelp();
+  showHelpButton(false);
+}
+function onHelp(){
+  hideHelp();
+  showHint();
+}
+
+/* The hand never comes on its own in free play — the player asks for it. `delay` is
+   kept in the signature so every call site still reads as "re-arm the nudge", but the
+   only thing scheduled is the offer. Guided tutorial steps still point directly. */
 function armNudge(delay){
   clearNudge();
-  nudgeTimer=setTimeout(function(){
+  if(helpMode()) helpTimer=setTimeout(function(){if(!won) showHelpButton(true);},HELP_MS);
+}
+
+function showHint(){
     if(won) return;
     var f=forcedPuppy();
     if(!f){
@@ -596,18 +767,15 @@ function armNudge(delay){
     }
     setNote("1 puppy per color "+tinted(f.region));
     showHand(f.cell,true);
-  },delay);
 }
-/* timer only — hiding the hand is the caller's job, otherwise re-arming a hint
-   would immediately hide the hand that hint just put on the board */
-function clearNudge(){
-  if(nudgeTimer){clearTimeout(nudgeTimer);nudgeTimer=null;}
-}
+
+/* cancels the pending offer; hiding an on-screen hand or button is the caller's job */
+function clearNudge(){ clearHelp(); }
 
 function lastLevel(){return levelIdx>=LEVELS.length-1;}
 
 function doWin(){
-  won=true;closeStep();clearNudge();hideHand();
+  won=true;closeStep();clearNudge();hideHand();hideHelp();
   play(lastLevel()?'win':'levelwin');   // the final one gets the bigger sting
   setNote("Every puppy is home!");
   var q=queens();
@@ -616,7 +784,7 @@ function doWin(){
   }
   // more levels to play -> carry on; the final win is the one that sells
   var btn=document.getElementById('winCta');
-  btn.textContent=lastLevel()?"Play now":"Play next";
+  btn.textContent=lastLevel()?(CTA_TEXT||"Play now"):"Play next";
   document.getElementById('winSub').textContent=lastLevel()
     ? "9,000+ more puzzles waiting"
     : "Level "+(levelIdx+2)+" of "+LEVELS.length;
@@ -648,10 +816,14 @@ function goStore(){
 }
 document.getElementById('cta').addEventListener('click',goStore);
 document.getElementById('winCta').addEventListener('click',onWinButton);
+document.getElementById('loseCta').addEventListener('click',retry);
+document.getElementById('help').addEventListener('click',onHelp);
 
 document.getElementById('logoImg').src="data:image/png;base64,"+ART.logo;
 document.getElementById('pawImg').src="data:image/png;base64,"+ART.paw;
 document.getElementById('winImg').src="data:image/png;base64,"+ART.happy;
+document.getElementById('loseImg').src="data:image/png;base64,"+ART.cry;
+if(CTA_TEXT) document.querySelector('#cta .lbl').textContent=CTA_TEXT;
 document.getElementById('fingerImg').src="data:image/png;base64,"+ART.finger;
 
 window.addEventListener('resize',fitBoard);

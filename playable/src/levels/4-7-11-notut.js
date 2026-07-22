@@ -6,5 +6,5 @@ var LEVELS=[
 ];
 var FAIL_MODE=false;
 var CTA_TEXT=null;
-var SKIP_TUTORIAL=false;
+var SKIP_TUTORIAL=true;
 /* ==== END LEVELS ==== */

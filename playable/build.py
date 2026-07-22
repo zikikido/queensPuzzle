@@ -127,17 +127,29 @@ def sources():
         sys.exit("no puppy frames found under %s" % RESKIN)
     return {
         "HAPPY": (happy[4], 104, 96),   # still frame for the win card
+        "CRY": (frames("Cry")[4], 104, 96),   # ...and for the lose card
         # the real wordmark lives outside the reskin folder
         "LOGO": (os.path.join(ROOT, "..", "Assets", "Pictures", "Lobby", "Logo.png"), 248, 64),
         "PAW": (pic("PawIcon.png"), 72, 96),
         "XMARK": (pic("X-mark.png"), 64, 16),
+        "XMARK_RED": (pic("X-mark.png"), 64, 16, (1.0, 0.16, 0.14)),   # the game's $RedX
+        "BONE": (pic("Bone.png"), 56, 32),
+        "BONE_EMPTY": (pic("BoneEmpty.png"), 56, 32),
         # the tutorial hand lives outside the reskin folder
         "FINGER": (os.path.join(ROOT, "..", "Assets", "Pictures", "GP", "Finger.png"), 96, 48),
     }
 
 
-def encode(path, width, colors):
+def encode(path, width, colors, tint=None):
     im = Image.open(path).convert("RGBA")
+    if tint:
+        # the game tints $RedX by multiplying the white X sprite; do the same here
+        # rather than fight CSS filters, which can't multiply
+        px = im.load()
+        for y in range(im.height):
+            for x in range(im.width):
+                r, g, b, a = px[x, y]
+                px[x, y] = (int(r * tint[0]), int(g * tint[1]), int(b * tint[2]), a)
     im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
     # FASTOCTREE is the only PIL quantiser that keeps the alpha channel.
     q = im.quantize(colors=colors, method=Image.Quantize.FASTOCTREE)
@@ -181,10 +193,12 @@ def render(master, levels_js, art, out):
 
 def main():
     art = {}
-    for key, (path, width, colors) in sources().items():
+    for key, spec in sources().items():
+        path, width, colors = spec[0], spec[1], spec[2]
+        tint = spec[3] if len(spec) > 3 else None
         if not os.path.exists(path):
             sys.exit("missing art: %s" % path)
-        b64, raw = encode(path, width, colors)
+        b64, raw = encode(path, width, colors, tint)
         art[key] = b64
         print("  %-12s %6.1f KB png -> %6.1f KB base64" % (key.lower(), raw / 1024, len(b64) / 1024))
 

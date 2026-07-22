@@ -5,6 +5,6 @@ var LEVELS=[
 {n:6,regions:[1,0,0,0,0,0, 1,1,1,1,1,0, 1,1,2,1,5,5, 4,1,2,2,3,5, 4,4,4,4,5,5, 4,4,4,4,5,5],colors:["#F8D636","#B185CF","#7DC9D9","#FF808E","#67D2AB","#F9A55F"],names:["Yellow","Purple","Blue","Pink","Green","Orange"],solution:[3,0,2,4,1,5],start:0,order:["touch","color","rowcol"]}
 ];
 var FAIL_MODE=false;
-var CTA_TEXT=null;
+var CTA_TEXT="Free to play";
 var SKIP_TUTORIAL=false;
 /* ==== END LEVELS ==== */
