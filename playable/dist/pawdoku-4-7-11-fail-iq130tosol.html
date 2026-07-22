@@ -142,10 +142,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
   <div id="mid">
     <div id="note"><div id="noteCard"><span id="noteText">Tap the squares a puppy can’t sit on</span></div></div>
     <div id="stage">
-      <div id="board"></div>
+      <div id="board">
+        <button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button>
+      </div>
       <div id="hand"><img id="fingerImg" alt=""></div>
       <div id="dbl">Double tap</div>
-      <button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button>
     </div>
   </div>
   <button id="cta"><span class="lbl">Play now</span><span class="sub">9,000+ more puzzles waiting</span></button>
@@ -322,7 +323,9 @@ function loadLevel(n,replay){
   seatedAny=!teach;                  // later levels hint by rule instead of naming the colour
 
   var b=document.getElementById('board');
-  while(b.firstChild) b.removeChild(b.firstChild);
+  // drop the old cells only — the Hint button lives in here too, anchored to the board
+  var old=b.querySelectorAll('.cell');
+  for(var k=0;k<old.length;k++) b.removeChild(old[k]);
   b.style.gridTemplateColumns='repeat('+N+',1fr)';   // board size follows the level, not the CSS
   cells=[];state=[];
   for(var r=0;r<N;r++)for(var c=0;c<N;c++){
