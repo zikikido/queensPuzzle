@@ -16,21 +16,24 @@ namespace QueensPuzzle
     {
         const int MaxRange = 50_000;
 
-        CampaignCurveConfig config;
-        int from = 1;
-        int to = 600;
+        // [SerializeField] on the settings fields — plain fields are wiped by every domain reload
+        // (any script compile), which is what kept snapping the range back to 1–600.
+        [SerializeField] CampaignCurveConfig config;
+        [SerializeField] int from = 1;
+        [SerializeField] int to = 600;
         bool graphFoldout = true;
         bool buildFoldout = true;
         const string SetsRoot = "Assets/Levels/Sets";
         string[] sets = { "Campaign" };
+        [SerializeField] string setName = "Campaign";
         int setIdx;
-        string SetName => sets[Mathf.Clamp(setIdx, 0, sets.Length - 1)];
+        string SetName => setName;
         string OutputFolder => $"{SetsRoot}/{SetName}";
-        int seedBase = 1;
-        bool skipExisting = true;
+        [SerializeField] int seedBase = 1;
+        [SerializeField] bool skipExisting = true;
         int setCount;    // consecutive levels from 1 in the selected set
         bool setGap;     // a level exists past the run → hole in the sequence
-        bool overrideOffTol = true;
+        [SerializeField] bool overrideOffTol = true;
         int offTolCount = -1;                       // -1 = needs recount
         (int, int, int, Object) offTolKey;          // (from, to, setIdx, config) the count was made for
         int threadCount = Mathf.Max(1, System.Environment.ProcessorCount - 1);
@@ -55,7 +58,6 @@ namespace QueensPuzzle
 
         void RefreshSets()
         {
-            string current = SetName;
             var found = new System.Collections.Generic.List<string>();
             if (System.IO.Directory.Exists(SetsRoot))
                 foreach (var d in System.IO.Directory.GetDirectories(SetsRoot))
@@ -63,7 +65,8 @@ namespace QueensPuzzle
             found.Sort(System.StringComparer.OrdinalIgnoreCase);
             if (found.Count == 0) found.Add("Campaign");   // created on first generate
             sets = found.ToArray();
-            setIdx = Mathf.Max(0, System.Array.IndexOf(sets, current));
+            setIdx = Mathf.Max(0, System.Array.IndexOf(sets, setName));
+            setName = sets[setIdx];
             RefreshSetStats();
         }
 
@@ -120,7 +123,7 @@ namespace QueensPuzzle
             {
                 EditorGUI.BeginChangeCheck();
                 setIdx = EditorGUILayout.Popup("Set", setIdx, sets);
-                if (EditorGUI.EndChangeCheck()) { RefreshSetStats(); offTolCount = -1; }
+                if (EditorGUI.EndChangeCheck()) { setName = sets[Mathf.Clamp(setIdx, 0, sets.Length - 1)]; RefreshSetStats(); offTolCount = -1; }
                 if (setGap)
                 {
                     using (new EditorGUILayout.HorizontalScope())
@@ -160,18 +163,17 @@ namespace QueensPuzzle
             if (!graphFoldout) return;
 
             EditorGUILayout.BeginHorizontal();
-            using (new EditorGUI.DisabledScope(config == null))
-            {
+            using (new EditorGUI.DisabledScope(config == null))   // targets need a curve
                 if (GUILayout.Button("Show graph (targets)"))
                 {
                     BuildData();
                     GUIUtility.ExitGUI();   // layout pass didn't include the graph rect yet
                 }
-                if (GUILayout.Button("Show graph (built levels)"))
-                {
-                    BuildDataFromLevels();
-                    GUIUtility.ExitGUI();
-                }
+            // built levels are read off the assets — no curve needed
+            if (GUILayout.Button("Show graph (built levels)"))
+            {
+                BuildDataFromLevels();
+                GUIUtility.ExitGUI();
             }
             EditorGUILayout.EndHorizontal();
 
@@ -516,12 +518,12 @@ namespace QueensPuzzle
             weights = new int[n];
             roles = new byte[n];
             dataFrom = from;
-            maxW = Mathf.Max(1, config.weightCap);
+            maxW = config != null ? Mathf.Max(1, config.weightCap) : 1;
             for (int i = 0; i < n; i++)
             {
                 var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{from + i}.asset");
                 weights[i] = lvl != null ? lvl.weight : 0;
-                roles[i] = (byte)(config.milestoneEvery > 0 && (from + i) % config.milestoneEvery == 0
+                roles[i] = (byte)(config != null && config.milestoneEvery > 0 && (from + i) % config.milestoneEvery == 0
                     ? CampaignCurveConfig.Role.Milestone : CampaignCurveConfig.Role.Normal);
                 if (weights[i] > maxW) maxW = weights[i];
             }
@@ -579,9 +581,12 @@ namespace QueensPuzzle
                 GUI.Label(new Rect(r.x, y - 8, padL - 6, 16), v.ToString(), label);
             }
 
-            // cap line (weightCap = difficulty 1.0)
-            float capY = plot.yMax - config.weightCap / (float)maxW * plot.height;
-            EditorGUI.DrawRect(new Rect(plot.xMin, capY, plot.width, 1f), new Color(red.r, red.g, red.b, 0.55f));
+            // cap line (weightCap = difficulty 1.0) — only meaningful with a curve loaded
+            if (config != null)
+            {
+                float capY = plot.yMax - config.weightCap / (float)maxW * plot.height;
+                EditorGUI.DrawRect(new Rect(plot.xMin, capY, plot.width, 1f), new Color(red.r, red.g, red.b, 0.55f));
+            }
 
             // curve + milestone dots via GL
             if (!lineMat)
