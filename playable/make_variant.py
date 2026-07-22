@@ -1,8 +1,12 @@
-"""Pick a campaign level for the playable ad and emit its constants.
+"""Define one playable-ad variant: which levels it plays and how it behaves.
 
-The playable's hint engine implements two of SolveTracer's techniques —
-QueenScope (the three base rules) and RegionSingle (a colour down to one cell).
-Most levels need more than that, so a level can only be used if:
+Writes src/levels/<name>.js — just the variant's data. build.py injects that into
+src/template.html, so edits to the template reach every variant without
+regenerating them, and every variant in src/levels/ builds in one go.
+
+Level choice is constrained. The playable's hint engine implements two of
+SolveTracer's techniques — QueenScope (the three base rules) and RegionSingle
+(a colour down to one cell) — so a level is only usable if:
 
   1. it solves end-to-end on RegionSingle alone from the chosen start row, and
   2. that start row yields three small, balanced tutorial steps.
@@ -10,11 +14,12 @@ Most levels need more than that, so a level can only be used if:
 Rule 2 is the one that bites: level 3 solves fine but its row/column step is
 18 cells, which is unplayable in a 20-second ad.
 
-    python playable/pick_level.py 4            # check level 4, print constants
-    python playable/pick_level.py 4 --write    # ...and patch src/template.html
-    python playable/pick_level.py --scan 200   # list every usable level
+    python playable/make_variant.py --scan 200                  # list usable levels
+    python playable/make_variant.py --picklevel 4               # check one, print only
+    python playable/make_variant.py --picklevel 4 7 11 --write  # save the variant
+    python playable/make_variant.py --picklevel 4 --fail --cta "Free to play" --write
 
-Then rebuild:  python playable/build.py
+Then build every variant:  python playable/build.py
 """
 import argparse
 import os
@@ -198,7 +203,7 @@ def report_unusable(level, n, regions, solution):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("levels", nargs="*", type=int,
+    ap.add_argument("--picklevel", nargs="+", type=int, metavar="N", dest="levels",
                     help="campaign level numbers, in the order the ad should play them")
     ap.add_argument("--write", action="store_true",
                     help="write src/levels/<a>-<b>-<c>.js (master template untouched)")
