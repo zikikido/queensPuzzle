@@ -1,5 +1,19 @@
 {
   "dependencies": {
+    "com.applovin.mediation.adapters.facebook.android": {
+      "version": "6210000.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.applovin.mediation.adapters.facebook.ios": {
+      "version": "6210100.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
     "com.applovin.mediation.adapters.google.android": {
       "version": "25040000.0.0",
       "depth": 0,

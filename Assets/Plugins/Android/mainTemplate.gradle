@@ -5,6 +5,7 @@ apply from: '../shared/keepUnitySymbols.gradle'
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 // Android Resolver Dependencies Start
+    implementation 'com.applovin.mediation:facebook-adapter:[6.21.0.0]' // Packages/com.applovin.mediation.adapters.facebook.android/Editor/Dependencies.xml:7
     implementation 'com.applovin.mediation:google-adapter:[25.4.0.0]' // Packages/com.applovin.mediation.adapters.google.android/Editor/Dependencies.xml:4
     implementation 'com.applovin.mediation:unityads-adapter:4.19.0.0' // Packages/com.applovin.mediation.adapters.unityads.android/Editor/Dependencies.xml:4
     implementation 'com.applovin:applovin-sdk:13.6.3' // Packages/com.applovin.mediation.ads/AppLovin/Editor/Dependencies.xml:4
