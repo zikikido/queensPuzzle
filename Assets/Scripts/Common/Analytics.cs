@@ -68,6 +68,7 @@ namespace qp {
             int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
             EventClient.Enqueue(new EventPayload {
                 eventname    = eventname,
+                lvl_idx      = LevelIdx,
                 lvl_hash     = LevelLoader.CurrentLevelHash,
                 level_set_id = LevelLoader.CurrentLevelSetId,
                 lvl_attempts = Attempts,
@@ -112,6 +113,7 @@ namespace qp {
                 new Firebase.Analytics.Parameter("level_set_id", LevelLoader.CurrentLevelSetId),
                 new Firebase.Analytics.Parameter("level_hash", LevelLoader.CurrentLevelHash),
                 new Firebase.Analytics.Parameter("lvl_attempts", attempts),
+                new Firebase.Analytics.Parameter("daily", daily ? 1 : 0),
             };
             ps.AddRange(d.ToParams());
             // accumulated active solve time — final on game_win (daily: OnSolved runs first;

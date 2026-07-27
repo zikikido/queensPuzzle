@@ -11,6 +11,7 @@ namespace qp {
     [Serializable]
     public class EventPayload {
         public string eventname;     // "level_start" / "level_won" / "level_lost" — server fans out by this
+        public int lvl_idx;          // campaign level index (daily: day index)
         public int lvl_hash;         // LevelLoader.CurrentLevelHash is an int
         public string level_set_id;  // LevelLoader.CurrentLevelSetId
         public int lvl_attempts;
