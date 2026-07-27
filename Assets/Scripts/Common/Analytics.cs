@@ -33,8 +33,23 @@ namespace qp {
         static int Attempts => DailyChallengeManager.InDailyRun
             ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
 
+        // Campaign level wins we mark as conversion events in the ad networks / Firebase.
+        // 1-based level numbers; the very first level is lvl_win_1.
+        static readonly int[] WinMilestones = { 1, 2, 3, 5, 11, 21, 30 };
+
         public static void GameStart() => GameEvent("game_start");
-        public static void GameWin()   => GameEvent("game_win");
+
+        public static void GameWin() {
+            GameEvent("game_win");
+            // Milestone conversion events — campaign only (daily day indices would pollute them).
+            // GameWin fires before LevelIdx++, so LevelIdx.Value is the just-solved level (0-based).
+            if (!DailyChallengeManager.InDailyRun) {
+                int levelNum = AppData.LevelIdx.Value + 1;
+                if (System.Array.IndexOf(WinMilestones, levelNum) >= 0)
+                    GameEvent("lvl_win_" + levelNum);
+            }
+        }
+
         public static void GameLose()  => GameEvent("game_lose");
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>
