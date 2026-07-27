@@ -11,7 +11,7 @@ namespace qp {
     [Serializable]
     public class EventPayload {
         public string eventname;     // "level_won" / "level_lost" — the server fans out by this
-        public string level_hash;
+        public int level_hash;       // LevelLoader.CurrentLevelHash is an int
         public int lvl_attempts;
         public int lvl_time_sec;
         public string app_version;
@@ -36,7 +36,7 @@ namespace qp {
         const int MAX_BUFFER = 200;      // rolling cap — oldest dropped when exceeded
 
         // Editor/dev play sessions are kept out of the production data.
-        const bool SEND_FROM_EDITOR = false;
+        const bool SEND_FROM_EDITOR = true;
 
         static EventClient _instance;
         readonly List<string> _buffer = new List<string>();   // pre-serialized event JSON
