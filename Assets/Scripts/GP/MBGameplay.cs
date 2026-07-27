@@ -88,7 +88,7 @@ namespace qp {
             GPSFX.Load();   // pull the GP clips in now, not on the first sound
 
             // daily timer: +1s per tick, only while the board is actually playable
-            InvokeRepeating(nameof(DailyTick), 1f, 1f);
+            InvokeRepeating(nameof(PlayClockTick), 1f, 1f);
 
             // The tutorial object may be left disabled in the scene; wake it so its Awake runs and
             // registers MBToturial.instance (it puts itself back to sleep after its layout pass).
@@ -137,13 +137,19 @@ namespace qp {
             GPSFX.Release();   // next scene load frees the GP clips; reloads lazily if needed
         }
 
-        // The daily clock runs only while the level actually plays: not during build/bloom,
-        // not under popups (InputLocks), not after the solve — and restart/fail never resets it.
-        void DailyTick() {
-            if (!DailyChallengeManager.InDailyRun || !_ready || InputLocks > 0) return;
-            if (DailyChallengeManager.State.solved) return;
-            DailyChallengeManager.AddPlayTime(1f);
-            _topBar?.SetTimeProgress(DailyChallengeManager.State.timeSec);
+        // The solve clock runs only while the level actually plays: not during build/bloom,
+        // not under popups (InputLocks), not after the solve (_ready is false at Win) — and
+        // restart/fail never resets it. Daily accumulates in the shared day blob (and shows in
+        // the top bar); campaign accumulates a silent per-level counter for analytics only.
+        void PlayClockTick() {
+            if (!_ready || InputLocks > 0) return;
+            if (DailyChallengeManager.InDailyRun) {
+                if (DailyChallengeManager.State.solved) return;
+                DailyChallengeManager.AddPlayTime(1f);
+                _topBar?.SetTimeProgress(DailyChallengeManager.State.timeSec);
+            } else {
+                AppData.LevelTimeSec.Value++;
+            }
         }
 
 
@@ -399,6 +405,7 @@ namespace qp {
                 } else if (AppData.AttemptsLevelIdx.Value != AppData.LevelIdx.Value) {
                     AppData.AttemptsLevelIdx.Value = AppData.LevelIdx.Value;
                     AppData.LevelAttempts.Value = 1;
+                    AppData.LevelTimeSec.Value = 0;   // new level → fresh solve clock
                 } else {
                     AppData.LevelAttempts.Value++;
                 }

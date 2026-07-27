@@ -78,8 +78,8 @@ namespace qp {
             int levelIdx = LevelIdx;
             int attempts = Attempts;
             var extra = extraKey != null ? $" {extraKey}={extraVal}" : "";
-            var dailyCrumb = daily ? $" | daily time {(int)DailyChallengeManager.State.timeSec}s" : "";
-            CrashLog($"[game] {name}{extra} level {levelIdx} set {LevelLoader.CurrentLevelSetId} pack {LevelLoader.CurrentPackIndex} hash {LevelLoader.CurrentLevelHash} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost}{dailyCrumb}");
+            int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
+            CrashLog($"[game] {name}{extra} level {levelIdx} set {LevelLoader.CurrentLevelSetId} pack {LevelLoader.CurrentPackIndex} hash {LevelLoader.CurrentLevelHash} attempt {attempts} | hints {d.hintsUsed} queens {d.queenBoostsUsed} undos {d.undosUsed} lives+ {d.livesAdded} bones- {d.bonesLost} | time {timeSec}s");
 #if !IGNORE_FIREBASE
             var ps = new System.Collections.Generic.List<Firebase.Analytics.Parameter> {
                 new Firebase.Analytics.Parameter("lvl_idx", levelIdx),
@@ -89,10 +89,9 @@ namespace qp {
                 new Firebase.Analytics.Parameter("lvl_attempts", attempts),
             };
             ps.AddRange(d.ToParams());
-            if (daily) {
-                // the daily's accumulated solve clock — final on game_win (OnSolved runs first)
-                ps.Add(new Firebase.Analytics.Parameter("lvl_time_sec", (int)DailyChallengeManager.State.timeSec));
-            }
+            // accumulated active solve time — final on game_win (daily: OnSolved runs first;
+            // campaign: _ready is false at Win, so the clock has already stopped)
+            ps.Add(new Firebase.Analytics.Parameter("lvl_time_sec", timeSec));
             if (extraKey != null)
                 ps.Add(extraVal is int i ? new Firebase.Analytics.Parameter(extraKey, i)
                                          : new Firebase.Analytics.Parameter(extraKey, extraVal.ToString()));

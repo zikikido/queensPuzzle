@@ -25,6 +25,11 @@ namespace qp {
         public static readonly PlayerPrefsHelper.IntHolder LevelAttempts = new PlayerPrefsHelper.IntHolder("qp_level_attempts", 0);
         public static readonly PlayerPrefsHelper.IntHolder AttemptsLevelIdx = new PlayerPrefsHelper.IntHolder("qp_attempts_level_idx", -1);
 
+        // Accumulated active play time on the CURRENT campaign level (whole seconds) — the campaign
+        // twin of the daily's timeSec. Survives restarts/fails/app-resume; reset when a new level
+        // begins (same lifecycle as LevelAttempts). Reported as lvl_time_sec; never shown to the player.
+        public static readonly PlayerPrefsHelper.IntHolder LevelTimeSec = new PlayerPrefsHelper.IntHolder("qp_level_time_sec", 0);
+
         // The CURRENT attempt as one saved blob: the in-progress board plus the attempt's meta
         // (boost uses, added lives, bones lost) — see LastPlayData. Mutate fields then Save().
         public static LastPlayData LastPlayData = qp.LastPlayData.Load();
