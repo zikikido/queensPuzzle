@@ -65,6 +65,13 @@ namespace qp {
             // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
             Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);
 
+            // Stage 1b: right after the ads consent prompt is dismissed, ask for the OS
+            // notification permission (first launch only). Instant-done — the boot never waits
+            // on the user's Allow/Deny tap; the prompt just sits over the loading screen.
+#if NOTIFICATION_INSTALLER
+            Register("notif-permission", RequestNotificationPermission, () => true);
+#endif
+
             // Stage 2 (parallel): consent is resolved now — Firebase + Singular init together.
             Register(
 #if !IGNORE_FIREBASE
@@ -141,6 +148,19 @@ namespace qp {
                 
             }
         }
+
+#if NOTIFICATION_INSTALLER
+        // Fire the OS notification-permission prompt on first launch only. The handler tracks
+        // "asked once" itself, so later launches are a no-op and denied/blocked users are left
+        // alone. Requesting on day 1 is intentional — it's what lets us schedule the D2
+        // retention notification before the player can churn.
+        static void RequestNotificationPermission() {
+            if (Kido.NotificationPermissionHandler.GetCurrentState()
+                == Kido.NotificationPermissionHandler.PermissionState.NotRequestedYet) {
+                Kido.NotificationPermissionHandler.RequestPermission();
+            }
+        }
+#endif
 
         // intensity = how strong (0..1), sharpness = dull/bassy (0) .. crisp/tick (1).
         static void DefineHaptics() {
