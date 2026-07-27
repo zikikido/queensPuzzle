@@ -1,4 +1,5 @@
 using Common;
+using UnityEngine;
 
 namespace qp {
 
@@ -41,6 +42,7 @@ namespace qp {
 
         public static void GameWin() {
             GameEvent("game_win");
+            SendLevelEvent(true);
             // Milestone conversion events — campaign only (daily day indices would pollute them).
             // GameWin fires before LevelIdx++, so LevelIdx.Value is the just-solved level (0-based).
             if (!DailyChallengeManager.InDailyRun) {
@@ -50,7 +52,26 @@ namespace qp {
             }
         }
 
-        public static void GameLose()  => GameEvent("game_lose");
+        public static void GameLose() {
+            GameEvent("game_lose");
+            SendLevelEvent(false);
+        }
+
+        // Mirror of the game_win/game_lose event into the events server. Reads the same
+        // statics as GameEvent (correct here — fires before LevelIdx++ / Invalidate), then
+        // hands off to EventClient which buffers + sends async (never blocks, never throws).
+        static void SendLevelEvent(bool won) {
+            bool daily = DailyChallengeManager.InDailyRun;
+            int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
+            EventClient.Enqueue(new EventPayload {
+                eventname    = won ? "level_won" : "level_lost",
+                level_hash   = LevelLoader.CurrentLevelHash,
+                lvl_attempts = Attempts,
+                lvl_time_sec = timeSec,
+                app_version  = Application.version,
+                daily        = daily,
+            });
+        }
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>
         public static void BoostUsed(string boost) => GameEvent("boost_used", "boost", boost);
