@@ -10,8 +10,9 @@ namespace qp {
     /// <summary>Serialized shape of one event document sent to the events server.</summary>
     [Serializable]
     public class EventPayload {
-        public string eventname;     // "level_won" / "level_lost" — the server fans out by this
-        public int level_hash;       // LevelLoader.CurrentLevelHash is an int
+        public string eventname;     // "level_start" / "level_won" / "level_lost" — server fans out by this
+        public int lvl_hash;         // LevelLoader.CurrentLevelHash is an int
+        public string level_set_id;  // LevelLoader.CurrentLevelSetId
         public int lvl_attempts;
         public int lvl_time_sec;
         public string app_version;
