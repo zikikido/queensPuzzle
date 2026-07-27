@@ -87,6 +87,15 @@ namespace qp {
             GUILayout.Label("Overlays");
             if (Button($"FPS overlay: {(AppData.ShowFps.Value ? "ON" : "OFF")}")) MBFpsOverlay.Toggle();
 
+#if NOTIFICATION_INSTALLER
+            GUILayout.Space(16);
+            GUILayout.Label("Notifications");
+            if (Button("Fire test notification")) NotificationManager.FireTestNotification();
+            if (Button($"Fast mode (every X s): {(NotificationManager.DebugFastMode ? "ON" : "OFF")}"))
+                NotificationManager.DebugFastMode = !NotificationManager.DebugFastMode;
+            GUILayout.Label("Fast mode ON, then press HOME → the whole schedule fires every few seconds.");
+#endif
+
             GUILayout.Space(16);
             if (Button("EXIT DEBUG MODE")) { AppData.DebugMode.Value = false; Close(); }
             if (Button("Close")) Close();

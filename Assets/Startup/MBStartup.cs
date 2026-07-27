@@ -61,6 +61,11 @@ namespace qp {
 
             new GameObject("SFX").AddComponent<MBSFX>();   // registers itself as MBSFX.Instance
 
+#if NOTIFICATION_INSTALLER
+            // Persistent lifecycle bridge — forwards pause/resume to NotificationManager.
+            new GameObject("Notifications").AddComponent<MBNotifications>();
+#endif
+
             // ---- boot stages (registered here so TasksTotal is known up front) ----
             // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
             Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);

@@ -1,0 +1,400 @@
+#if NOTIFICATION_INSTALLER
+
+using System;
+using System.Collections.Generic;
+using Common;
+using UnityEngine;
+#if UNITY_ANDROID
+using Unity.Notifications.Android;
+#endif
+#if UNITY_IOS
+using Unity.Notifications.iOS;
+#endif
+
+namespace qp {
+
+    /// <summary>
+    /// The whole local-notification lifecycle in one place. Local notifications only — no Firebase,
+    /// no remote push. Content and settings live in the <see cref="PawdokuNotificationSettings"/>
+    /// asset (Resources), loaded once at boot and cached; background scheduling never touches
+    /// Resources so it stays instant.
+    ///
+    /// Lifecycle (driven by <see cref="MBNotifications"/>):
+    ///   OnAppLoad       — load+validate config, init platform, register the Android channel,
+    ///                     cancel any leftover scheduled notifications. Does NOT schedule (the
+    ///                     player is entering the game).
+    ///   OnAppResume     — the player is active again: cancel everything scheduled, reset the guard.
+    ///   OnAppBackground — the one scheduling moment: (re)build the whole schedule from cache.
+    ///
+    /// Permission is owned entirely by <see cref="Kido.NotificationPermissionHandler"/> — this
+    /// class only READS the state and schedules when it is Allowed. It never requests permission
+    /// and never touches the permission PlayerPrefs.
+    /// </summary>
+    public static class NotificationManager {
+
+        const string SettingsResource = "PawdokuNotificationSettings";
+
+        // ---- stable, deterministic IDs -------------------------------------------------
+        // id(day, type) = IdBase + day*PerDay + type. Collision-free across the whole
+        // scheduling window; predictable so notifications can be cancelled and debugged.
+        const int IdBase = 900000;
+        const int PerDay = 2;          // one Daily Challenge + one General slot per day
+        const int TypeDaily = 0;
+        const int TypeGeneral = 1;
+        const int IdTest = 999001;     // the manual single test notification
+
+        // iOS wants string identifiers; keep them 1:1 with the int ids so cancelling is symmetric.
+        static string IosId(int id) => "pawdoku_" + id;
+        static int NotificationId(int dayOffset, int type) => IdBase + dayOffset * PerDay + type;
+
+        // ---- cached config -------------------------------------------------------------
+
+        static PawdokuNotificationSettings _settings;
+        static bool _loadAttempted;
+
+        /// <summary>Load + validate the settings asset once, then cache it. Never reloads —
+        /// so a background transition never calls Resources.Load. Returns false if unavailable.</summary>
+        static bool EnsureLoaded() {
+            if (_settings != null) return true;
+            if (_loadAttempted) return false;   // already tried and failed — don't hammer Resources
+            _loadAttempted = true;
+
+            _settings = Resources.Load<PawdokuNotificationSettings>(SettingsResource);
+            if (_settings == null) {
+                Debug.LogError($"[Notifications] Resources/{SettingsResource}.asset not found — notifications disabled.");
+                return false;
+            }
+
+            Validate(_settings);
+            Log("settings loaded and cached");
+            return true;
+        }
+
+        // Keep the runtime honest even if the asset was authored with bad values.
+        static void Validate(PawdokuNotificationSettings s) {
+            // iOS silently drops pending notifications past 64. With PerDay per day, cap the
+            // window with headroom so the test notification and any slack always fit.
+            const int iosPendingCap = 60;
+            int maxDays = iosPendingCap / PerDay;
+            if (s.daysAhead < 1) s.daysAhead = 1;
+            if (s.daysAhead > maxDays) {
+                Log($"daysAhead {s.daysAhead} clamped to {maxDays} (iOS 64 pending-notification cap)");
+                s.daysAhead = maxDays;
+            }
+
+            s.dailyChallengeHour = Mathf.Clamp(s.dailyChallengeHour, 0, 23);
+            s.dailyChallengeMinute = Mathf.Clamp(s.dailyChallengeMinute, 0, 59);
+            s.generalHour = Mathf.Clamp(s.generalHour, 0, 23);
+            s.generalMinute = Mathf.Clamp(s.generalMinute, 0, 59);
+            if (s.debugIntervalSeconds < 1) s.debugIntervalSeconds = 1;
+        }
+
+        // ---- background dedup guard ----------------------------------------------------
+        // Unity can fire pause/focus more than once per real transition (permission dialogs,
+        // system overlays, app switching). Schedule at most once per background, reset on resume.
+        static bool _scheduledThisBackground;
+
+        // ---- lifecycle -----------------------------------------------------------------
+
+        public static void OnAppLoad() {
+            if (!EnsureLoaded()) return;
+            InitPlatform();
+            ClearAllScheduled();          // never inherit a stale schedule
+            _scheduledThisBackground = false;
+            Log("OnAppLoad ready");
+        }
+
+        public static void OnAppResume() {
+            _scheduledThisBackground = false;
+            if (_settings == null) return;
+            ClearAllScheduled();          // player is active — don't leave reminders pending
+            Log("OnAppResume — cleared, ready for next background");
+        }
+
+        public static void OnAppBackground() {
+            if (_scheduledThisBackground) return;             // already scheduled this transition
+            // Cache-only: never load Resources while going to background. Boot's OnAppLoad is the
+            // sole loader; if it never ran or failed, we simply don't schedule.
+            if (_settings == null) { Log("background: settings not cached — skipping"); return; }
+            if (!_settings.notificationsEnabled) { Log("background: notifications disabled"); return; }
+            if (!PermissionAllowed()) { Log("background: permission not allowed"); return; }
+
+            ClearAllScheduled();
+            ScheduleAll();
+            _scheduledThisBackground = true;
+            Log("OnAppBackground — schedule built");
+        }
+
+        // ---- platform init / channel ---------------------------------------------------
+
+        static void InitPlatform() {
+#if UNITY_ANDROID
+            var channel = new AndroidNotificationChannel {
+                Id = _settings.androidChannelId,
+                Name = _settings.androidChannelName,
+                Description = _settings.androidChannelDescription,
+                Importance = _settings.defaultSound ? Importance.Default : Importance.Low,
+                CanShowBadge = true,
+                EnableVibration = true,
+                EnableLights = true,
+            };
+            AndroidNotificationCenter.RegisterNotificationChannel(channel);
+            Log("Android channel registered: " + _settings.androidChannelId);
+#endif
+            // iOS needs no channel; authorization is owned by NotificationPermissionHandler.
+        }
+
+        // ---- cancel --------------------------------------------------------------------
+        // This app has no other notification system, so the package-wide cancel is safe and
+        // clears exactly (and only) Pawdoku's scheduled notifications. It never touches
+        // permission state, repetition history, or any gameplay data.
+        static void ClearAllScheduled() {
+#if UNITY_ANDROID
+            AndroidNotificationCenter.CancelAllScheduledNotifications();
+#elif UNITY_IOS
+            iOSNotificationCenter.RemoveAllScheduledNotifications();
+#endif
+        }
+
+        // ---- permission (read-only) ----------------------------------------------------
+
+        static bool PermissionAllowed() {
+#if UNITY_EDITOR
+            return true;   // editor can't request; treat as allowed so scheduling can be tested
+#else
+            return Kido.NotificationPermissionHandler.GetCurrentState()
+                == Kido.NotificationPermissionHandler.PermissionState.Allowed;
+#endif
+        }
+
+        // ---- scheduling ----------------------------------------------------------------
+        // Immediate-repeat history: the last message picked for each stream, so we never send
+        // the same text twice in a row. Persisted (local, lightweight) and carried across the
+        // whole batch so consecutive scheduled days also differ. Never cleared on load.
+        const string PrefLastDaily = "notif_last_daily";
+        const string PrefLastGeneral = "notif_last_general";
+
+        // Valid General categories (non-null, positive weight, at least one usable message) and
+        // their total weight — prepared once per ScheduleAll so the per-day loop is pure math.
+        static readonly List<PawdokuNotificationSettings.Category> _validCategories = new List<PawdokuNotificationSettings.Category>();
+        static float _validWeightTotal;
+        static readonly List<PawdokuNotificationSettings.Message> _scratch = new List<PawdokuNotificationSettings.Message>();
+
+        static void ScheduleAll() {
+            BuildValidCategories();
+
+            if (_settings.debugFastMode) { ScheduleDebugFast(); return; }
+
+            DateTime now = DateTime.Now;   // local device time — notifications are player-local
+            int days = _settings.daysAhead;
+
+            string lastDaily = PlayerPrefs.GetString(PrefLastDaily, "");
+            string lastGeneral = PlayerPrefs.GetString(PrefLastGeneral, "");
+
+            int scheduled = 0;
+            for (int d = 0; d < days; d++) {
+                DateTime midnight = now.Date.AddDays(d);
+
+                DateTime dailyAt = midnight.AddHours(_settings.dailyChallengeHour).AddMinutes(_settings.dailyChallengeMinute);
+                if (dailyAt > now) {                                   // never schedule in the past
+                    var m = PickFromList(_settings.dailyChallengeMessages, ref lastDaily, _settings.dailyChallengeFallback);
+                    Schedule(NotificationId(d, TypeDaily), m, dailyAt);
+                    scheduled++;
+                }
+
+                DateTime generalAt = midnight.AddHours(_settings.generalHour).AddMinutes(_settings.generalMinute);
+                if (generalAt > now) {
+                    var m = PickGeneral(ref lastGeneral);
+                    Schedule(NotificationId(d, TypeGeneral), m, generalAt);
+                    scheduled++;
+                }
+            }
+
+            PlayerPrefs.SetString(PrefLastDaily, lastDaily);
+            PlayerPrefs.SetString(PrefLastGeneral, lastGeneral);
+            PlayerPrefs.Save();
+
+            Log($"scheduled {scheduled} notifications across {days} days");
+        }
+
+        // ---- message selection ---------------------------------------------------------
+
+        static void BuildValidCategories() {
+            _validCategories.Clear();
+            _validWeightTotal = 0f;
+            if (_settings.generalCategories == null) return;
+            foreach (var c in _settings.generalCategories) {
+                if (c == null || c.weight <= 0f || !HasUsableMessage(c.messages)) continue;
+                _validCategories.Add(c);
+                _validWeightTotal += c.weight;
+            }
+        }
+
+        static bool HasUsableMessage(List<PawdokuNotificationSettings.Message> list) {
+            if (list == null) return false;
+            foreach (var m in list)
+                if (m != null && !string.IsNullOrEmpty(m.body)) return true;
+            return false;
+        }
+
+        // Weighted category pick → one message from it, avoiding the last General text.
+        static PawdokuNotificationSettings.Message PickGeneral(ref string lastKey) {
+            if (_validCategories.Count == 0) return _settings.generalFallback;
+
+            float r = UnityEngine.Random.value * _validWeightTotal;
+            var cat = _validCategories[_validCategories.Count - 1];
+            for (int i = 0; i < _validCategories.Count; i++) {
+                r -= _validCategories[i].weight;
+                if (r <= 0f) { cat = _validCategories[i]; break; }
+            }
+            return PickFromList(cat.messages, ref lastKey, _settings.generalFallback);
+        }
+
+        // Pick a random usable message avoiding an immediate repeat of lastKey; updates lastKey.
+        // If only one usable message exists it is reused (acceptable per spec). Falls back when none.
+        static PawdokuNotificationSettings.Message PickFromList(
+            List<PawdokuNotificationSettings.Message> list, ref string lastKey, PawdokuNotificationSettings.Message fallback) {
+
+            _scratch.Clear();
+            if (list != null)
+                foreach (var m in list)
+                    if (m != null && !string.IsNullOrEmpty(m.body)) _scratch.Add(m);
+
+            if (_scratch.Count == 0) { lastKey = Key(fallback); return fallback; }
+
+            PawdokuNotificationSettings.Message chosen;
+            if (_scratch.Count == 1) {
+                chosen = _scratch[0];
+            } else {
+                int i = UnityEngine.Random.Range(0, _scratch.Count);
+                if (Key(_scratch[i]) == lastKey) i = (i + 1) % _scratch.Count;   // step off an immediate repeat
+                chosen = _scratch[i];
+            }
+            lastKey = Key(chosen);
+            return chosen;
+        }
+
+        static string Key(PawdokuNotificationSettings.Message m) =>
+            m == null ? "" : m.title + "\n" + m.body;
+
+        // ---- platform scheduling -------------------------------------------------------
+
+        static void Schedule(int id, PawdokuNotificationSettings.Message msg, DateTime fireTime) {
+            string title = msg != null ? msg.title : "";
+            string body = msg != null ? msg.body : "";
+#if UNITY_ANDROID
+            var n = new AndroidNotification {
+                Title = title,
+                Text = body,
+                FireTime = fireTime,
+                SmallIcon = _settings.androidSmallIcon,
+                LargeIcon = _settings.androidLargeIcon,
+            };
+            AndroidNotificationCenter.SendNotificationWithExplicitID(n, _settings.androidChannelId, id);
+#elif UNITY_IOS
+            var trigger = new iOSNotificationCalendarTrigger {
+                Year = fireTime.Year, Month = fireTime.Month, Day = fireTime.Day,
+                Hour = fireTime.Hour, Minute = fireTime.Minute, Second = 0,
+                Repeats = false,
+            };
+            var n = new iOSNotification {
+                Identifier = IosId(id),
+                Title = title,
+                Body = body,
+                ShowInForeground = false,
+                Trigger = trigger,
+            };
+            iOSNotificationCenter.ScheduleNotification(n);
+#endif
+        }
+
+        // Fire at now + seconds (second precision — used by fast-mode and the test notification).
+        // The per-day Schedule() uses a calendar trigger on the minute; this uses a time-interval
+        // trigger so short delays work.
+        static void ScheduleAfterSeconds(int id, PawdokuNotificationSettings.Message msg, int seconds, bool showInForeground = false) {
+            string title = msg != null ? msg.title : "";
+            string body = msg != null ? msg.body : "";
+            seconds = Mathf.Max(1, seconds);
+#if UNITY_ANDROID
+            var n = new AndroidNotification {
+                Title = title,
+                Text = body,
+                FireTime = DateTime.Now.AddSeconds(seconds),
+                SmallIcon = _settings.androidSmallIcon,
+                LargeIcon = _settings.androidLargeIcon,
+            };
+            AndroidNotificationCenter.SendNotificationWithExplicitID(n, _settings.androidChannelId, id);
+#elif UNITY_IOS
+            var trigger = new iOSNotificationTimeIntervalTrigger {
+                TimeInterval = TimeSpan.FromSeconds(seconds),
+                Repeats = false,
+            };
+            var n = new iOSNotification {
+                Identifier = IosId(id),
+                Title = title,
+                Body = body,
+                ShowInForeground = showInForeground,
+                Trigger = trigger,
+            };
+            iOSNotificationCenter.ScheduleNotification(n);
+#endif
+        }
+
+        // ---- debug --------------------------------------------------------------------
+        // Fast-mode: instead of 10:00/18:00 over N days, fire the whole batch every
+        // debugIntervalSeconds (alternating Daily/General) so the full flow can be verified on
+        // the next open. Toggle it from the in-game debug panel, then press HOME.
+        static void ScheduleDebugFast() {
+            int interval = Mathf.Max(1, _settings.debugIntervalSeconds);
+            int count = Mathf.Clamp(_settings.daysAhead * PerDay, 2, 60);
+
+            string lastDaily = PlayerPrefs.GetString(PrefLastDaily, "");
+            string lastGeneral = PlayerPrefs.GetString(PrefLastGeneral, "");
+
+            for (int k = 0; k < count; k++) {
+                bool daily = (k % 2 == 0);
+                var m = daily
+                    ? PickFromList(_settings.dailyChallengeMessages, ref lastDaily, _settings.dailyChallengeFallback)
+                    : PickGeneral(ref lastGeneral);
+                ScheduleAfterSeconds(IdBase + k, m, interval * (k + 1));
+            }
+
+            PlayerPrefs.SetString(PrefLastDaily, lastDaily);
+            PlayerPrefs.SetString(PrefLastGeneral, lastGeneral);
+            PlayerPrefs.Save();
+            Log($"DEBUG fast-mode: scheduled {count} notifications, every {interval}s");
+        }
+
+        /// <summary>Runtime toggle for the debug panel (mutates the cached settings, not the asset on disk).</summary>
+        public static bool DebugFastMode {
+            get => _settings != null && _settings.debugFastMode;
+            set { if (EnsureLoaded()) _settings.debugFastMode = value; }
+        }
+
+        /// <summary>Fire one notification after testNotificationDelaySec — for the debug panel.
+        /// Shown even in the foreground on iOS so it can be seen without backgrounding.</summary>
+        public static void FireTestNotification() {
+            if (!EnsureLoaded()) return;
+            InitPlatform();
+#if !UNITY_EDITOR
+            if (!PermissionAllowed()) { Log("test: permission not allowed"); return; }
+#endif
+            int delay = Mathf.Max(1, Mathf.RoundToInt(_settings.testNotificationDelaySec));
+            var msg = new PawdokuNotificationSettings.Message {
+                title = _settings.generalFallback != null ? _settings.generalFallback.title : "Pawdoku",
+                body = $"🔔 Test notification — fires in {delay}s.",
+            };
+            ScheduleAfterSeconds(IdTest, msg, delay, showInForeground: true);
+            Log($"test notification scheduled in {delay}s");
+        }
+
+        // ---- logging -------------------------------------------------------------------
+
+        // Dev logging follows the in-game debug panel's master flag, not a settings field.
+        static void Log(string msg) {
+            if (AppData.DebugMode.Value) Debug.Log("[Notifications] " + msg);
+        }
+    }
+}
+
+#endif
