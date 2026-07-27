@@ -37,7 +37,7 @@ namespace qp {
         const int MAX_BUFFER = 200;      // rolling cap — oldest dropped when exceeded
 
         // Editor/dev play sessions are kept out of the production data.
-        const bool SEND_FROM_EDITOR = true;
+        const bool SEND_FROM_EDITOR = false;
 
         static EventClient _instance;
         readonly List<string> _buffer = new List<string>();   // pre-serialized event JSON
