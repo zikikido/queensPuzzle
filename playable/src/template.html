@@ -7,14 +7,16 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#2E6B6B}
-#app{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2.2vh 4vw calc(2.2vh + env(safe-area-inset-bottom));gap:1vh}
+/* The board is the product — every other row is sized to give it room, and shrinks
+   hard on short containers (an ad slot is ~300x420, not a phone screen). */
+#app{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:1.4vh 3.5vw calc(1.4vh + env(safe-area-inset-bottom));gap:.5vh}
 
 #top{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
-#logoImg{width:clamp(78px,13vh,124px);height:auto;display:block;flex:0 0 auto}
+#logoImg{width:clamp(58px,9.5vh,118px);height:auto;display:block;flex:0 0 auto}
 /* the campaign hook — its own row between the top bar and the note, so it reads as a
    headline rather than a caption. Hidden unless a variant sets one. */
 #hook{display:none;flex:0 0 auto;width:100%;max-width:460px;text-align:center;
-  font-size:clamp(17px,2.9vh,26px);font-weight:800;color:#E8743B;letter-spacing:.2px;
+  font-size:clamp(14px,2.5vh,25px);font-weight:800;color:#E8743B;letter-spacing:.2px;
   line-height:1.2;padding:0 3vw}
 #hook.on{display:block;animation:hookIn .5s .3s backwards cubic-bezier(.3,1.6,.5,1)}
 @keyframes hookIn{0%{opacity:0;transform:scale(.82)}100%{opacity:1;transform:none}}
@@ -24,20 +26,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 #bones img{width:clamp(17px,2.7vh,23px);height:auto;display:block;transition:opacity .25s}
 #bones img.spent{animation:bonelost .5s}
 @keyframes bonelost{0%{transform:scale(1) rotate(0)}40%{transform:scale(1.35) rotate(-14deg)}100%{transform:scale(1) rotate(0)}}
-#counter{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 13px 6px 8px;box-shadow:0 2px 0 #BBD9E2}
-#counter img{width:clamp(18px,2.9vh,24px);height:auto;display:block}
-#count{font-size:clamp(14px,2.2vh,19px);font-weight:800;min-width:1.1em;text-align:center}
+#counter{display:flex;align-items:center;gap:5px;background:#fff;border-radius:999px;padding:4px 11px 4px 7px;box-shadow:0 2px 0 #BBD9E2}
+#counter img{width:clamp(16px,2.5vh,23px);height:auto;display:block}
+#count{font-size:clamp(13px,2vh,18px);font-weight:800;min-width:1.1em;text-align:center}
 
 /* note + board travel together as one vertically-centred group */
 #mid{flex:1 1 auto;width:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7vh}
 /* two lines are always reserved so the board never resizes when the note changes */
-#note{flex:0 0 auto;width:100%;max-width:460px;display:flex;align-items:center;justify-content:center;padding:0 3vw;transition:opacity .18s}
+#note{position:relative;flex:0 0 auto;width:100%;max-width:460px;display:flex;align-items:center;justify-content:center;padding:0 3vw;transition:opacity .18s}
 #note.hide{opacity:0}
 /* the card is always exactly two lines tall (2 x 1.25em + 1em padding), so a one-line
    message and a two-line one occupy the same space and the board never shifts */
-#noteCard{display:flex;align-items:center;justify-content:center;width:100%;height:3.5em;
-  text-align:center;font-size:clamp(17px,3vh,27px);font-weight:800;line-height:1.25;
-  color:#2E6B6B;background:#fff;border-radius:14px;padding:.25em .8em;box-shadow:0 3px 0 #BBD9E2}
+/* symmetric side padding = the Hint button's footprint, so centred text always clears
+   the button on the right and stays visually centred whether or not the hint shows */
+#noteCard{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:3.1em;
+  text-align:center;font-size:clamp(14px,2.5vh,25px);font-weight:800;line-height:1.2;
+  color:#2E6B6B;background:#fff;border-radius:12px;padding:.2em 4.6em;box-shadow:0 3px 0 #BBD9E2}
 /* the text MUST live in its own element: as direct children of a flex container,
    "1 puppy per " and <b>row</b> become separate items and the space between them
    is discarded — "1 puppy perrow" */
@@ -91,21 +95,21 @@ __IDLE_KEYFRAMES__
 #dbl{position:absolute;z-index:7;background:#fff;color:#48908F;font-size:clamp(12px,1.9vh,16px);font-weight:800;padding:6px 13px;border-radius:999px;white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;transform:translate(-50%,0);box-shadow:0 2px 0 #BBD9E2}
 #dbl.on{opacity:1}
 
-/* Hint button: sits over the board's bottom-right corner, so it never shifts the
-   layout when it appears. Any tap dismisses it, so the cell underneath stays reachable. */
-#help{position:absolute;right:-2px;bottom:-14px;z-index:8;display:none;align-items:center;gap:6px;
-  background:#F8D636;border:none;border-radius:999px;padding:9px 16px 9px 12px;font-family:inherit;
-  font-size:clamp(14px,2.2vh,18px);font-weight:800;color:#6B4A05;cursor:pointer;
-  box-shadow:0 4px 0 #D0A81C,0 6px 14px rgba(90,70,10,.3)}
-#help.on{display:flex;animation:helpIn .45s cubic-bezier(.3,1.7,.6,1),helpPulse 1.5s .45s ease-in-out infinite}
-#help:active{transform:translateY(3px);box-shadow:0 1px 0 #D0A81C}
+/* Hint sits inside the note card, tucked into the right padding zone — fully within the
+   white rounded box, never over the board, never under the text. */
+#help{position:absolute;right:.4em;top:50%;transform:translateY(-50%);z-index:8;display:none;align-items:center;gap:4px;
+  background:#F8D636;border:none;border-radius:999px;padding:.4em .7em .4em .55em;font-family:inherit;
+  font-size:clamp(11px,1.7vh,15px);font-weight:800;color:#6B4A05;cursor:pointer;line-height:1;
+  box-shadow:0 3px 0 #D0A81C}
+#help.on{display:flex;animation:helpIn .4s cubic-bezier(.3,1.7,.6,1),helpPulse 1.5s .4s ease-in-out infinite}
+#help:active{transform:translateY(calc(-50% + 3px));box-shadow:0 1px 0 #D0A81C}
 #help svg{width:1.15em;height:1.15em;fill:#6B4A05;flex:0 0 auto}
-@keyframes helpIn{0%{opacity:0;transform:scale(.4)}100%{opacity:1;transform:scale(1)}}
-@keyframes helpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+@keyframes helpIn{0%{opacity:0;transform:translateY(-50%) scale(.4)}100%{opacity:1;transform:translateY(-50%) scale(1)}}
+@keyframes helpPulse{0%,100%{transform:translateY(-50%) scale(1)}50%{transform:translateY(-50%) scale(1.06)}}
 
-#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:14px;box-shadow:0 4px 0 #3FA582;padding:clamp(9px,1.7vh,15px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.18}
-#cta .lbl{font-size:clamp(16px,2.7vh,23px);font-weight:800}
-#cta .sub{font-size:clamp(11px,1.7vh,14px);font-weight:700;opacity:.74}
+#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:13px;box-shadow:0 4px 0 #3FA582;padding:clamp(7px,1.3vh,14px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.15}
+#cta .lbl{font-size:clamp(15px,2.4vh,22px);font-weight:800}
+#cta .sub{font-size:clamp(10px,1.5vh,14px);font-weight:700;opacity:.74}
 #cta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
 @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 
@@ -140,11 +144,9 @@ __IDLE_KEYFRAMES__
   </div>
   <div id="hook"></div>
   <div id="mid">
-    <div id="note"><div id="noteCard"><span id="noteText">Tap the squares a puppy can’t sit on</span></div></div>
+    <div id="note"><div id="noteCard"><span id="noteText">Tap the squares a puppy can’t sit on</span><button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button></div></div>
     <div id="stage">
-      <div id="board">
-        <button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button>
-      </div>
+      <div id="board"></div>
       <div id="hand"><img id="fingerImg" alt=""></div>
       <div id="dbl">Double tap</div>
     </div>
@@ -182,27 +184,68 @@ var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
    ad has to read correctly in silence. */
 var SFX={tap:"__SFX_TAP__",puppy:"__SFX_PUPPY__",wrong:"__SFX_WRONG__",
          levelwin:"__SFX_LEVELWIN__",win:"__SFX_WIN__"};
-var sounds={},audioOn=false,lastTapSound=0;
+var VOL={tap:0.35,puppy:0.6,wrong:0.6,levelwin:0.6,win:0.6};
+var audioOn=false,lastTapSound=0;
+var actx=null,buffers={},htmlFallback={};
 
+function b64ToBytes(b64){
+  var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
+  for(var i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+/* Web Audio path: decode every clip ONCE on the first gesture, then play from the
+   decoded buffer with no per-play decode — that decode-on-first-play lag was the
+   delay. Falls back to HTMLAudio where Web Audio isn't available. */
 function initAudio(){
   if(audioOn) return;
   audioOn=true;
-  for(var k in SFX){
-    try{
-      var a=new Audio("data:audio/mpeg;base64,"+SFX[k]);
-      a.preload='auto';a.volume=k==='tap'?0.35:0.6;
-      sounds[k]=a;
-    }catch(e){}
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(AC){
+    try{ actx=new AC(); }catch(e){ actx=null; }
   }
+  if(actx){
+    if(actx.resume) actx.resume();                 // gesture unlock
+    for(var k in SFX){
+      (function(key){
+        try{
+          actx.decodeAudioData(b64ToBytes(SFX[key]),
+            function(buf){ buffers[key]=buf; },
+            function(){ makeHtml(key); });          // decode failed — fall back
+        }catch(e){ makeHtml(key); }
+      })(k);
+    }
+    return;
+  }
+  for(var k2 in SFX) makeHtml(k2);
 }
+
+function makeHtml(k){
+  try{
+    var a=new Audio("data:audio/mpeg;base64,"+SFX[k]);
+    a.preload='auto'; a.volume=VOL[k]||0.6;
+    htmlFallback[k]=a;
+  }catch(e){}
+}
+
 function play(k){
-  var a=sounds[k];
-  if(!a) return;
-  if(k==='tap'){                       // drag-painting would machine-gun this
+  if(k==='tap'){                                   // drag-painting would machine-gun this
     var now=Date.now();
     if(now-lastTapSound<70) return;
     lastTapSound=now;
   }
+  // Web Audio: a fresh one-shot source each time, so sounds can overlap cleanly
+  if(actx&&buffers[k]){
+    try{
+      if(actx.state==='suspended'&&actx.resume) actx.resume();
+      var src=actx.createBufferSource(); src.buffer=buffers[k];
+      var g=actx.createGain(); g.gain.value=VOL[k]||0.6;
+      src.connect(g); g.connect(actx.destination); src.start(0);
+      return;
+    }catch(e){}
+  }
+  var a=htmlFallback[k];
+  if(!a) return;
   try{a.currentTime=0;var p=a.play();if(p&&p.catch)p.catch(function(){});}catch(e){}
 }
 
@@ -223,7 +266,7 @@ var levelIdx=0;
 // REDX is the game's $RedX: a wrong puppy leaves a red mark that can never be cleared
 var EMPTY=0,X=1,PUPPY=2,REDX=3;
 var state=[],cells=[];
-var step=null,stepIdx=0,guiding=true,busy=false,won=false;
+var step=null,stepIdx=0,guiding=true,busy=false,won=false,puppyTaught=false;
 var lastCell=-1,lastTime=0,paintMode=0,pointerDown=false;
 
 function idx(r,c){return r*N+c;}
@@ -273,7 +316,13 @@ function forcedPuppy(){
     if(seen[g]===undefined) seen[g]=[];
     seen[g].push(i);
   }
-  for(var g in seen) if(seen[g].length===1) return {cell:seen[g][0],region:+g};
+  for(var g in seen) if(seen[g].length===1){
+    var cell=seen[g][0];
+    // Never point a puppy at a cell just because it's the region's last free one — if the
+    // player X'd the region's TRUE solution cell by mistake, the leftover is a wrong cell.
+    // Only a real solution cell is ever "forced"; a collapsed region is a wrongX to fix.
+    if(cell%N===SOLUTION[Math.floor(cell/N)]) return {cell:cell,region:+g};
+  }
   return null;
 }
 
@@ -314,6 +363,7 @@ function loadLevel(n,replay){
   // only the first level teaches, and never twice — a retry has already seen it
   var teach=n===0&&!replay&&!SKIP_TUTORIAL;
   stepIdx=teach?0:TUTORIAL.length;
+  puppyTaught=!teach;                // the double-tap step only runs during the level-1 tutorial
   seatedAny=!teach;                  // later levels hint by rule instead of naming the colour
 
   var b=document.getElementById('board');
@@ -635,6 +685,7 @@ function advance(){
   setTimeout(function(){
     closeStep();busy=false;
     if(stepIdx<TUTORIAL.length) nextRuleStep();
+    else if(!puppyTaught) puppyStep();   // the 3 rules are done — now teach the double tap
     else freePlay();
   },700);
 }
@@ -644,6 +695,17 @@ function nextRuleStep(){
   var list=ruleCells(t.rule);
   if(!list.length) return nextRuleStep();
   openStep({cells:list,target:X,note:t.note});
+}
+
+/* Guided fourth step: the marks have narrowed one colour to a single square, so
+   double tap it to seat the puppy. Dimmed board + double-tap hand + "Double tap"
+   callout — the gesture is taught here, not left to free play. */
+function puppyStep(){
+  puppyTaught=true;
+  seatedAny=true;                   // gesture taught — later puppies hint by rule
+  var f=forcedPuppy();
+  if(!f){freePlay();return;}        // safety: nothing forced (shouldn't happen on a chosen level)
+  openStep({cells:[f.cell],target:PUPPY,note:"Double tap to place the puppy"});
 }
 
 /* the three rules are taught — hand the board over. The nudge below is the only
@@ -763,14 +825,12 @@ function armNudge(delay){
 
 function showHint(){
     if(won) return;
+    // A solution cell can only ever hold an X by mistake, and it blocks its whole
+    // region — fix that first, before pointing anywhere else.
+    var w=wrongX();
+    if(w>=0){setNote(WRONG_X_NOTE);showHand(w,false);armNudge(NUDGE_MS);return;}
     var f=forcedPuppy();
-    if(!f){
-      // Nothing deducible — almost always an X where a puppy belongs. Point at it
-      // and keep pointing; bailing here is what used to leave the board stuck.
-      var w=wrongX();
-      if(w>=0){setNote(WRONG_X_NOTE);showHand(w,false);armNudge(NUDGE_MS);}
-      return;
-    }
+    if(!f) return;
     // The colour is never named while a single ruled-out square is still unmarked.
     // Keep pointing at the next one, every NUDGE_MS, for as long as it takes.
     var m=nextToMark();
@@ -813,22 +873,32 @@ function onWinButton(){
   else loadLevel(levelIdx+1);
 }
 
+var fitRetries=0;
 function fitBoard(){
   var mid=document.getElementById('mid'),note=document.getElementById('note'),b=document.getElementById('board');
   // #stage is sized by the board, so take the height budget from #mid minus the note
   var s=Math.min(mid.clientWidth,mid.clientHeight-note.offsetHeight-10);
-  if(s<40)s=240;
+  if(s<40){
+    // container hasn't laid out yet (common on first paint inside an ad iframe):
+    // fall back to the viewport and re-measure once the real size exists
+    s=Math.max(120,Math.min(window.innerWidth-24,window.innerHeight*0.55));
+    if(fitRetries++<20) requestAnimationFrame(function(){setTimeout(fitBoard,0);});
+  }
+  else fitRetries=0;
   s=Math.min(s,440);
   b.style.width=s+'px';
   b.style.setProperty('--gap',Math.max(2,Math.round(s*0.011))+'px');
   if(step&&pendingCell()>=0) showHand(pendingCell(),step.target===PUPPY);
 }
 
+/* Exit to the store. mraid first — that's what Google's container (and Unity's)
+   provides, and it routes through the network's own click URL so attribution works.
+   ExitApi (ironSource) and window.open are fallbacks for other containers. Only one
+   ever fires. mraid.open MUST get the URL — calling it empty is non-spec and can fail. */
 function goStore(){
   try{if(window.mraid&&typeof mraid.open==='function'){mraid.open(STORE);return;}}catch(e){}
-  try{if(typeof install==='function'){install();return;}}catch(e){}
-  try{if(window.parent&&window.parent!==window){window.parent.postMessage('download','*');}}catch(e){}
   try{if(window.ExitApi&&typeof ExitApi.exit==='function'){ExitApi.exit();return;}}catch(e){}
+  try{if(window.parent&&window.parent!==window){window.parent.postMessage('download','*');}}catch(e){}
   try{window.open(STORE,'_blank');}catch(e){}
 }
 document.getElementById('cta').addEventListener('click',goStore);
@@ -851,8 +921,22 @@ document.getElementById('fingerImg').src="data:image/png;base64,"+ART.finger;
 window.addEventListener('resize',fitBoard);
 window.addEventListener('orientationchange',function(){setTimeout(fitBoard,120);});
 
-function start(){build();}
-if(window.mraid&&mraid.getState&&mraid.getState()==='loading'){mraid.addEventListener('ready',start);}else{start();}
+/* Start no matter what. Some containers (Google Ads' preview among them) inject an
+   mraid shim that reports "loading" and never fires "ready" — waiting on that event
+   leaves the board empty forever. So: listen for ready as a nicety, but always start
+   on our own too, guarded so it only happens once. */
+var started=false;
+function start(){
+  if(started) return;
+  started=true;
+  build();
+}
+try{
+  if(window.mraid&&mraid.addEventListener) mraid.addEventListener('ready',start);
+}catch(e){}
+if(document.readyState==='complete'||document.readyState==='interactive') start();
+else document.addEventListener('DOMContentLoaded',start);
+window.addEventListener('load',start);   // last resort, after images and layout
 </script>
 </body>
 </html>

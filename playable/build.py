@@ -10,6 +10,7 @@ import glob
 import io
 import os
 import re
+import zipfile
 import subprocess
 import sys
 import tempfile
@@ -231,6 +232,19 @@ def main():
     over = [out for lv, out in jobs if render(master, lv, art, out) > LIMIT]
     if over:
         sys.exit("\nover the 5 MB limit: %s" % ", ".join(os.path.basename(o) for o in over))
+
+    # Google App campaigns want an HTML5 playable as a ZIP whose entry point is
+    # index.html; a bare .html gets treated as an image. Unity takes the .html directly.
+    # So: .html in dist/ for Unity, matching .zip in dist/google/ for Google.
+    zipdir = os.path.join(DISTDIR, "google")
+    os.makedirs(zipdir, exist_ok=True)
+    print("\n  google zips (index.html inside) -> %s\n" % zipdir)
+    for _, out in jobs:
+        base = os.path.splitext(os.path.basename(out))[0]
+        zpath = os.path.join(zipdir, base + ".zip")
+        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(out, "index.html")   # single entry, named index.html at the ZIP root
+        print("  %-38s %6.1f KB" % (os.path.basename(zpath), os.path.getsize(zpath) / 1024))
 
 
 if __name__ == "__main__":
