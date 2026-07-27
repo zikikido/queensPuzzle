@@ -99,7 +99,7 @@ namespace qp {
         public static void OnAppLoad() {
             if (!EnsureLoaded()) return;
             InitPlatform();
-            ClearAllScheduled();          // never inherit a stale schedule
+            ClearAll();          // never inherit a stale schedule
             _scheduledThisBackground = false;
             Log("OnAppLoad ready");
         }
@@ -107,7 +107,7 @@ namespace qp {
         public static void OnAppResume() {
             _scheduledThisBackground = false;
             if (_settings == null) return;
-            ClearAllScheduled();          // player is active — don't leave reminders pending
+            ClearAll();          // player is active — don't leave reminders pending
             Log("OnAppResume — cleared, ready for next background");
         }
 
@@ -119,7 +119,7 @@ namespace qp {
             if (!_settings.notificationsEnabled) { Log("background: notifications disabled"); return; }
             if (!PermissionAllowed()) { Log("background: permission not allowed"); return; }
 
-            ClearAllScheduled();
+            ClearAll();
             ScheduleAll();
             _scheduledThisBackground = true;
             Log("OnAppBackground — schedule built");
@@ -145,14 +145,16 @@ namespace qp {
         }
 
         // ---- cancel --------------------------------------------------------------------
-        // This app has no other notification system, so the package-wide cancel is safe and
-        // clears exactly (and only) Pawdoku's scheduled notifications. It never touches
-        // permission state, repetition history, or any gameplay data.
-        static void ClearAllScheduled() {
+        // Clears BOTH still-pending (scheduled) notifications AND ones already delivered to the
+        // tray — otherwise reminders that fired while backgrounded stay in the shade after the
+        // player reopens. This app has no other notification system, so the package-wide clear is
+        // safe; it never touches permission state, repetition history, or any gameplay data.
+        static void ClearAll() {
 #if UNITY_ANDROID
-            AndroidNotificationCenter.CancelAllScheduledNotifications();
+            AndroidNotificationCenter.CancelAllNotifications();   // scheduled + already displayed
 #elif UNITY_IOS
             iOSNotificationCenter.RemoveAllScheduledNotifications();
+            iOSNotificationCenter.RemoveAllDeliveredNotifications();
 #endif
         }
 
