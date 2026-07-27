@@ -282,8 +282,8 @@ namespace qp {
         // ---- platform scheduling -------------------------------------------------------
 
         static void Schedule(int id, PawdokuNotificationSettings.Message msg, DateTime fireTime) {
-            string title = msg != null ? msg.title : "";
-            string body = msg != null ? msg.body : "";
+            string title = Downgrade(msg != null ? msg.title : "");
+            string body = Downgrade(msg != null ? msg.body : "");
 #if UNITY_ANDROID
             var n = new AndroidNotification {
                 Title = title,
@@ -314,8 +314,8 @@ namespace qp {
         // The per-day Schedule() uses a calendar trigger on the minute; this uses a time-interval
         // trigger so short delays work.
         static void ScheduleAfterSeconds(int id, PawdokuNotificationSettings.Message msg, int seconds, bool showInForeground = false) {
-            string title = msg != null ? msg.title : "";
-            string body = msg != null ? msg.body : "";
+            string title = Downgrade(msg != null ? msg.title : "");
+            string body = Downgrade(msg != null ? msg.body : "");
             seconds = Mathf.Max(1, seconds);
 #if UNITY_ANDROID
             var n = new AndroidNotification {
@@ -388,6 +388,70 @@ namespace qp {
             };
             ScheduleAfterSeconds(IdTest, msg, delay, showInForeground: true);
             Log($"test notification scheduled in {delay}s");
+        }
+
+        // ---- emoji compatibility -------------------------------------------------------
+        // Notifications are drawn with the OS emoji font, so an emoji newer than the device's
+        // Android/iOS version shows as a "tofu" box. Author messages with the BEST/newest emoji;
+        // this layer swaps only the too-new ones for a safe fallback, per device. Modern devices
+        // keep the nice emoji untouched.
+        //
+        // MinApi = the Android API level whose font first shipped that emoji (iOS is mapped to an
+        // equivalent below). To use a new premium emoji anywhere, just add one row here.
+        struct EmojiRule {
+            public string Glyph; public int MinApi; public string Fallback;
+            public EmojiRule(string glyph, int minApi, string fallback) { Glyph = glyph; MinApi = minApi; Fallback = fallback; }
+        }
+
+        static readonly EmojiRule[] _emojiRules = {
+            new EmojiRule("🥹", 33, "😊"),   // Emoji 14 (2021) → Android 13 / iOS 15.4
+            new EmojiRule("🧩", 28, "🎯"),   // Emoji 11 (2018) → Android 9
+            new EmojiRule("🧠", 28, "💡"),
+            new EmojiRule("♟️", 28, "✨"),
+            new EmojiRule("♟",  28, "✨"),   // same glyph without the variation selector
+            new EmojiRule("🥰", 28, "😍"),
+        };
+
+        static int _emojiLevel = -1;   // device emoji support, expressed as an Android-API level
+        static int EmojiLevel => _emojiLevel >= 0 ? _emojiLevel : (_emojiLevel = ComputeEmojiLevel());
+
+        static int ComputeEmojiLevel() {
+#if UNITY_EDITOR
+            return int.MaxValue;                       // editor: show the best emoji (for authoring/tests)
+#elif UNITY_ANDROID
+            try { using (var v = new AndroidJavaClass("android.os.Build$VERSION")) return v.GetStatic<int>("SDK_INT"); }
+            catch { return 24; }
+#elif UNITY_IOS
+            int major = IosMajorVersion();             // map iOS → the Android API with the same emoji set
+            if (major >= 18) return 34;
+            if (major >= 16) return 33;
+            if (major >= 15) return 31;
+            if (major >= 14) return 29;
+            return 28;
+#else
+            return int.MaxValue;
+#endif
+        }
+
+#if UNITY_IOS && !UNITY_EDITOR
+        static int IosMajorVersion() {
+            string s = UnityEngine.iOS.Device.systemVersion;   // e.g. "16.4"
+            int dot = s.IndexOf('.');
+            string maj = dot > 0 ? s.Substring(0, dot) : s;
+            return int.TryParse(maj, out int m) ? m : 0;
+        }
+#endif
+
+        // Replace any emoji too new for this device with its safe fallback; leave the rest alone.
+        static string Downgrade(string text) {
+            if (string.IsNullOrEmpty(text)) return text;
+            int level = EmojiLevel;
+            for (int i = 0; i < _emojiRules.Length; i++) {
+                var r = _emojiRules[i];
+                if (level < r.MinApi && text.Contains(r.Glyph))
+                    text = text.Replace(r.Glyph, r.Fallback);
+            }
+            return text;
         }
 
         // ---- logging -------------------------------------------------------------------
