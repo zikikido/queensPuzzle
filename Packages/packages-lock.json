@@ -1,5 +1,19 @@
 {
   "dependencies": {
+    "com.applovin.mediation.adapters.bytedance.android": {
+      "version": "802000400.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.applovin.mediation.adapters.bytedance.ios": {
+      "version": "802000700.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
     "com.applovin.mediation.adapters.facebook.android": {
       "version": "6210000.0.0",
       "depth": 0,
@@ -37,6 +51,20 @@
     },
     "com.applovin.mediation.adapters.unityads.ios": {
       "version": "4190000.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.applovin.mediation.adapters.vungle.android": {
+      "version": "7070700.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.applovin.mediation.adapters.vungle.ios": {
+      "version": "7070500.0.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {},

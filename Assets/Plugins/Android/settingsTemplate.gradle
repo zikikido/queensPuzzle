@@ -19,6 +19,9 @@ dependencyResolutionManagement {
 // Android Resolver Repos Start
         def unityProjectPath = $/file:///**DIR_UNITYPROJECT**/$.replace("\\", "/")
         maven {
+            url "https://artifact.bytedance.com/repository/pangle" // Packages/com.applovin.mediation.adapters.bytedance.android/Editor/Dependencies.xml:8
+        }
+        maven {
             url (unityProjectPath + "/Assets/GeneratedLocalRepo/Firebase/m2repository") // Packages/com.google.firebase.app/Firebase/Editor/AppDependencies.xml:25, Packages/com.google.firebase.crashlytics/Firebase/Editor/CrashlyticsDependencies.xml:23, Packages/com.google.firebase.remote-config/Firebase/Editor/RemoteConfigDependencies.xml:23, Packages/com.google.firebase.analytics/Firebase/Editor/AnalyticsDependencies.xml:21
         }
         maven {
