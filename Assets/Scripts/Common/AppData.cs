@@ -44,6 +44,10 @@ namespace qp {
         // FPS overlay on/off (MBFpsOverlay) — persists so it's already up on the next run.
         public static readonly PlayerPrefsHelper.BoolHolder ShowFps = new PlayerPrefsHelper.BoolHolder("qp_show_fps", false);
 
+        // One-shot: the "this is your last bone" callout ($LastBonesToturial) is shown the first
+        // time the player is ever down to a single bone, then never again.
+        public static readonly PlayerPrefsHelper.BoolHolder LastBoneToturialSeen = new PlayerPrefsHelper.BoolHolder("qp_last_bone_tut_seen", false);
+
 #if UNITY_EDITOR
         // Editor-only guard: catch an enum value that was added but not given a Boosts entry.
         [UnityEditor.InitializeOnLoadMethod]

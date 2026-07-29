@@ -135,6 +135,10 @@ namespace qp {
         internal void SetInteractable(bool on) {
             _canvasGroup.interactable = on;
         }
+
+        public Transform GetBonesTransform() {
+            return transform.RecursiveFindChild("$Bones");
+        }
     }
 }
 

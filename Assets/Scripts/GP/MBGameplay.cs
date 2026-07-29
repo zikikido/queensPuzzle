@@ -689,6 +689,8 @@ namespace qp {
                     if (_shake != null) StopCoroutine(_shake);
                     _shake = StartCoroutine(ShakeBoard());
                     if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
+                    else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
+                        MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
                 }
             }
             else if (_stroke != null) {

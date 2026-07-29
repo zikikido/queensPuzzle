@@ -9,7 +9,8 @@ namespace qp {
             BOARD_BG,
             BOARD_CELLS,
             BOARD_ANIMS,
-            TOUTURIAL
+            TOUTURIAL,
+            ON_TOTRIAL
         }
 
         public override Type GetEnumType() {

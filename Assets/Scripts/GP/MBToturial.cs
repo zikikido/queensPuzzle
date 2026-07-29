@@ -34,6 +34,7 @@ namespace qp {
         Transform _finger;              // $FingerImage — rotated by code to mime the taps
         Coroutine _fingerAnim;
         Coroutine _handSweep;
+        GameObject _lastBonePopup;      // $LastBonesToturial — the one-shot "last bone!" callout
 
         [SerializeField] float _boardMargin = 0.4f;   // gap to the board, in cell widths
         [SerializeField] Color _causeDotGray = new Color(0.35f, 0.35f, 0.35f, 0.9f);   // dot on the hint's cause cells
@@ -76,6 +77,12 @@ namespace qp {
             var dtt = transform.RecursiveFindChild("$DoublieTapTex");
             _doubleTapText = dtt != null ? dtt.gameObject : null;
             _finger = transform.RecursiveFindChild("$FingerImage");
+
+            // It's scene-active by default (so it lays out), but it must NOT ride along every
+            // time a hint wakes this canvas — only ShowLastBoneToturial may reveal it.
+            var lastBone = transform.RecursiveFindChild("$LastBonesToturial");
+            _lastBonePopup = lastBone != null ? lastBone.gameObject : null;
+            if (_lastBonePopup != null) _lastBonePopup.SetActive(false);
 
             var sr = _blackCurtain.GetComponent<SpriteRenderer>();
 
@@ -143,12 +150,15 @@ namespace qp {
 
             var lit = new List<MBCell>();
             var target = TargetFor(hint.kind);
+            // When the demo hand guides this hint, the hand alone shows what to do — a ghost mark
+            // on top would just clutter it, so suppress the ghost while the hand is up.
+            bool handGuides = _handEnabled && target.HasValue;
             foreach (int idx in hint.cells) {
                 var cell = gp.CellAt(idx / gp.N, idx % gp.N);
                 if (cell == null) continue;
                 lit.Add(cell);
                 if (target.HasValue) _targets[cell] = target.Value;
-                cell.SetHintGhost(target);   // ghost of the wanted mark (only QUEEN/X have one)
+                cell.SetHintGhost(handGuides ? null : target);   // ghost of the wanted mark (only QUEEN/X have one)
             }
 
             // the cells the reasoning is ABOUT get a hole too, tinted, so the player sees the
@@ -471,6 +481,65 @@ namespace qp {
             ClearCauseDots();
             MBDrapeHoles.Clear();
             gameObject.SetActive(false);   // back to sleep until the next Show*
+        }
+
+        // ---- last-bone callout --------------------------------------------------------
+
+        // How long taps are swallowed after the callout appears, so a click already on its way
+        // (the one that lost the bone) can't dismiss it instantly.
+        const float LastBoneIgnoreTaps = 1.5f;
+
+        /// <summary>
+        /// One-shot "this is your last bone" callout: parks $LastBonesToturial exactly over the
+        /// top bar's bones (matchTo = MBTopBar.GetBonesTransform), then dismisses on the first
+        /// tap after a short grace window. Shown only the very first time, ever.
+        /// </summary>
+        public void ShowLastBoneToturial(Transform matchTo) {
+            if (_lastBonePopup == null || matchTo == null) return;
+            if (AppData.LastBoneToturialSeen.Value) return;
+            AppData.LastBoneToturialSeen.Value = true;
+
+            gameObject.SetActive(true);   // wake this canvas
+            SetOpacity(1f);
+            MBDrapeHoles.Clear();                                         // full darken, no holes
+            if (_blackCurtain != null) _blackCurtain.SetActive(true);    // dim the board behind it
+            if (_textContainer != null) _textContainer.gameObject.SetActive(false);   // no hint text here
+            if (_hand != null) _hand.SetActive(false);                    // hide the hint chrome
+            if (_applyRt != null) _applyRt.gameObject.SetActive(false);
+
+            var t = _lastBonePopup.transform;
+            t.position = matchTo.position;                               // same spot as the bones
+            var parentScale = t.parent != null ? t.parent.lossyScale : Vector3.one;
+            var target = matchTo.lossyScale;                            // same global scale
+            t.localScale = new Vector3(
+                parentScale.x != 0f ? target.x / parentScale.x : target.x,
+                parentScale.y != 0f ? target.y / parentScale.y : target.y,
+                parentScale.z != 0f ? target.z / parentScale.z : target.z);
+            _lastBonePopup.SetActive(true);
+
+            // Freeze the board so the player can't lose the last bone (fail) while the warning is
+            // up — otherwise the very next tap ends the level and the callout reads as "too late".
+            if (MBGameplay.instance != null) MBGameplay.instance.InputLocks++;
+
+            StartCoroutine(LastBoneDismiss());
+        }
+
+        IEnumerator LastBoneDismiss() {
+            yield return new WaitForSecondsRealtime(LastBoneIgnoreTaps);
+            while (!TapDown()) yield return null;                        // wait for a deliberate tap
+            if (_lastBonePopup != null) _lastBonePopup.SetActive(false);
+            if (_blackCurtain != null) _blackCurtain.SetActive(false);  // lift the dim
+            if (_textContainer != null) _textContainer.gameObject.SetActive(true);   // back to always-on
+            if (_allowed.Count == 0) gameObject.SetActive(false);       // no hint up — sleep the canvas
+            if (MBGameplay.instance != null) MBGameplay.instance.InputLocks--;   // board live again
+        }
+
+        // A fresh press this frame — mouse or a touch that just began.
+        static bool TapDown() {
+            if (Input.GetMouseButtonDown(0)) return true;
+            for (int i = 0; i < Input.touchCount; i++)
+                if (Input.GetTouch(i).phase == TouchPhase.Began) return true;
+            return false;
         }
 
         // ---- helpers ------------------------------------------------------------------
