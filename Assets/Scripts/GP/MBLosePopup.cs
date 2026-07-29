@@ -90,7 +90,8 @@ namespace qp {
 
         void UpdateContinueButton() {
             if (_btnContinue == null) return;
-            bool ready = Ads.IsRewardedReady;
+            bool ready = Ads.IsRewardedReady
+                         && AppData.LevelIdx.Value + 1 >= GameConfig.StartShowReviveAtLevel;
             if (_btnContinue.activeSelf != ready) _btnContinue.SetActive(ready);
         }
 
