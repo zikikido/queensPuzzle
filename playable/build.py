@@ -162,14 +162,44 @@ def encode(path, width, colors, tint=None):
 LEVELS_BLOCK = re.compile(r"/\* ==== LEVELS.*?==== END LEVELS ==== \*/", re.S)
 
 
+def static_board(block):
+    """A coloured grid for the first level, baked into #board as plain HTML.
+
+    Google's image review can screenshot the ad before its JS builds the board,
+    catching a blank frame and disapproving it for 'not filling the space'. Baking
+    the grid in means the very first paint is already a full, colourful board; JS
+    clears these .cell nodes and rebuilds live on start, so nothing is duplicated.
+    """
+    first = block[block.index("{n:"):]
+    n = int(re.search(r"\bn:(\d+)", first).group(1))
+    regions = [int(x) for x in re.search(r"regions:\[([\d,\s]+)\]", first).group(1).split(",")]
+    colors = re.findall(r'"(#[0-9A-Fa-f]{6})"', re.search(r"colors:\[([^\]]+)\]", first).group(1))
+    cells = "".join(
+        '<div class="cell" style="background:%s"></div>' % colors[regions[i]]
+        for i in range(n * n))
+    # inline grid-columns + a viewport-based width so it fills even with JS off
+    return ('<div id="board" style="grid-template-columns:repeat(%d,1fr);'
+            'width:min(92vw,62vh);--gap:%dpx">%s</div>') % (n, max(2, 3), cells)
+
+
 def render(master, levels_js, art, out):
     html = master
+    board_html = None
     if levels_js:
         # variants carry only their level data; everything else comes from the master
         block = open(levels_js, encoding="utf-8").read().strip()
         if not LEVELS_BLOCK.search(html):
             sys.exit("master template has no LEVELS block - was it hand-edited?")
         html = LEVELS_BLOCK.sub(lambda _: block, html, count=1)
+        board_html = static_board(block)
+    else:
+        m = LEVELS_BLOCK.search(html)
+        if m:
+            board_html = static_board(m.group(0))
+    if board_html:
+        if '<div id="board"></div>' not in html:
+            sys.exit('master template has no empty <div id="board"></div> to prefill')
+        html = html.replace('<div id="board"></div>', board_html, 1)
 
     for key, b64 in art.items():
         token = "__%s__" % key

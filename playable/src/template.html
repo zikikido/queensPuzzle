@@ -69,8 +69,10 @@ __IDLE_KEYFRAMES__
    brightness() turns yellow to olive and pink to brown */
 .cell.dim{opacity:.26}
 .cell.lit{z-index:2}
-.cell.lit::after{content:"";position:absolute;inset:-2px;border-radius:6px;border:3px solid #fff;opacity:0;animation:pulse 1.3s ease-in-out infinite;pointer-events:none}
-@keyframes pulse{0%,100%{opacity:.25}50%{opacity:.95}}
+/* steady highlight that only breathes gently — never drops toward 0, so it reads as
+   a glow, not a flash (Google's image review flags near-0<->1 opacity as strobing) */
+.cell.lit::after{content:"";position:absolute;inset:-2px;border-radius:6px;border:3px solid #fff;opacity:.85;animation:pulse 2.4s ease-in-out infinite;pointer-events:none}
+@keyframes pulse{0%,100%{opacity:.7}50%{opacity:.95}}
 .pop{animation:pop .28s cubic-bezier(.3,1.7,.6,1)}
 @keyframes pop{0%{transform:scale(.2)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 /* wrong puppy: red wash fades in and out under a bone that breaks away — the same
@@ -105,13 +107,13 @@ __IDLE_KEYFRAMES__
 #help:active{transform:translateY(calc(-50% + 3px));box-shadow:0 1px 0 #D0A81C}
 #help svg{width:1.15em;height:1.15em;fill:#6B4A05;flex:0 0 auto}
 @keyframes helpIn{0%{opacity:0;transform:translateY(-50%) scale(.4)}100%{opacity:1;transform:translateY(-50%) scale(1)}}
-@keyframes helpPulse{0%,100%{transform:translateY(-50%) scale(1)}50%{transform:translateY(-50%) scale(1.06)}}
+@keyframes helpPulse{0%,100%{transform:translateY(-50%) scale(1)}50%{transform:translateY(-50%) scale(1.035)}}
 
 #cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:13px;box-shadow:0 4px 0 #3FA582;padding:clamp(7px,1.3vh,14px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.15}
 #cta .lbl{font-size:clamp(15px,2.4vh,22px);font-weight:800}
 #cta .sub{font-size:clamp(10px,1.5vh,14px);font-weight:700;opacity:.74}
 #cta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
-@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
 
 #win{position:absolute;inset:0;background:rgba(60,45,25,.62);display:none;align-items:center;justify-content:center;padding:6vw;z-index:9}
 #win.on{display:flex;animation:fadein .3s}
