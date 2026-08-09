@@ -131,6 +131,7 @@ def sources():
         "CRY": (frames("Cry")[4], 104, 96),   # ...and for the lose card
         # the real wordmark lives outside the reskin folder
         "LOGO": (os.path.join(ROOT, "..", "Assets", "Pictures", "Lobby", "Logo.png"), 248, 64),
+        "ICON": (os.path.join(RESKIN, "Icons", "Icon.png"), 96, 96),   # the real store icon, beside the CTA
         "PAW": (pic("PawIcon.png"), 72, 96),
         "XMARK": (pic("X-mark.png"), 64, 16),
         "XMARK_RED": (pic("X-mark.png"), 64, 16, (1.0, 0.16, 0.14)),   # the game's $RedX

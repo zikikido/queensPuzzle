@@ -8,8 +8,16 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#2E6B6B}
 /* The board is the product — every other row is sized to give it room, and shrinks
-   hard on short containers (an ad slot is ~300x420, not a phone screen). */
-#app{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:1.4vh 3.5vw calc(1.4vh + env(safe-area-inset-bottom));gap:.5vh}
+   hard on short containers (an ad slot is ~300x420, not a phone screen).
+   Grid areas (not flex) so landscape can move the chrome into a right rail and let
+   the board fill the height, without touching the DOM order. */
+#app{width:100%;height:100%;display:grid;padding:1.4vh 3.5vw calc(1.4vh + env(safe-area-inset-bottom));gap:.5vh .5vh;
+  grid-template-columns:1fr;grid-template-rows:auto auto auto 1fr auto;
+  grid-template-areas:"top" "hook" "note" "mid" "cta";justify-items:center}
+#top{grid-area:top}#hook{grid-area:hook}#note{grid-area:note}#mid{grid-area:mid}#cta{grid-area:cta}
+
+/* Landscape: board fills the left; logo, hook, note and CTA stack in a right rail —
+   the note takes the 1fr row so it fills what was empty space. */
 
 #top{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
 #logoImg{width:clamp(58px,9.5vh,118px);height:auto;display:block;flex:0 0 auto}
@@ -109,7 +117,9 @@ __IDLE_KEYFRAMES__
 @keyframes helpIn{0%{opacity:0;transform:translateY(-50%) scale(.4)}100%{opacity:1;transform:translateY(-50%) scale(1)}}
 @keyframes helpPulse{0%,100%{transform:translateY(-50%) scale(1)}50%{transform:translateY(-50%) scale(1.035)}}
 
-#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:13px;box-shadow:0 4px 0 #3FA582;padding:clamp(7px,1.3vh,14px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.15}
+#cta{flex:0 0 auto;width:100%;max-width:460px;background:#67D2AB;border:none;border-radius:13px;box-shadow:0 4px 0 #3FA582;padding:clamp(6px,1.1vh,12px) clamp(10px,2vw,18px);font-family:inherit;color:#0C3D2C;cursor:pointer;animation:breathe 2.4s ease-in-out infinite;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;line-height:1.15}
+#ctaIcon{width:clamp(30px,5vh,44px);height:auto;border-radius:22%;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+#cta .ctatext{display:flex;flex-direction:column;align-items:center}
 #cta .lbl{font-size:clamp(15px,2.4vh,22px);font-weight:800}
 #cta .sub{font-size:clamp(10px,1.5vh,14px);font-weight:700;opacity:.74}
 #cta:active{transform:translateY(3px);box-shadow:0 1px 0 #3FA582}
@@ -133,6 +143,22 @@ __IDLE_KEYFRAMES__
 #loseCard p{font-size:clamp(13px,2.2vh,17px);color:#6FA8A8;margin-bottom:2.6vh;font-weight:700}
 #loseCta{width:100%;background:#F9A55F;border:none;border-radius:14px;box-shadow:0 4px 0 #D07C36;padding:clamp(13px,2.3vh,19px);font-family:inherit;font-size:clamp(17px,2.9vh,24px);font-weight:800;color:#5E3410;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
 #loseCta:active{transform:translateY(3px);box-shadow:0 1px 0 #D07C36}
+
+/* Landscape overrides MUST live at the very end: same specificity as the base
+   component rules above, so source order decides — put here, they win. */
+@media (orientation:landscape){
+  #app{grid-template-columns:1fr minmax(240px,44%);grid-template-rows:auto auto 1fr auto;
+    grid-template-areas:"mid top" "mid hook" "mid note" "mid cta";column-gap:2.5vw;align-items:center}
+  #mid{grid-area:mid;height:100%;align-self:stretch}
+  /* rail is narrow: stack the logo over the bones+counter so nothing overflows/crops */
+  #top{align-self:start;width:100%;flex-direction:column;align-items:center;gap:.7vh}
+  #logoImg{width:clamp(64px,15vh,104px)}
+  #hook{align-self:center}
+  /* full-width card that grows to fit its text, so nothing spills outside the white */
+  #note{align-self:center;width:100%;padding:0}
+  #noteCard{height:auto;min-height:2.6em;font-size:clamp(13px,2.2vh,18px);padding:.5em 2.9em .5em .8em}
+  #cta{align-self:end}
+}
 </style>
 </head>
 <body>
@@ -145,15 +171,15 @@ __IDLE_KEYFRAMES__
     </div>
   </div>
   <div id="hook"></div>
+  <div id="note"><div id="noteCard"><span id="noteText"></span><button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button></div></div>
   <div id="mid">
-    <div id="note"><div id="noteCard"><span id="noteText">Tap the squares a puppy can’t sit on</span><button id="help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span>Hint</span></button></div></div>
     <div id="stage">
       <div id="board"></div>
       <div id="hand"><img id="fingerImg" alt=""></div>
       <div id="dbl">Double tap</div>
     </div>
   </div>
-  <button id="cta"><span class="lbl">Play now</span><span class="sub">9,000+ more puzzles waiting</span></button>
+  <button id="cta"><img id="ctaIcon" alt=""><span class="ctatext"><span class="lbl">Play now</span><span class="sub">9,000+ more puzzles waiting</span></span></button>
 </div>
 
 <div id="win">
@@ -175,7 +201,7 @@ __IDLE_KEYFRAMES__
 </div>
 
 <script>
-var ART={happy:"__HAPPY__",cry:"__CRY__",logo:"__LOGO__",paw:"__PAW__",xmark:"__XMARK__",
+var ART={happy:"__HAPPY__",cry:"__CRY__",logo:"__LOGO__",icon:"__ICON__",paw:"__PAW__",xmark:"__XMARK__",
          xmarkRed:"__XMARK_RED__",finger:"__FINGER__",
          idleSheet:"__IDLE_SHEET__",bone:"__BONE__",boneEmpty:"__BONE_EMPTY__"};
 var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
@@ -274,6 +300,16 @@ var lastCell=-1,lastTime=0,paintMode=0,pointerDown=false;
 function idx(r,c){return r*N+c;}
 function regionAt(r,c){return REGIONS[idx(r,c)];}
 function tinted(g){return '<b style="color:'+COLORS[g]+'">'+NAMES[g]+'</b>';}
+/* the generic color rule shows the word "color" in colours — each letter a bright hue,
+   so it reads as what it means. (A colour that's down to one cell instead names the
+   actual shade, e.g. "1 puppy per color Green", via tinted() below.) */
+function rainbow(word){
+  var cols=['#B185CF','#FF808E','#7DC9D9','#67D2AB','#F9A55F','#E8743B'];
+  var out='';
+  for(var i=0;i<word.length;i++) out+='<b style="color:'+cols[i%cols.length]+'">'+word.charAt(i)+'</b>';
+  return out;
+}
+var COLOR_WORD='1 puppy per '+rainbow('color');
 
 function queens(){
   var q=[];
@@ -329,13 +365,13 @@ function forcedPuppy(){
 }
 
 var RULE_NOTE={touch:"Puppies <b>cannot touch</b>",
-               color:"1 puppy per <b>color</b>",
+               color:COLOR_WORD,
                rowcol:"1 puppy per <b>row and column</b>"};
 
 function setNote(html){
   var el=document.getElementById('note'),t=document.getElementById('noteText'),
       card=document.getElementById('noteCard');
-  if(t.innerHTML===html) return;          // same text — don't replay the bump
+  if(t.innerHTML===html) return;          // same text — don't replay the bump or reset
   el.classList.add('hide');
   setTimeout(function(){
     t.innerHTML=html;
@@ -344,6 +380,13 @@ function setNote(html){
     void card.offsetWidth;                // restart the animation
     card.classList.add('bump');
   },120);
+  // the top text changed = a new rule / new situation, so start fresh: drop any
+  // showing Hint button and restart the countdown. (Same text early-returns above,
+  // so marking within one rule never triggers this.)
+  if(helpMode()){
+    hideHelp();
+    armNudge(HELP_MS);
+  }
 }
 
 /* Swap in a level and rebuild the board for it. The tutorial runs on the first
@@ -384,8 +427,12 @@ function loadLevel(n,replay){
   seat(idx(START_ROW,SOLUTION[START_ROW]),PUPPY,false);
   updateCount();fitBoard();
 
-  if(teach) setTimeout(nextRuleStep,900);
-  else freePlay();
+  // clear any stale note instantly (no fade) so the baked-in intro text never flashes
+  document.getElementById('noteText').innerHTML='';
+  if(teach){
+    busy=true;                       // lock the board through the brief settle...
+    setTimeout(function(){busy=false;nextRuleStep();},650);   // ...then the tutorial opens
+  }else freePlay();
 }
 
 function build(){
@@ -395,6 +442,11 @@ function build(){
   window.addEventListener('pointerup',onUp);
   window.addEventListener('pointercancel',onUp);   // iOS cancels on scroll/gesture takeover
   loadLevel(0);
+  // the first fitBoard runs before grid/rail layout has settled (esp. landscape),
+  // so re-fit on the next frames once real dimensions exist
+  requestAnimationFrame(fitBoard);
+  setTimeout(fitBoard,60);
+  setTimeout(fitBoard,250);
 }
 
 function seat(i,what,animate){
@@ -592,12 +644,13 @@ function paint(i){
     else showHand(pendingCell(),step.target===PUPPY);   // move on to the next unmarked cell
   }
   else {
-    // player acted — drop the hint and the offer, name the rule they're working through
-    hideHand();hideHelp();
+    // marking an X isn't real progress — drop the pointing hand, but DON'T hide the
+    // Hint offer or reset its timer, so a confused X-tapper still gets rescued
+    hideHand();
     var nx=nextToMark();
-    if(nx) setNote(MARK_NOTE[nx.rule]);
+    if(nx) setNote(markNote(nx));
     else advanceNote();          // nothing left to mark: they've earned the deduction
-    armNudge(NUDGE_MS);
+    armNudge(NUDGE_MS);          // idempotent: keeps the existing countdown running
   }
 }
 
@@ -696,7 +749,7 @@ function nextRuleStep(){
   var t=TUTORIAL[stepIdx++];
   var list=ruleCells(t.rule);
   if(!list.length) return nextRuleStep();
-  openStep({cells:list,target:X,note:t.note});
+  openStep({cells:list,target:X,note:t.note});   // color step uses the rainbow COLOR_WORD
 }
 
 /* Guided fourth step: the marks have narrowed one colour to a single square, so
@@ -740,7 +793,7 @@ function freePlay(){
    the text froze on the last rule, since nothing else updates it in free play. */
 function advanceNote(){
   var nx=nextToMark();
-  if(nx){setNote(MARK_NOTE[nx.rule]);return;}
+  if(nx){setNote(markNote(nx));return;}
   var f=forcedPuppy();
   if(f){setNote("1 puppy per color "+tinted(f.region));return;}
   if(wrongX()>=0){setNote(WRONG_X_NOTE);offerHelpNow();return;}
@@ -786,13 +839,16 @@ function nextToMark(){
 }
 var RULE_OF=["row","col","touch","color"];
 var MARK_NOTE={row:"1 puppy per <b>row</b>",col:"1 puppy per <b>column</b>",
-               touch:"Puppies <b>cannot touch</b>",color:"1 puppy per <b>color</b>"};
+               touch:"Puppies <b>cannot touch</b>",color:COLOR_WORD};
+function markNote(m){return MARK_NOTE[m.rule];}   // color = rainbow COLOR_WORD
 
 /* The Hint button comes up BEFORE the automatic hand, on every level: something to
    tap is what keeps a stuck player from leaving. The hand still follows if they
    ignore it, so nobody can stall out. Mirrors the game's $HintForFree button. */
-var HELP_MS=1500,helpTimer=null;
-function helpMode(){return !step;}   // guided steps already show the hand
+// delay + on/off come from the variant (make_variant --hint-delay / --no-hint)
+var HELP_MS=(typeof HINT_DELAY_MS!=='undefined')?HINT_DELAY_MS:3000,helpTimer=null;
+var HINT_ON=(typeof HINT_ENABLED==='undefined')||HINT_ENABLED;
+function helpMode(){return HINT_ON && !step;}   // guided steps already show the hand
 
 function showHelpButton(on){
   document.getElementById('help').classList.toggle('on',!!on);
@@ -817,12 +873,18 @@ function onHelp(){
   showHint();
 }
 
-/* The hand never comes on its own in free play — the player asks for it. `delay` is
-   kept in the signature so every call site still reads as "re-arm the nudge", but the
-   only thing scheduled is the offer. Guided tutorial steps still point directly. */
+/* Arm the Hint offer, but idempotently: if it's already counting down or already
+   showing, do nothing. This is the fix for confused X-tapping — marking X's must NOT
+   restart the clock, or a flailing player resets it forever and never gets help.
+   Only real progress (placing a puppy) resets it, via clearNudge in tryPuppy. */
 function armNudge(delay){
-  clearNudge();
-  if(helpMode()) helpTimer=setTimeout(function(){if(!won) showHelpButton(true);},HELP_MS);
+  if(!helpMode()||won) return;
+  if(helpTimer) return;                                    // already counting down
+  if(document.getElementById('help').classList.contains('on')) return;   // already offered
+  helpTimer=setTimeout(function(){
+    helpTimer=null;
+    if(!won&&helpMode()) showHelpButton(true);
+  },HELP_MS);
 }
 
 function showHint(){
@@ -837,7 +899,7 @@ function showHint(){
     // Keep pointing at the next one, every NUDGE_MS, for as long as it takes.
     var m=nextToMark();
     if(seatedAny&&m){
-      setNote(MARK_NOTE[m.rule]);
+      setNote(markNote(m));
       // a row or column is a drag, not a series of pokes - show it as one
       var run=(m.rule==='row'||m.rule==='col')?markRun(m):[m.cell];
       if(run.length>1){sweepHand(run);return;}   // self-looping, no re-arm needed
@@ -877,9 +939,9 @@ function onWinButton(){
 
 var fitRetries=0;
 function fitBoard(){
-  var mid=document.getElementById('mid'),note=document.getElementById('note'),b=document.getElementById('board');
-  // #stage is sized by the board, so take the height budget from #mid minus the note
-  var s=Math.min(mid.clientWidth,mid.clientHeight-note.offsetHeight-10);
+  var mid=document.getElementById('mid'),b=document.getElementById('board');
+  // the note is its own grid row now, so #mid's box is the board's budget directly
+  var s=Math.min(mid.clientWidth,mid.clientHeight)-6;
   if(s<40){
     // container hasn't laid out yet (common on first paint inside an ad iframe):
     // fall back to the viewport and re-measure once the real size exists
@@ -909,6 +971,7 @@ document.getElementById('loseCta').addEventListener('click',retry);
 document.getElementById('help').addEventListener('click',onHelp);
 
 document.getElementById('logoImg').src="data:image/png;base64,"+ART.logo;
+document.getElementById('ctaIcon').src="data:image/png;base64,"+ART.icon;
 document.getElementById('pawImg').src="data:image/png;base64,"+ART.paw;
 document.getElementById('winImg').src="data:image/png;base64,"+ART.happy;
 document.getElementById('loseImg').src="data:image/png;base64,"+ART.cry;
@@ -920,8 +983,29 @@ if(HOOK_TEXT){
 }
 document.getElementById('fingerImg').src="data:image/png;base64,"+ART.finger;
 
-window.addEventListener('resize',fitBoard);
-window.addEventListener('orientationchange',function(){setTimeout(fitBoard,120);});
+/* AppLovin (and good practice): audio must stop when the ad is hidden or closed.
+   Suspend the Web Audio context off-screen, resume when visible again. */
+function audioVisibility(){
+  if(!actx) return;
+  try{
+    if(document.hidden){ if(actx.suspend) actx.suspend(); }
+    else if(audioOn && actx.resume){ actx.resume(); }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',audioVisibility);
+window.addEventListener('pagehide',function(){try{if(actx&&actx.suspend)actx.suspend();}catch(e){}});
+
+/* On a real device orientationchange fires BEFORE the viewport reports its new size,
+   so a single fit runs on stale dimensions and the board overflows (CTA/note get cut).
+   Re-fit across several frames so it self-corrects once the real size lands. */
+function refit(){
+  fitBoard();
+  requestAnimationFrame(fitBoard);
+  setTimeout(fitBoard,120);
+  setTimeout(fitBoard,350);
+}
+window.addEventListener('resize',refit);
+window.addEventListener('orientationchange',refit);
 
 /* Start no matter what. Some containers (Google Ads' preview among them) inject an
    mraid shim that reports "loading" and never fires "ready" — waiting on that event

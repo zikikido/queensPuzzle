@@ -8,4 +8,6 @@ var FAIL_MODE=true;
 var CTA_TEXT=null;
 var SKIP_TUTORIAL=false;
 var HOOK_TEXT="IQ > 130 to solve";
+var HINT_ENABLED=true;
+var HINT_DELAY_MS=3000;
 /* ==== END LEVELS ==== */
