@@ -690,7 +690,7 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols:
-    Android: RemovePermissionsInjector_IGNORE;UNITY_MCP_READY;NOTIFICATION_INSTALLER
+    Android: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE;UNITY_MCP_READY
     EmbeddedLinux: UNITY_MCP_READY
     GameCoreScarlett: UNITY_MCP_READY
     GameCoreXboxOne: UNITY_MCP_READY
@@ -707,7 +707,7 @@ PlayerSettings:
     WebGL: IGNORE_COMMON_REVIEW;IGNORE_FIREBASE;UNITY_MCP_READY
     Windows Store Apps: UNITY_MCP_READY
     XboxOne: UNITY_MCP_READY
-    iPhone: UNITY_MCP_READY;NOTIFICATION_INSTALLER
+    iPhone: NOTIFICATION_INSTALLER;UNITY_MCP_READY
     tvOS: UNITY_MCP_READY
   additionalCompilerArguments: {}
   platformArchitecture: {}
