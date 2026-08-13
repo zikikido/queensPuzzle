@@ -740,6 +740,7 @@ namespace qp {
             // OnSolved first (final time), GameWin before Invalidate (counters still the
             // attempt's) and before LevelIdx++ (the win belongs to the level just solved).
             if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();
+            DailyStreakManager.RegisterWin();   // any win (campaign or daily) keeps today's streak
             Analytics.GameWin();
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level

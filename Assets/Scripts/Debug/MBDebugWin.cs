@@ -83,6 +83,7 @@ namespace qp {
             _streakInput = GUILayout.TextField(_streakInput, GUILayout.Height(44), GUILayout.Width(120));
             if (Button("Set streak") && int.TryParse(_streakInput, out int streak)) DailyStreakManager.DebugSetStreak(streak);
             GUILayout.EndHorizontal();
+            if (Button("Last win = yesterday (win to ++)")) DailyStreakManager.DebugSetLastWinYesterday();
 
             GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");

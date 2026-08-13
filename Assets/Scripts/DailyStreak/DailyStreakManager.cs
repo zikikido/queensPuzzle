@@ -78,9 +78,13 @@ namespace qp {
         /// <summary>Debug only (MBDebugWin) — force the streak to a value and pin the last win to
         /// today, so <see cref="SyncDayChange"/> won't immediately reset it.</summary>
         public static void DebugSetStreak(int value) {
-            _streak.Value = value < 0 ? 0 : value;
+            _streak.Value = value < 0 ? 0 : value > CycleLength ? CycleLength : value;   // stay within the cycle
             _lastWinDay.Value = Today;
         }
+
+        /// <summary>Debug only — pretend the last win was yesterday, so the next real win advances
+        /// the streak by one instead of being treated as already-won-today.</summary>
+        public static void DebugSetLastWinYesterday() => _lastWinDay.Value = Today - 1;
 
         /// <summary>Break the streak if a day lapsed since the last win. Online only (offline can't
         /// verify the day). Idempotent — the streak &gt; 0 guard means it writes at most once.
