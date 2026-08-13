@@ -17,6 +17,7 @@ namespace qp {
         Vector2 _scroll;
         float _scale;
         string _levelInput = "";
+        string _streakInput = "";
         EventSystem _blockedEventSystem;   // the EventSystem we disabled while we're up
 
         public static void Open() {
@@ -71,6 +72,17 @@ namespace qp {
             GUILayout.EndHorizontal();
             if (Button("Clear saved board")) AppData.LastPlayData.Invalidate();
             if (Button("Restore bones")) { AppData.LastPlayData.bonesLost = 0; AppData.LastPlayData.Save(); }
+
+            GUILayout.Space(16);
+            GUILayout.Label($"Daily Streak (now {DailyStreakManager.Streak}, {DailyStreakManager.Status})");
+            GUILayout.BeginHorizontal();
+            if (Button("Streak -1")) DailyStreakManager.DebugSetStreak(DailyStreakManager.Streak - 1);
+            if (Button("Streak +1")) DailyStreakManager.DebugSetStreak(DailyStreakManager.Streak + 1);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            _streakInput = GUILayout.TextField(_streakInput, GUILayout.Height(44), GUILayout.Width(120));
+            if (Button("Set streak") && int.TryParse(_streakInput, out int streak)) DailyStreakManager.DebugSetStreak(streak);
+            GUILayout.EndHorizontal();
 
             GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");

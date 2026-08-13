@@ -22,8 +22,8 @@ namespace qp {
     /// trusted (MBServerTimeManagerV2.IsTimeSynced); the day index comes from MBServerTimeManagerV2.UTCNow.
     ///
     /// Rule: first win of a server-UTC day advances the streak by 1; a same-day extra win does nothing;
-    /// a win after a one-day gap continues; a longer gap starts over at 1. Streak cycles 1..28 then
-    /// wraps back to 1. Milestones (7/14/28) grant their reward the instant they're reached.
+    /// a win after a one-day gap continues; a longer gap starts over at 1. Streak cycles 1..cycleLength
+    /// (21) then wraps back to 1. Milestones (7/14/21) grant their reward the instant they're reached.
     ///
     /// Persisted: <see cref="_streak"/> and <see cref="_lastWinDay"/> (two ints). Everything the
     /// lobby shows (status, missed-day reset, milestone/progress) is derived on read.
@@ -46,9 +46,10 @@ namespace qp {
         // ---- public API -----------------------------------------------------------------
 
         /// <summary>Called from the win hook (MBGameplay.Win). Online only. Advances or resets the
-        /// streak per the day-gap rule, wraps 28→1, and grants any milestone reward reached.
+        /// streak per the day-gap rule, wraps cycle→1, and grants any milestone reward reached.
         /// Returns what happened so the win flow can show the streak/reward UI.</summary>
         public static StreakResult RegisterWin() {
+            SyncDayChange();
             if (Config == null || !IsOnline || _lastWinDay.Value == Today)   // off/offline; one win/day
                 return new StreakResult { advanced = false, streak = _streak.Value, reward = null };
 
@@ -61,7 +62,7 @@ namespace qp {
             _streak.Value = s;
             _lastWinDay.Value = today;
 
-            Reward reward = Config.RewardFor(s);   // null unless s is a milestone day
+            Reward reward = MilestoneRewardFor(s);   // null unless s is a milestone day
             reward?.Grant();
 
             return new StreakResult { advanced = true, streak = s, reward = reward };
@@ -74,10 +75,49 @@ namespace qp {
 
         public static int Streak =>  _streak.Value;
 
+        /// <summary>Debug only (MBDebugWin) — force the streak to a value and pin the last win to
+        /// today, so <see cref="SyncDayChange"/> won't immediately reset it.</summary>
+        public static void DebugSetStreak(int value) {
+            _streak.Value = value < 0 ? 0 : value;
+            _lastWinDay.Value = Today;
+        }
+
+        /// <summary>Break the streak if a day lapsed since the last win. Online only (offline can't
+        /// verify the day). Idempotent — the streak &gt; 0 guard means it writes at most once.
+        /// The lobby button calls this each second so a midnight lapse shows even while it sits open.</summary>
+        public static void SyncDayChange() {
+            if (IsOnline && _streak.Value > 0 && _lastWinDay.Value < Today - 1)
+                _streak.Value = 0;
+        }
+
+        /// <summary>Streak wraps back to 1 after this many days (from config; 21 if config missing).</summary>
+        public static int CycleLength => Config != null ? Config.cycleLength : 21;
+
+        /// <summary>The three milestone days, ascending — evenly spaced at 1/3, 2/3 and the full
+        /// cycle (e.g. cycle 21 → 7 / 14 / 21). These are the progress-bar stage boundaries.</summary>
+        public static int[] Milestones {
+            get {
+                int c = CycleLength;
+                return new[] {
+                    (int)System.Math.Round(c / 3.0),
+                    (int)System.Math.Round(c * 2.0 / 3.0),
+                    c,
+                };
+            }
+        }
 
         // ---- helpers --------------------------------------------------------------------
 
         static bool IsOnline => MBServerTimeManagerV2.IsTimeSynced;
+
+        // The reward for reaching a given streak day, or null when it isn't a milestone. Rewards are
+        // indexed by tier (1st/2nd/3rd milestone) since the days themselves are derived from the cycle.
+        static Reward MilestoneRewardFor(int streak) {
+            var ms = Milestones;
+            for (int i = 0; i < ms.Length; i++)
+                if (ms[i] == streak) return Config != null ? Config.RewardForTier(i) : null;
+            return null;
+        }
 
         // Days since epoch in trusted server UTC — the calendar index the streak counts in.
         static int Today => (int)(MBServerTimeManagerV2.UTCNow.Date - Epoch).TotalDays;

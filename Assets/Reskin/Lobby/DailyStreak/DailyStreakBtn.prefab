@@ -741,7 +741,7 @@ GameObject:
   - component: {fileID: 3739502326860990895}
   - component: {fileID: 2663635385977517859}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -794,7 +794,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
@@ -1165,7 +1165,7 @@ GameObject:
   - component: {fileID: 8895495630870208088}
   - component: {fileID: 86720579169814160}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1218,7 +1218,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 4
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
@@ -1414,7 +1414,7 @@ GameObject:
   - component: {fileID: 1847428501891413373}
   - component: {fileID: 1939638701064366629}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1467,7 +1467,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 2
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
@@ -1806,7 +1806,7 @@ GameObject:
   - component: {fileID: 3214219953160632727}
   - component: {fileID: 2987627349791290396}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1859,7 +1859,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 6
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
@@ -2056,7 +2056,7 @@ GameObject:
   - component: {fileID: 775813214381860897}
   - component: {fileID: 5573475244819330708}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2592,7 +2592,7 @@ GameObject:
   - component: {fileID: 5323577614026561580}
   - component: {fileID: 1671360895931135563}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2645,7 +2645,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 5
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
@@ -2729,7 +2729,7 @@ GameObject:
   - component: {fileID: 8088801857230996847}
   - component: {fileID: 5749263785671712174}
   m_Layer: 0
-  m_Name: $NumText
+  m_Name: NumText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2782,7 +2782,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 7
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
   m_sharedMaterial: {fileID: -7271238157824226094, guid: 62273d8ff0001014fbb7fa4e0652dbe8, type: 2}
