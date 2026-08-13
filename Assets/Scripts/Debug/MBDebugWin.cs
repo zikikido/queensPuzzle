@@ -84,6 +84,11 @@ namespace qp {
             if (Button("Set streak") && int.TryParse(_streakInput, out int streak)) DailyStreakManager.DebugSetStreak(streak);
             GUILayout.EndHorizontal();
             if (Button("Last win = yesterday (win to ++)")) DailyStreakManager.DebugSetLastWinYesterday();
+            if (Button("Simulate win (streak++ & grant reward)")) {
+                DailyStreakManager.DebugSetLastWinYesterday();
+                var r = DailyStreakManager.RegisterWin();
+                Debug.Log($"[Debug] streak now {r.streak}, reward: {(r.reward != null ? $"{r.reward.type} {r.reward.Label}" : "none")}");
+            }
 
             GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");

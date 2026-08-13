@@ -11,9 +11,10 @@ namespace qp {
     ///   $DailyButtonOffline    Status == Offline — no trusted server time
     ///
     /// The Active progress bar (DailyStreakProgress) is a fixed 7-slot view of the CURRENT milestone
-    /// stage: six checkmark dots ($V) then the gift slot. Milestones come from the manager (cycle 21 →
-    /// stages 0→7 small, 7→14 medium, 14→21 large — one day per slot). On reaching a milestone the
-    /// bar restarts empty toward the next one.
+    /// stage: seven $V checkmark dots, the last one also holding the gift. Milestones come from the
+    /// manager (cycle 21 → stages 0→7 small, 7→14 medium, 14→21 large — one day per slot). Reaching a
+    /// milestone empties the bar toward the next one; the final milestone loops back to the first, so
+    /// every milestone day looks the same — an empty bar.
     /// Ticks slowly so a status flip (server time syncing) while the lobby sits open just works.
     /// </summary>
     public class MBDailyStreakBtn : MonoBehaviour {
@@ -21,7 +22,7 @@ namespace qp {
         GameObject _active, _offline;
 
         TMP_Text _currentDay;                                // the 🔥 streak number
-        GameObject[] _checks;                                // $V of the six numbered dots, in order
+        GameObject[] _checks;                                // $V of every dot, in order (last = gift dot)
         GameObject _giftSmall, _giftMedium, _giftLarge;      // the three sizes on the gift dot
 
         // What the UI currently shows. Sentinels so the first tick always paints.
@@ -38,26 +39,26 @@ namespace qp {
             CacheProgressBar();
         }
 
-        // Collect the dots in sibling order: the leading ones carry a $V, the last is the gift slot.
+        // Every dot carries a $V; the gift dot additionally holds the three gift boxes. Collect the
+        // checks in sibling order and grab the gift boxes off whichever dot has them.
         void CacheProgressBar() {
             var prog = transform.RecursiveFindChild("DailyStreakProgress");
             if (prog == null) return;
 
             var checks = new System.Collections.Generic.List<GameObject>();
-            Transform gift = null;
             foreach (Transform child in prog) {
                 if (child.name != "$Dot") continue;
                 var v = child.RecursiveFindChild("$V");
                 if (v != null) checks.Add(v.gameObject);
-                else gift = child;                          // the gift dot has no $V
+
+                var small = child.RecursiveFindChild("$GiftBoxSmall");
+                if (small != null) {                        // this is the gift dot
+                    _giftSmall = small.gameObject;
+                    _giftMedium = child.RecursiveFindChild("$GiftBoxMeduim")?.gameObject;   // (spelling as authored)
+                    _giftLarge = child.RecursiveFindChild("$GiftBoxLarge")?.gameObject;
+                }
             }
             _checks = checks.ToArray();
-
-            if (gift != null) {
-                _giftSmall = gift.RecursiveFindChild("$GiftBoxSmall")?.gameObject;
-                _giftMedium = gift.RecursiveFindChild("$GiftBoxMeduim")?.gameObject;   // (spelling as authored)
-                _giftLarge = gift.RecursiveFindChild("$GiftBoxLarge")?.gameObject;
-            }
         }
 
         void OnEnable() {
@@ -90,23 +91,26 @@ namespace qp {
 
             var milestones = DailyStreakManager.Milestones;
 
-            // Current stage: the first milestone the streak hasn't reached yet (strict — a reached
-            // milestone starts the next stage empty). Past the last one, sit full on the last stage.
-            int tier = milestones.Length - 1, prev = 0, next = milestones[milestones.Length - 1];
+            // At the top of the cycle the streak sits on the last milestone — show it like every other
+            // milestone: an empty bar toward the next (the new cycle's first milestone).
+            int pos = streak >= DailyStreakManager.CycleLength ? 0 : streak;
+
+            // Current stage: the first milestone pos hasn't reached yet (strict — a reached milestone
+            // starts the next stage empty).
+            int tier = 0, prev = 0, next = milestones[0];
             for (int i = 0; i < milestones.Length; i++) {
-                if (streak < milestones[i]) { tier = i; next = milestones[i]; prev = i == 0 ? 0 : milestones[i - 1]; break; }
+                if (pos < milestones[i]) { tier = i; next = milestones[i]; prev = i == 0 ? 0 : milestones[i - 1]; break; }
                 prev = milestones[i];
             }
 
-            int stageLen = next - prev;                                  // 7, 7 or 14
-            int done = Mathf.Clamp(streak - prev, 0, stageLen);
-            int slots = _checks != null ? _checks.Length : 0;           // six checkmark dots
+            int stageLen = next - prev;                                  // one day per slot (7)
+            int done = Mathf.Clamp(pos - prev, 0, stageLen);
+            int slots = _checks != null ? _checks.Length : 0;
 
-            // Spread the stage's days over the slots: slot i (1-based) is done once the stage has
-            // progressed i/(slots+1) of the way — the gift is the final (slots+1) step.
+            // Spread the stage's days across the slots: slot i is lit once i+1 of them are done.
             if (_checks != null)
                 for (int i = 0; i < slots; i++)
-                    _checks[i].SetActive(done * (slots + 1) >= (i + 1) * stageLen);
+                    _checks[i].SetActive(done * slots >= (i + 1) * stageLen);
 
             SetGift(tier);
         }
