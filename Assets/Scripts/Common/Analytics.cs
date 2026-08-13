@@ -66,15 +66,18 @@ namespace qp {
         static void SendLevelEvent(string eventname) {
             bool daily = DailyChallengeManager.InDailyRun;
             int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
+            string userId = Common.UserID.Instance != null ? Common.UserID.Instance.GetUserIDFV() : "";
             EventClient.Enqueue(new EventPayload {
-                eventname    = eventname,
-                lvl_idx      = LevelIdx,
-                lvl_hash     = LevelLoader.CurrentLevelHash,
-                level_set_id = LevelLoader.CurrentLevelSetId,
-                lvl_attempts = Attempts,
-                lvl_time_sec = timeSec,
-                app_version  = Application.version,
-                daily        = daily,
+                eventname     = eventname,
+                lvl_idx       = LevelIdx,
+                lvl_hash      = LevelLoader.CurrentLevelHash,
+                level_set_id  = LevelLoader.CurrentLevelSetId,
+                lvl_attempts  = Attempts,
+                lvl_time_sec  = timeSec,
+                app_version   = Application.version,
+                daily         = daily,
+                first_version = UserData.Instance.FirstVersion,
+                user_id       = userId,
             });
         }
 
