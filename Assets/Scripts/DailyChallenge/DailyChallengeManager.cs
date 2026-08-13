@@ -134,7 +134,7 @@ namespace qp {
         public static void OnSolved() {
             if (!InDailyRun || _state.solved || _state.dayIndex != DayIndex) return;
             _state.solved = true;
-            _state.topPct = FakeTopPct(_state.timeSec);
+            _state.topPct = FakeTopPct(_state.timeSec, LevelLoader.CurrentLevelWeight);
             _state.Save();
             _boardsSolved.Value++;
         }
@@ -145,12 +145,21 @@ namespace qp {
             return s >= 3600 ? $"{s / 3600}:{s / 60 % 60:00}:{s % 60:00}" : $"{s / 60}:{s % 60:00}";
         }
 
-        // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time:
-        // 2 min or faster = top 5%, then linear to 95% at 25 min. Replace with the real
+        // Weight of a mid-difficulty "no-guess" board — the neutral point where the raw solve
+        // time is used as-is. Harder boards score better for the same time, easier ones worse.
+        const int RefWeight = 600;
+
+        // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time, adjusted
+        // for how hard the board was (LevelPack.Level.weight). Effective time = solve time scaled
+        // by RefWeight/weight (clamped ±2x), so a fast solve on a hard board beats the same time
+        // on an easy one. 2 min effective = top 5%, linear to 95% at 25 min. Replace with the real
         // leaderboard percentile when a server exists.
-        static int FakeTopPct(float timeSec) {
+        static int FakeTopPct(float timeSec, int weight) {
+            float factor = weight > 0 ? (float)weight / RefWeight : 1f;   // 0 = unrated → neutral
+            if (factor < 0.5f) factor = 0.5f; else if (factor > 2f) factor = 2f;
+            float adj = timeSec / factor;                                 // harder → smaller → better %
             const float fast = 120f, slow = 1500f;
-            float t = (timeSec - fast) / (slow - fast);
+            float t = (adj - fast) / (slow - fast);
             int pct = (int)Math.Round(5f + 90f * t);
             return pct < 5 ? 5 : pct > 95 ? 95 : pct;
         }

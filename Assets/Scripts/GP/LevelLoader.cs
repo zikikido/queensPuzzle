@@ -25,6 +25,10 @@ namespace qp {
         public static int CurrentPackIndex { get; private set; } = -1;
         public static int CurrentLevelHash { get; private set; }
 
+        /// <summary>Measured solve weight of the level being played (LevelData.weight; higher =
+        /// harder, 0 when unrated). Read by the daily card's TOP % fake to reward harder boards.</summary>
+        public static int CurrentLevelWeight { get; private set; }
+
         /// <summary>How many levels shipped - read from the pack header (0 when no pack).</summary>
         public static int LevelCount => EnsurePack() ? _packCount : 0;
 
@@ -96,6 +100,7 @@ namespace qp {
             CurrentLevelSetId = string.IsNullOrEmpty(levelSetId) ? UnknownLevelSetId : levelSetId;
             CurrentPackIndex = packIndex;
             CurrentLevelHash = level != null ? level.ContentHash() : 0;
+            CurrentLevelWeight = level != null ? level.weight : 0;
         }
 
         // Levels per wave in the campaign curve (CampaignCurveConfig wave templates).
