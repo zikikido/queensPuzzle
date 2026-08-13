@@ -5,7 +5,6 @@ namespace qp {
 
     /// <summary>Where the daily streak stands for THIS player — drives the lobby button.</summary>
     public enum EStreakStatus {
-        Lock,      // campaign hasn't reached the unlock level yet
         Offline,   // no trusted server time — the streak can't be verified/advanced
         Active,    // unlocked and online — shows streak + progress
     }
@@ -70,20 +69,15 @@ namespace qp {
 
         /// <summary>Lock (below unlock level, or config missing) / Offline (no trusted time) / Active.</summary>
         public static EStreakStatus Status =>
-            !IsUnlocked ? EStreakStatus.Lock :
             !IsOnline ? EStreakStatus.Offline :
             EStreakStatus.Active;
 
         public static int Streak =>  _streak.Value;
 
-        /// <summary>Campaign LevelIdx that unlocks the streak — for the "Unlocks at Level X" text.</summary>
-        public static int UnlockLevelIdx => Config != null ? Config.unlockLevelIdx : int.MaxValue;
 
         // ---- helpers --------------------------------------------------------------------
 
         static bool IsOnline => MBServerTimeManagerV2.IsTimeSynced;
-
-        static bool IsUnlocked => Config != null && AppData.LevelIdx.Value >= Config.unlockLevelIdx;
 
         // Days since epoch in trusted server UTC — the calendar index the streak counts in.
         static int Today => (int)(MBServerTimeManagerV2.UTCNow.Date - Epoch).TotalDays;

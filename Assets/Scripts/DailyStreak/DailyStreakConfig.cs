@@ -11,9 +11,6 @@ namespace qp {
     [CreateAssetMenu(menuName = "QP/Daily Streak Config", fileName = "DailyStreakConfig")]
     public class DailyStreakConfig : ScriptableObject {
 
-        [Tooltip("Campaign LevelIdx (0-based) that unlocks the streak.")]
-        public int unlockLevelIdx = 21;
-
         [Tooltip("Streak wraps back to 1 after this many days.")]
         public int cycleLength = 28;
 

@@ -72,7 +72,7 @@ namespace qp {
                 case EDailyChallengeStatus.Done:
                     if (_doneDate != null) _doneDate.text = DailyChallengeManager.NiceDate;
                     if (_solvedTime != null) _solvedTime.text = DailyChallengeManager.FormatTime(DailyChallengeManager.State.timeSec);
-                    if (_topPct != null) _topPct.text = $"TOP {DailyChallengeManager.State.topPct}%";
+                    if (_topPct != null) _topPct.text = $"{DailyChallengeManager.State.topPct}%";
                     break;
             }
         }
