@@ -18,6 +18,8 @@ namespace qp {
         public int lvl_time_sec;
         public string app_version;
         public bool daily;
+        public int first_version;    // UserData.FirstVersion — build the player first installed on
+        public string user_id;       // canonical per-platform id (AppSetID on Android; may be empty early)
     }
 
     /// <summary>

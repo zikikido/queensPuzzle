@@ -8,8 +8,11 @@ namespace qp {
         public static int StartShowBannerAtLevel = 11;
         public static int StartShowInterAtLevel = 11;
 
+        // Minimum gap between interstitials.
+        public static float InterCooldownSec = 120f;
+
         // The lose-popup Revive button (rewarded video for more bones) shows from this level on.
-        public static int StartShowReviveAtLevel = 3;
+        public static int StartShowReviveAtLevel = 5;
 
         // Granted when the player finishes a rewarded ad.
         public static int BoosterAddedAfterRewarded = 1;

@@ -56,6 +56,10 @@ namespace qp {
             QualitySettings.vSyncCount = 0;      // so vSync doesn't override the target
             Application.targetFrameRate = 60;    // run at 60 FPS
 
+            // Touch UserData at boot so Sessions is bumped and FirstVersion is stamped now
+            // (it's otherwise lazy — created on first access).
+            _ = UserData.Instance;
+
             Haptics.Enabled = AppData.Haptics.Value;
             DefineHaptics();
 
@@ -72,6 +76,12 @@ namespace qp {
 #endif
 
             // ---- boot stages (registered here so TasksTotal is known up front) ----
+            // Stage 0: give UserID up to 3s to resolve (AppSetID is async on Android) so events
+            // and Firebase can carry it. UserID inits itself in Awake — we only poll readiness.
+            Register("user_id", null,
+                () => Common.UserID.Instance != null && Common.UserID.Instance.IsReady,
+                timeoutSec: 3f);
+
             // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
             Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);
 
