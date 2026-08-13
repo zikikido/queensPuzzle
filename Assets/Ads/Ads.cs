@@ -130,13 +130,12 @@ namespace qp {
 
         // ================== interstitial ==================
 
-        const float InterCooldownSec = 60f;      // min gap between interstitials
         static float _lastInterClosedAt = -9999f;   // realtime of the last interstitial CLOSE
 
         /// <summary>True when an interstitial is loaded AND the cooldown since the last one closed
         /// has elapsed. The level gate is the caller's job (GameConfig.StartShowInterAtLevel).</summary>
         public static bool CanShowInterstitial =>
-            IsInterstitialReady && Time.realtimeSinceStartup - _lastInterClosedAt >= InterCooldownSec;
+            IsInterstitialReady && Time.realtimeSinceStartup - _lastInterClosedAt >= GameConfig.InterCooldownSec;
 
         static void WireInterstitial() {
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent        += (id, info) => { _interstitialLoaded = true; _interstitialRetry = 0; };
