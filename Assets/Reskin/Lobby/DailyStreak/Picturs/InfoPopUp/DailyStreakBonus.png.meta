@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 58a5a9141a163504da53739104cd523f
+guid: c7004078e0b0174468b825ba0aa2987a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4829435805098385177
-    second: Example_0
+      213: -858208360981649839
+    second: DailyStreakBonus_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Example_0
+      name: DailyStreakBonus_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 7e0ee8309b56afcb0800000000000000
-      internalID: -4829435805098385177
+      spriteID: 1562b6cea080714f0800000000000000
+      internalID: -858208360981649839
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Example_0: -4829435805098385177
+      DailyStreakBonus_0: -858208360981649839
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

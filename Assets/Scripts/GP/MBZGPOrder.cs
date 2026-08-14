@@ -10,7 +10,8 @@ namespace qp {
             BOARD_CELLS,
             BOARD_ANIMS,
             TOUTURIAL,
-            ON_TOTRIAL
+            ON_TOTRIAL,
+            POPUPS
         }
 
         public override Type GetEnumType() {

@@ -7,6 +7,11 @@ using UnityEngine.UI;
 namespace qp {
     public class MBBoostButton : MonoBehaviour {
 
+        // Freezes every boost counter's display while set — the value still changes underneath.
+        // Raised on a win that granted a streak reward so the count doesn't jump silently; the
+        // reward popup lowers it on reveal, and Awake clears it so it never sticks between games.
+        public static bool SuppressUpdate;
+
         public EBoostType BoostType;
 
         // Set by MBGameplay: runs this boost's effect, returns true if it actually consumed one.
@@ -35,6 +40,8 @@ namespace qp {
         }
 
         private void Awake() {
+
+            SuppressUpdate = false;   // fresh game — never inherit a freeze from a previous session
 
             _amount = transform.RecursiveFindChild("$Amount");
             _videoLoading = transform.RecursiveFindChild("$VideoLoading");
@@ -66,6 +73,7 @@ namespace qp {
         }
 
         private void Update() {
+            if (SuppressUpdate) return;   // hold the display; a granted streak reward reveals via its popup
             int amount = AppData.Boosts[BoostType].Value;
             bool videoReady = Ads.IsRewardedReady;
             if (amount == _lastAmount && videoReady == _lastVideoReady) return;

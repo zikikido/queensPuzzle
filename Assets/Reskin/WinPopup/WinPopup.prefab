@@ -26379,6 +26379,7 @@ GameObject:
   - component: {fileID: 2788718602704504439}
   - component: {fileID: 62213084033484767}
   - component: {fileID: 1741256356561086482}
+  - component: {fileID: 3785803653244426952}
   m_Layer: 0
   m_Name: WinPopup
   m_TagString: Untagged
@@ -26457,7 +26458,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 5
   m_TargetDisplay: 0
 --- !u!114 &151873485466603172
 MonoBehaviour:
@@ -26522,6 +26523,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2efa604eb8dbf449aa97078f070f11e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &3785803653244426952
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7932887595852150522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 243c98e8ac30ede4bb16852f19099f3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _zorderTypeStr: POPUPS
+  _targetMode: 0
+  _specificGameObject: {fileID: 0}
 --- !u!1 &9071129930756455984
 GameObject:
   m_ObjectHideFlags: 0

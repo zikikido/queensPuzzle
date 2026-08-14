@@ -740,7 +740,9 @@ namespace qp {
             // OnSolved first (final time), GameWin before Invalidate (counters still the
             // attempt's) and before LevelIdx++ (the win belongs to the level just solved).
             if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();
-            DailyStreakManager.RegisterWin();   // any win (campaign or daily) keeps today's streak
+            // Any win (campaign or daily) keeps today's streak. If it granted a milestone reward,
+            // freeze the boost counters so they don't jump now — the reward popup reveals it.
+            if (DailyStreakManager.RegisterWin().reward != null) MBBoostButton.SuppressUpdate = true;
             Analytics.GameWin();
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
