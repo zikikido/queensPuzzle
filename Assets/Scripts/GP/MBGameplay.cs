@@ -34,6 +34,8 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        MBDailyStreakInGamePopup _streakProgressPopup;          // shown when the streak advanced
+        MBDailyStreakInGameRewordedPopup _streakRewardPopup;    // shown when a milestone was hit
         MBFailPopup _failPopup;      // same pattern as the win popup — shows when the bones run out
         MBTopBar _topBar;            // "queens placed / total" HUD
         Coroutine _shake;            // board shake on a wrong queen
@@ -98,15 +100,23 @@ namespace qp {
             // Same for the win popup: wake it so its Awake wires the button, then hide it again
             // (unlike the tutorial it doesn't self-sleep — it only shows on win).
             _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
-            if (_winPopup != null && !_winPopup.gameObject.activeSelf) {
-                _winPopup.gameObject.SetActive(true);
-            }
+            if (_winPopup != null) _winPopup.gameObject.SetActive(true);
+            else Debug.LogError("[MBGameplay] MBWinPopup missing in the scene");
 
             // Fail popup: same wake-for-layout trick as the win popup (it hides itself after).
             _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
-            if (_failPopup != null && !_failPopup.gameObject.activeSelf) {
-                _failPopup.gameObject.SetActive(true);
-            }
+            if (_failPopup != null) _failPopup.gameObject.SetActive(true);
+            else Debug.LogError("[MBGameplay] MBFailPopup missing in the scene");
+
+            // In-game streak popups (progress + reward): same wake-for-layout trick; each shows on a
+            // qualifying win via WinFlow. Found once here so WinFlow never has to look them up.
+            _streakProgressPopup = FindAnyObjectByType<MBDailyStreakInGamePopup>(FindObjectsInactive.Include);
+            if (_streakProgressPopup != null) _streakProgressPopup.gameObject.SetActive(true);
+            else Debug.LogError("[MBGameplay] MBDailyStreakInGamePopup missing in the scene");
+
+            _streakRewardPopup = FindAnyObjectByType<MBDailyStreakInGameRewordedPopup>(FindObjectsInactive.Include);
+            if (_streakRewardPopup != null) _streakRewardPopup.gameObject.SetActive(true);
+            else Debug.LogError("[MBGameplay] MBDailyStreakInGameRewordedPopup missing in the scene");
 
             _topBar = FindAnyObjectByType<MBTopBar>(FindObjectsInactive.Include);
 
@@ -740,28 +750,44 @@ namespace qp {
             // OnSolved first (final time), GameWin before Invalidate (counters still the
             // attempt's) and before LevelIdx++ (the win belongs to the level just solved).
             if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();
-            // Any win (campaign or daily) keeps today's streak. If it granted a milestone reward,
-            // freeze the boost counters so they don't jump now — the reward popup reveals it.
-            if (DailyStreakManager.RegisterWin().reward != null) MBBoostButton.SuppressUpdate = true;
             Analytics.GameWin();
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
             if (!DailyChallengeManager.InDailyRun) AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
-            if (_winPopup == null)
-                _winPopup = FindAnyObjectByType<MBWinPopup>(FindObjectsInactive.Include);
-            Debug.Log($"[MBGameplay] Win — popup {(_winPopup != null ? "found" : "MISSING")}");
 
-            
-            float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
-            StartCoroutine(ShowWinPopupAfter((happyLen > 0f ? happyLen : 3f) * 0.5f));   // popup at half the celebration
+            StartCoroutine(WinFlow());
 
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
             CommonSFX.Play(GPSFX.Instance.Win);
         }
 
-        IEnumerator ShowWinPopupAfter(float seconds) {
-            yield return new WaitForSecondsRealtime(seconds);
-            if (_winPopup != null) _winPopup.Show();
+        // The post-win sequence: register the streak (grant + freeze boosts up front, so a granted
+        // reward never flashes on the counter), wait out half the celebration, then show the streak
+        // popup — its $ContinueButton hands off to the win popup. No streak popup when the win didn't
+        // touch the streak (offline / already won today) — straight to the win popup.
+        IEnumerator WinFlow() {
+            var streak = DailyStreakManager.RegisterWin();
+            if (streak.reward != null) MBBoostButton.SuppressUpdate = true;
+
+            float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
+            yield return new WaitForSecondsRealtime((happyLen > 0f ? happyLen : 3f) * 0.5f);
+
+            // Reward popup when a milestone was hit, progress popup when the streak just advanced,
+            // otherwise (offline / already won today) nothing. Show it and wait until it closes,
+            // then fall through to the win popup.
+            if (streak.reward != null) {
+                _streakRewardPopup.Show();
+                yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
+            } else if (streak.advanced) {
+                _streakProgressPopup.Show();
+                yield return new WaitWhile(() => _streakProgressPopup.IsShowing);
+            }
+
+            _showWinPopup();
+        }
+
+        void _showWinPopup() {
+            _winPopup.Show();
 #if !IGNORE_COMMON_REVIEW
             StartCoroutine(ReviewManager.Instance.TryReview());   // no-op unless Preapre finished
 #endif
@@ -779,9 +805,6 @@ namespace qp {
             AppData.LastPlayData.Invalidate();
             _saveQueued = false;   // a queued write would resurrect the invalidated attempt
 
-            if (_failPopup == null)
-                _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
-            Debug.Log($"[MBGameplay] Fail — popup {(_failPopup != null ? "found" : "MISSING")}");
             CommonSFX.Play(GPSFX.Instance.Fail);
 
             // hold the popup for exactly one cry — but only when a queen is on screen to cry;
@@ -796,7 +819,7 @@ namespace qp {
 
         IEnumerator ShowFailPopupAfter(float seconds) {
             yield return new WaitForSecondsRealtime(seconds);
-            if (_failPopup != null) _failPopup.Show();
+            _failPopup.Show();
         }
 
         // Fail-continue: every bone returns, but the wrong queens stay on the board — they're
