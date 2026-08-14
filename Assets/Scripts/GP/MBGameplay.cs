@@ -756,10 +756,11 @@ namespace qp {
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
             if (!DailyChallengeManager.InDailyRun) AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
 
-            StartCoroutine(WinFlow());
-
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
             CommonSFX.Play(GPSFX.Instance.Win);
+
+            StartCoroutine(WinFlow());
+         
         }
 
         // The post-win sequence: register the streak (grant + freeze boosts up front, so a granted
@@ -776,13 +777,18 @@ namespace qp {
             // Reward popup when a milestone was hit, progress popup when the streak just advanced,
             // otherwise (offline / already won today) nothing. Show it and wait until it closes,
             // then fall through to the win popup.
-            if (streak.reward != null) {
-                _streakRewardPopup.Show(streak.streak, streak.reward);
-                yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
-            } else if (streak.advanced) {
-                _streakProgressPopup.Show(streak.streak);
-                yield return new WaitWhile(() => _streakProgressPopup.IsShowing);
+
+            // only if won level not 0
+            if (AppData.LevelIdx.Value > 1) {
+                if (streak.reward != null) {
+                    _streakRewardPopup.Show(streak.streak, streak.reward);
+                    yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
+                } else if (streak.advanced) {
+                    _streakProgressPopup.Show(streak.streak);
+                    yield return new WaitWhile(() => _streakProgressPopup.IsShowing);
+                }
             }
+            
 
             _showWinPopup();
         }

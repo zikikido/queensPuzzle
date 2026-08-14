@@ -17,7 +17,7 @@ namespace qp {
         /// <summary>Apply the reward to the player.</summary>
         public void Grant() => AppData.Boosts[type].Value += amount;
 
-        /// <summary>Short amount label for the reward UI, e.g. "x3".</summary>
-        public string Label => $"x{amount}";
+        /// <summary>Short amount label for the reward UI, e.g. "+3".</summary>
+        public string Label => $"+{amount}";
     }
 }
