@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using Common;
 using TMPro;
@@ -20,8 +19,7 @@ namespace qp {
 
         TMP_Text _streakText;                            // $Streak
         Image _icon;                                     // $Icon — the reward boost sprite
-        TMP_Text _amountText;                            // $AmountText — "x2"
-        GameObject _boxSmall, _boxMedium, _boxLarge;     // $GiftBoxIcon* — the big box, by tier
+        TMP_Text _amountText;                            // $AmountText — "+2"
         MBDailyStreakProgress _progress;                 // the bar widget in DailyStreakProgressContainer
 
         /// <summary>True while the popup is open — the win flow waits on this before continuing.</summary>
@@ -35,9 +33,6 @@ namespace qp {
             _streakText = transform.RecursiveFindChild<TMP_Text>("$Streak");
             _icon = transform.RecursiveFindChild<Image>("$Icon");
             _amountText = transform.RecursiveFindChild<TMP_Text>("$AmountText");
-            _boxSmall = transform.RecursiveFindChild("$GiftBoxIconSmall")?.gameObject;
-            _boxMedium = transform.RecursiveFindChild("$GiftBoxIconMeduim")?.gameObject;   // (spelling as authored)
-            _boxLarge = transform.RecursiveFindChild("$GiftBoxIconLarge")?.gameObject;
             _progress = GetComponentInChildren<MBDailyStreakProgress>(true);
 
             var cont = transform.RecursiveFindChild<Button>("$ContinueButton");
@@ -65,12 +60,6 @@ namespace qp {
                 if (_icon != null) _icon.sprite = DailyStreakManager.SpriteFor(reward.type);
                 if (_amountText != null) _amountText.text = reward.Label;
             }
-
-            // The big gift box, sized to which milestone this is (tier = index of the matching day).
-            int tier = Array.IndexOf(DailyStreakManager.Milestones, streak);
-            if (_boxSmall != null) _boxSmall.SetActive(tier == 0);
-            if (_boxMedium != null) _boxMedium.SetActive(tier == 1);
-            if (_boxLarge != null) _boxLarge.SetActive(tier == 2);
         }
 
         void _close() {

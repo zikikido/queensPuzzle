@@ -22,8 +22,8 @@ namespace qp {
     /// trusted (MBServerTimeManagerV2.IsTimeSynced); the day index comes from MBServerTimeManagerV2.UTCNow.
     ///
     /// Rule: first win of a server-UTC day advances the streak by 1; a same-day extra win does nothing;
-    /// a win after a one-day gap continues; a longer gap starts over at 1. Streak cycles 1..cycleLength
-    /// (21) then wraps back to 1. Milestones (7/14/21) grant their reward the instant they're reached.
+    /// a win after a one-day gap continues; a longer gap starts over at 1. The streak climbs forever
+    /// (never wraps); every cycleLength-th day (7, 14, 21, …) grants one random gift.
     ///
     /// Persisted: <see cref="_streak"/> and <see cref="_lastWinDay"/> (two ints). Everything the
     /// lobby shows (status, missed-day reset, milestone/progress) is derived on read.
@@ -55,8 +55,8 @@ namespace qp {
 
             int today = Today;
             int s = _streak.Value;
-            // completed a full cycle, or the streak lapsed (missed a day / first ever) → start over
-            if (s >= Config.cycleLength || _lastWinDay.Value != today - 1) s = 1;
+            // the streak lapsed (missed a day / first ever) → start over, else grow (forever)
+            if (_lastWinDay.Value != today - 1) s = 1;
             else s++;                               // second consecutive day and onward
 
             _streak.Value = s;
@@ -78,7 +78,7 @@ namespace qp {
         /// <summary>Debug only (MBDebugWin) — force the streak to a value and pin the last win to
         /// today, so <see cref="SyncDayChange"/> won't immediately reset it.</summary>
         public static void DebugSetStreak(int value) {
-            _streak.Value = value < 0 ? 0 : value > CycleLength ? CycleLength : value;   // stay within the cycle
+            _streak.Value = value < 0 ? 0 : value;   // streak has no upper bound — it climbs forever
             _lastWinDay.Value = Today;
         }
 
@@ -97,34 +97,17 @@ namespace qp {
         /// <summary>The configured sprite for a boost type (reward UI), or null.</summary>
         public static UnityEngine.Sprite SpriteFor(EBoostType type) => Config != null ? Config.SpriteFor(type) : null;
 
-        /// <summary>Streak wraps back to 1 after this many days (from config; 21 if config missing).</summary>
-        public static int CycleLength => Config != null ? Config.cycleLength : 21;
-
-        /// <summary>The three milestone days, ascending — evenly spaced at 1/3, 2/3 and the full
-        /// cycle (e.g. cycle 21 → 7 / 14 / 21). These are the progress-bar stage boundaries.</summary>
-        public static int[] Milestones {
-            get {
-                int c = CycleLength;
-                return new[] {
-                    (int)System.Math.Round(c / 3.0),
-                    (int)System.Math.Round(c * 2.0 / 3.0),
-                    c,
-                };
-            }
-        }
+        /// <summary>Days per reward cycle (from config; 7 if config missing). The streak keeps
+        /// climbing forever; a random gift drops every time it hits a multiple of this.</summary>
+        public static int CycleLength => Config != null ? Config.cycleLength : 7;
 
         // ---- helpers --------------------------------------------------------------------
 
         static bool IsOnline => MBServerTimeManagerV2.IsTimeSynced;
 
-        // The reward for reaching a given streak day, or null when it isn't a milestone. Rewards are
-        // indexed by tier (1st/2nd/3rd milestone) since the days themselves are derived from the cycle.
-        static Reward _milestoneRewardFor(int streak) {
-            var ms = Milestones;
-            for (int i = 0; i < ms.Length; i++)
-                if (ms[i] == streak) return Config != null ? Config.RewardForTier(i) : null;
-            return null;
-        }
+        // The gift for a given streak day: a random reward every Nth day (7, 14, 21, …), null otherwise.
+        static Reward _milestoneRewardFor(int streak) =>
+            Config != null && streak > 0 && streak % CycleLength == 0 ? Config.RewardRandom() : null;
 
         // Days since epoch in trusted server UTC — the calendar index the streak counts in.
         static int Today => (int)(MBServerTimeManagerV2.UTCNow.Date - Epoch).TotalDays;
