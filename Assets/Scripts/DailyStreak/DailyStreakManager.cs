@@ -94,6 +94,9 @@ namespace qp {
                 _streak.Value = 0;
         }
 
+        /// <summary>The configured sprite for a boost type (reward UI), or null.</summary>
+        public static UnityEngine.Sprite SpriteFor(EBoostType type) => Config != null ? Config.SpriteFor(type) : null;
+
         /// <summary>Streak wraps back to 1 after this many days (from config; 21 if config missing).</summary>
         public static int CycleLength => Config != null ? Config.cycleLength : 21;
 

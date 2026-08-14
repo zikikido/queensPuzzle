@@ -357,6 +357,7 @@ namespace qp {
 
             _ready = false;   // no input while we (re)build and bloom
             _saveQueued = false;   // a write queued on the OLD board must not land on this one
+            MBBoostButton.SuppressUpdate = false;   // new board — resume boost counters frozen by a streak reward
             SetChromeInteractable(false);   // top/bottom bars locked until the bloom finishes
             _level = level;   // keep for hints
             _levelHash = level.ContentHash();   // saves are stamped with it; restore requires a match
@@ -776,10 +777,10 @@ namespace qp {
             // otherwise (offline / already won today) nothing. Show it and wait until it closes,
             // then fall through to the win popup.
             if (streak.reward != null) {
-                _streakRewardPopup.Show();
+                _streakRewardPopup.Show(streak.streak, streak.reward);
                 yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
             } else if (streak.advanced) {
-                _streakProgressPopup.Show();
+                _streakProgressPopup.Show(streak.streak);
                 yield return new WaitWhile(() => _streakProgressPopup.IsShowing);
             }
 
