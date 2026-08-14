@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-public class MBDailyStreakAfterWInPopup : MonoBehaviour
+public class MBDailyStreakInGamePopup : MonoBehaviour
 {
     private CanvasGroup _group;
 

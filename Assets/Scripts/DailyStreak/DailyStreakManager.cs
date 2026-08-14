@@ -62,7 +62,7 @@ namespace qp {
             _streak.Value = s;
             _lastWinDay.Value = today;
 
-            Reward reward = MilestoneRewardFor(s);   // null unless s is a milestone day
+            Reward reward = _milestoneRewardFor(s);   // null unless s is a milestone day
             reward?.Grant();
 
             return new StreakResult { advanced = true, streak = s, reward = reward };
@@ -116,7 +116,7 @@ namespace qp {
 
         // The reward for reaching a given streak day, or null when it isn't a milestone. Rewards are
         // indexed by tier (1st/2nd/3rd milestone) since the days themselves are derived from the cycle.
-        static Reward MilestoneRewardFor(int streak) {
+        static Reward _milestoneRewardFor(int streak) {
             var ms = Milestones;
             for (int i = 0; i < ms.Length; i++)
                 if (ms[i] == streak) return Config != null ? Config.RewardForTier(i) : null;

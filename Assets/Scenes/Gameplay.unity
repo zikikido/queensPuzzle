@@ -15771,12 +15771,60 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1260989075953423874, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_Name
-      value: DailyStreakAfterWInPopup
+      value: DailyStreakInGamePopup
+      objectReference: {fileID: 0}
+    - target: {fileID: 1260989075953423874, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1937732027164558696, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1937732027164558696, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1937732027164558696, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3282518462891054069, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3282518462891054069, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3282518462891054069, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3796111113425554205, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_Camera
       value: 
       objectReference: {fileID: 1486898934}
+    - target: {fileID: 4949894149567102733, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4949894149567102733, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4949894149567102733, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4949894149567102733, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4949894149567102733, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8104906822997974284, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -15855,6 +15903,26 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8104906822997974284, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9198042552400200938, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9198042552400200938, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9198042552400200938, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9198042552400200938, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9198042552400200938, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
+      propertyPath: m_LocalScale.z
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

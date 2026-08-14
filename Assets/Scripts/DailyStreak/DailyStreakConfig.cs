@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace qp {
@@ -21,5 +22,22 @@ namespace qp {
         /// <summary>The reward for a milestone tier (0-based), or null when out of range.</summary>
         public Reward RewardForTier(int tier) =>
             rewards != null && tier >= 0 && tier < rewards.Length ? rewards[tier] : null;
+
+        [Tooltip("Sprite shown for each boost type in the reward UI — swap here to change dynamically.")]
+        public BoostSprite[] boostSprites;
+
+        /// <summary>The configured sprite for a boost type, or null if none is set.</summary>
+        public Sprite SpriteFor(EBoostType type) {
+            if (boostSprites != null)
+                foreach (var b in boostSprites)
+                    if (b.type == type) return b.sprite;
+            return null;
+        }
+
+        [Serializable]
+        public class BoostSprite {
+            public EBoostType type;
+            public Sprite sprite;
+        }
     }
 }
