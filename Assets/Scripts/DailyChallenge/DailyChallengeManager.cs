@@ -139,6 +139,24 @@ namespace qp {
             _boardsSolved.Value++;
         }
 
+        /// <summary>Debug only (MBDebugWin) — clear today's blob so the card is playable (Active) again.</summary>
+        public static void DebugResetToday() {
+            _state.dayIndex = -1; _state.tier = -1; _state.timeSec = 0f; _state.attempts = 0;
+            _state.solved = false; _state.topPct = 0; _state.Save();
+        }
+
+        /// <summary>Debug only (MBDebugWin) — mark today solved (Done card) without playing it.</summary>
+        public static void DebugMarkSolvedToday() {
+            if (_state.solved && _state.dayIndex == DayIndex) return;
+            _state.dayIndex = DayIndex;
+            if (_state.tier < 0) _state.tier = Tier;
+            if (_state.timeSec <= 0f) _state.timeSec = 120f;
+            _state.solved = true;
+            _state.topPct = FakeTopPct(_state.timeSec, 0);
+            _state.Save();
+            _boardsSolved.Value++;
+        }
+
         /// <summary>Solve-time display shared by the lobby card and the top bar: "12:34", "1:02:34".</summary>
         public static string FormatTime(float sec) {
             int s = sec < 0f ? 0 : (int)Math.Round(sec);

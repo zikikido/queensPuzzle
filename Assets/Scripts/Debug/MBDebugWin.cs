@@ -91,6 +91,12 @@ namespace qp {
             }
 
             GUILayout.Space(16);
+            var dc = DailyChallengeManager.State;
+            GUILayout.Label($"Daily Challenge ({DailyChallengeManager.Status}, day {dc.dayIndex}, tier {dc.tier}, solved {dc.solved}, boards {DailyChallengeManager.BoardsSolved})");
+            if (Button("DC: reset today (playable)")) DailyChallengeManager.DebugResetToday();
+            if (Button("DC: mark solved today")) DailyChallengeManager.DebugMarkSolvedToday();
+
+            GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");
             if (Button("Mediation Debugger")) MaxSdk.ShowMediationDebugger();
             if (Button($"Show Rewarded  (ready: {Ads.IsRewardedReady})"))
