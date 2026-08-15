@@ -26,6 +26,10 @@ namespace qp {
         TMP_Text _amountText;                            // $AmountText — "+2"
         MBDailyStreakProgress _progress;                 // the bar widget in %DailyStreakProgressContainer
 
+        MBDailyStreakInGameRewordedPopupAnim _anim;      // reskin animator driver (Show + Reward states)
+        CanvasGroup _amount1, _amount;                   // $%1 / $%Amount — faded in by the reward clip
+        Transform _poof;                                 // $CFXR Magic Poof — played by code at phase 3
+
         /// <summary>True while the popup is open — the win flow waits on this before continuing.</summary>
         public bool IsShowing => _showing;
 
@@ -40,6 +44,11 @@ namespace qp {
             _icon = transform.RecursiveFindChild<Image>("$Icon");
             _amountText = transform.RecursiveFindChild<TMP_Text>("$AmountText");
             _progress = GetComponentInChildren<MBDailyStreakProgress>(true);
+
+            _anim = GetComponent<MBDailyStreakInGameRewordedPopupAnim>();
+            _amount1 = transform.RecursiveFindChild<CanvasGroup>("$%1");
+            _amount = transform.RecursiveFindChild<CanvasGroup>("$%Amount");
+            _poof = transform.RecursiveFindChild("$CFXR Magic Poof");
 
             // Continue button carries both markers: $ (found from code) and % (used by the animator).
             var cont = transform.RecursiveFindChild<Button>("$%ContinueButton");
@@ -70,18 +79,33 @@ namespace qp {
                 if (_icon != null) _icon.sprite = DailyStreakManager.SpriteFor(reward.type);
                 if (_amountText != null) _amountText.text = reward.Label;
             }
+            // the reward stays hidden until phase 3 fades it in
+            if (_amount1 != null) _amount1.alpha = 0f;
+            if (_amount != null) _amount.alpha = 0f;
 
             StartCoroutine(_showFlow(newStreak));
         }
 
-        // Promise-style sequence: play the entrance, then stamp the completing check, then scroll old→new.
+        // Promise-style sequence: entrance → stamp the completing check → scroll old→new → reward reveal.
         IEnumerator _showFlow(int newStreak) {
-            var anim = GetComponent<IPopupAnim>();
-            anim?.PlayIn();
-            if (anim != null) yield return new WaitUntil(() => anim.IsFinished());
+            _anim?.PlayIn();
+            if (_anim != null) yield return new WaitUntil(() => _anim.IsFinished());
 
             if (_progress != null) yield return _progress.PlayStamp(newStreak);
             yield return _scrollY(_streakScroll, ScrollFrom, 0f, 1f);
+
+            // Phase 3: the reward pops from the gift — poof (code), then the reveal clip opens the
+            // gift and fades in $%1 / $%Amount.
+            _playPoof();
+            _anim?.PlayReward();
+        }
+
+        void _playPoof() {
+            if (_poof == null) return;
+            var uip = _poof.GetComponent<Coffee.UIExtensions.UIParticle>();
+            if (uip != null) { uip.Play(); return; }
+            var ps = _poof.GetComponent<ParticleSystem>();
+            if (ps != null) ps.Play();
         }
 
         // Slide the container's anchored Y from -> to (ease-out), revealing $StreakNew.

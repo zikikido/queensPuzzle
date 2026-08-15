@@ -9368,7 +9368,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1260989075953423874, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1937732027164558696, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
       propertyPath: m_LocalScale.x
@@ -9379,6 +9379,18 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1937732027164558696, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3278789628714610572, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3278789628714610572, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3278789628714610572, guid: 3bbe4395d0a10c54c8cd13822c36e6d5, type: 3}
       propertyPath: m_LocalScale.z
       value: 0
       objectReference: {fileID: 0}
@@ -15936,7 +15948,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1260989075953423874, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_Name
-      value: DailyStreakInGamePopup
+      value: DailyStreakInfoPopup
       objectReference: {fileID: 0}
     - target: {fileID: 1260989075953423874, guid: b55617d066bcbf8409e4953806e8e6f2, type: 3}
       propertyPath: m_IsActive
