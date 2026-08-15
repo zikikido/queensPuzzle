@@ -26,6 +26,13 @@ namespace qp {
             if (_animator.isInitialized) _animator.Update(0f);
         }
 
+        /// <summary>True once the Show clip has played through (it's a one-shot, so it holds at the end).</summary>
+        public bool IsFinished() {
+            if (_animator == null || !_animator.isInitialized) return true;
+            var st = _animator.GetCurrentAnimatorStateInfo(0);
+            return !st.IsName("Show") || st.normalizedTime >= 1f;
+        }
+
         // ---- animation events (wired from the Show clip) --------------------------------
 
         /// <summary>Animation event — the old→new streak count-up hooks in here later.</summary>

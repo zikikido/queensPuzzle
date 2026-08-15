@@ -1,5 +1,7 @@
+using System.Collections;
 using Common;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace qp {
 
@@ -38,9 +40,35 @@ namespace qp {
                     _checks[i].SetActive(done * slots >= (i + 1) * cycle);
         }
 
-        /// <summary>Animate the bar from what it currently shows to <paramref name="streak"/>
-        /// (for the reward-reveal popup). TODO: real tween — snaps for now.</summary>
-        public void AnimateTo(int streak) => ApplyImmediately(streak);
+        /// <summary>"Stamp" in the check earned at <paramref name="streak"/> — a big, faded $V that
+        /// scales down onto its circle. Assumes the earlier checks are already shown (ApplyImmediately).</summary>
+        public IEnumerator PlayStamp(int streak) {
+            _ensureCached();
+            int cycle = DailyStreakManager.CycleLength;
+            int idx = (cycle > 0 ? streak % cycle : 0) - 1;   // the check this win earned
+            _shownStreak = streak;
+
+            if (_checks == null || idx < 0 || idx >= _checks.Length) yield break;
+            yield return _stampIn(_checks[idx]);
+        }
+
+        // Big + transparent → scales down to normal and fades in, landing like a stamp on the circle.
+        IEnumerator _stampIn(GameObject v) {
+            v.SetActive(true);
+            var img = v.GetComponentInChildren<Image>(true);
+            var tr = v.transform;
+            const float dur = 0.5f, big = 2.5f;
+
+            for (float t = 0f; t < dur; t += Time.unscaledDeltaTime) {
+                float p = Mathf.Clamp01(t / dur);
+                float ease = 1f - (1f - p) * (1f - p);           // ease-out (decelerate onto the circle)
+                tr.localScale = Vector3.one * Mathf.LerpUnclamped(big, 1f, ease);
+                if (img != null) { var c = img.color; c.a = Mathf.Clamp01(p / 0.4f); img.color = c; }
+                yield return null;
+            }
+            tr.localScale = Vector3.one;
+            if (img != null) { var c = img.color; c.a = 1f; img.color = c; }
+        }
 
         // Direct children are the dots (in order), each with a $V. Cached lazily so it works whenever
         // the widget first paints.

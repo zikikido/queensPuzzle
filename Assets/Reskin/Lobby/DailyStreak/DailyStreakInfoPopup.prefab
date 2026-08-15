@@ -1866,7 +1866,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2538820632965357676}
   m_Layer: 0
-  m_Name: Container
+  m_Name: $StreakContainer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1904,6 +1904,10 @@ PrefabInstance:
     - target: {fileID: 1538174776436943966, guid: 839ffedeb6fa01a408345f2cfa2874a8, type: 3}
       propertyPath: m_Name
       value: DailyStreakProgress
+      objectReference: {fileID: 0}
+    - target: {fileID: 1958127050431486907, guid: 839ffedeb6fa01a408345f2cfa2874a8, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2493217826597249181, guid: 839ffedeb6fa01a408345f2cfa2874a8, type: 3}
       propertyPath: m_Pivot.x
@@ -1984,6 +1988,10 @@ PrefabInstance:
     - target: {fileID: 2493217826597249181, guid: 839ffedeb6fa01a408345f2cfa2874a8, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8755897159625713649, guid: 839ffedeb6fa01a408345f2cfa2874a8, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
