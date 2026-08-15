@@ -45,7 +45,9 @@ namespace qp {
         public IEnumerator PlayStamp(int streak) {
             _ensureCached();
             int cycle = DailyStreakManager.CycleLength;
-            int idx = (cycle > 0 ? streak % cycle : 0) - 1;   // the check this win earned
+            // 0-based slot the win completed — (streak-1)%cycle, so a milestone (streak%cycle==0)
+            // lands on the last slot instead of -1.
+            int idx = cycle > 0 && streak > 0 ? (streak - 1) % cycle : -1;
             _shownStreak = streak;
 
             if (_checks == null || idx < 0 || idx >= _checks.Length) yield break;

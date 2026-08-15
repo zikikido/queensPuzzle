@@ -14,6 +14,9 @@ namespace qp {
     /// </summary>
     public class MBDailyStreakInGameRewordedPopup : MonoBehaviour {
 
+        // The streak number container starts scrolled up by this (old in view) and slides to 0 (new).
+        const float ScrollFrom = -158f;
+
         CanvasGroup _group;
         bool _showing;              // a real show is on screen (guards the layout pass from hiding it)
 
@@ -52,18 +55,45 @@ namespace qp {
             if (!_showing) gameObject.SetActive(false);
         }
 
-        public void Show(int streak, Reward reward) {
+        public void Show(int oldStreak, int newStreak, Reward reward) {
             _showing = true;
             _group.alpha = 1f;
             gameObject.SetActive(true);
 
-            _streakOld.text = _streakNew.text = streak.ToString();
-            if (_progress != null) _progress.ApplyImmediately(streak);
+            _streakOld.text = oldStreak.ToString();
+            _streakNew.text = newStreak.ToString();
+            // start with the old number in view + the old streak's checks already on the bar
+            _streakScroll.anchoredPosition = new Vector2(_streakScroll.anchoredPosition.x, ScrollFrom);
+            if (_progress != null) _progress.ApplyImmediately(oldStreak);
 
             if (reward != null) {
                 if (_icon != null) _icon.sprite = DailyStreakManager.SpriteFor(reward.type);
                 if (_amountText != null) _amountText.text = reward.Label;
             }
+
+            StartCoroutine(_showFlow(newStreak));
+        }
+
+        // Promise-style sequence: play the entrance, then stamp the completing check, then scroll old→new.
+        IEnumerator _showFlow(int newStreak) {
+            var anim = GetComponent<IPopupAnim>();
+            anim?.PlayIn();
+            if (anim != null) yield return new WaitUntil(() => anim.IsFinished());
+
+            if (_progress != null) yield return _progress.PlayStamp(newStreak);
+            yield return _scrollY(_streakScroll, ScrollFrom, 0f, 1f);
+        }
+
+        // Slide the container's anchored Y from -> to (ease-out), revealing $StreakNew.
+        IEnumerator _scrollY(RectTransform rt, float fromY, float toY, float dur) {
+            float x = rt.anchoredPosition.x;
+            for (float t = 0f; t < dur; t += Time.unscaledDeltaTime) {
+                float p = Mathf.Clamp01(t / dur);
+                float e = 1f - (1f - p) * (1f - p);   // ease-out
+                rt.anchoredPosition = new Vector2(x, Mathf.Lerp(fromY, toY, e));
+                yield return null;
+            }
+            rt.anchoredPosition = new Vector2(x, toY);
         }
 
         void _close() {

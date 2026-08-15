@@ -781,7 +781,7 @@ namespace qp {
             // only if won level not 0
             if (AppData.LevelIdx.Value > 1) {
                 if (streak.reward != null) {
-                    _streakRewardPopup.Show(streak.streak, streak.reward);
+                    _streakRewardPopup.Show(streak.previous, streak.streak, streak.reward);
                     yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
                 } else if (streak.advanced) {
                     _streakProgressPopup.Show(streak.previous, streak.streak);
