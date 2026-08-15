@@ -32,7 +32,8 @@ namespace qp {
             _streakNew = transform.RecursiveFindChild<TMP_Text>("$StreakNew");
             _progress = GetComponentInChildren<MBDailyStreakProgress>(true);
 
-            var cont = transform.RecursiveFindChild<Button>("$ContinueButton");
+            // Continue button carries both markers: $ (found from code) and % (used by the animator).
+            var cont = transform.RecursiveFindChild<Button>("$%ContinueButton");
             if (cont != null) cont.onClick.AddListener(_close);
         }
 
@@ -53,6 +54,8 @@ namespace qp {
             if (_streakOld != null) _streakOld.text = oldStreak.ToString();
             if (_streakNew != null) _streakNew.text = newStreak.ToString();
             if (_progress != null) _progress.ApplyImmediately(newStreak);
+
+            GetComponent<IPopupAnim>()?.PlayIn();   // reskin animates the open, if it has one
         }
 
         void _close() {
