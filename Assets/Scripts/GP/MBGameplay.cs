@@ -34,7 +34,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
-        MBDailyStreakInGamePopup _streakProgressPopup;          // shown when the streak advanced
+        MBDailyStreakInfoPopup _streakProgressPopup;          // shown when the streak advanced
         MBDailyStreakInGameRewordedPopup _streakRewardPopup;    // shown when a milestone was hit
         MBFailPopup _failPopup;      // same pattern as the win popup — shows when the bones run out
         MBTopBar _topBar;            // "queens placed / total" HUD
@@ -110,7 +110,7 @@ namespace qp {
 
             // In-game streak popups (progress + reward): same wake-for-layout trick; each shows on a
             // qualifying win via WinFlow. Found once here so WinFlow never has to look them up.
-            _streakProgressPopup = FindAnyObjectByType<MBDailyStreakInGamePopup>(FindObjectsInactive.Include);
+            _streakProgressPopup = FindAnyObjectByType<MBDailyStreakInfoPopup>(FindObjectsInactive.Include);
             if (_streakProgressPopup != null) _streakProgressPopup.gameObject.SetActive(true);
             else Debug.LogError("[MBGameplay] MBDailyStreakInGamePopup missing in the scene");
 
@@ -784,7 +784,7 @@ namespace qp {
                     _streakRewardPopup.Show(streak.streak, streak.reward);
                     yield return new WaitWhile(() => _streakRewardPopup.IsShowing);
                 } else if (streak.advanced) {
-                    _streakProgressPopup.Show(streak.streak);
+                    _streakProgressPopup.Show(streak.previous, streak.streak);
                     yield return new WaitWhile(() => _streakProgressPopup.IsShowing);
                 }
             }

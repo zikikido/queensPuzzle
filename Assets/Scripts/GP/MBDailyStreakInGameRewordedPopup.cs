@@ -8,7 +8,7 @@ namespace qp {
 
     /// <summary>
     /// The in-game streak REWARD popup — shown after a win that reached a milestone (a reward was
-    /// granted), before the win popup. (The plain variant is <see cref="MBDailyStreakInGamePopup"/>.)
+    /// granted), before the win popup. (The plain variant is <see cref="MBDailyStreakInfoPopup"/>.)
     /// Caller does <c>Show(streak, reward)</c> then waits on <see cref="IsShowing"/>; $ContinueButton
     /// closes it. No anims — just fill the streak, reward icon/amount, and the tier's gift box.
     /// </summary>

@@ -13,6 +13,7 @@ namespace qp {
     /// so the win flow can show the right UI.</summary>
     public struct StreakResult {
         public bool advanced;    // the streak went up this call (online, first win today) — show streak UI
+        public int previous;     // the streak value before this win (for the old→new reveal)
         public int streak;       // the streak value after this win
         public Reward reward;    // null = no milestone; non-null = milestone reached, show reward UI
     }
@@ -51,13 +52,12 @@ namespace qp {
         public static StreakResult RegisterWin() {
             SyncDayChange();
             if (Config == null || !IsOnline || _lastWinDay.Value == Today)   // off/offline; one win/day
-                return new StreakResult { advanced = false, streak = _streak.Value, reward = null };
+                return new StreakResult { advanced = false, previous = _streak.Value, streak = _streak.Value, reward = null };
 
             int today = Today;
-            int s = _streak.Value;
+            int prev = _streak.Value;
             // the streak lapsed (missed a day / first ever) → start over, else grow (forever)
-            if (_lastWinDay.Value != today - 1) s = 1;
-            else s++;                               // second consecutive day and onward
+            int s = _lastWinDay.Value != today - 1 ? 1 : prev + 1;
 
             _streak.Value = s;
             _lastWinDay.Value = today;
@@ -65,7 +65,7 @@ namespace qp {
             Reward reward = _milestoneRewardFor(s);   // null unless s is a milestone day
             reward?.Grant();
 
-            return new StreakResult { advanced = true, streak = s, reward = reward };
+            return new StreakResult { advanced = true, previous = prev, streak = s, reward = reward };
         }
 
         /// <summary>Lock (below unlock level, or config missing) / Offline (no trusted time) / Active.</summary>
