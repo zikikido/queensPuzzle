@@ -69,6 +69,8 @@ namespace qp {
                 _runner = go.AddComponent<AdsRunner>();
             }
 
+            _ = MBAdCurtain.Instance;   // instantiate the curtain prefab now, not mid-show
+
             // Revenue → Singular (+ Firebase) for every format (Singular's documented MAX hook).
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnRevenuePaid;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnRevenuePaid;
@@ -91,6 +93,7 @@ namespace qp {
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent       += (id, info) => { _rewardedLoaded = true; _rewardedRetry = 0; };
             MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent   += (id, err)  => { _rewardedLoaded = false; RetryLoad(ref _rewardedRetry, () => MaxSdk.LoadRewardedAd(RewardedId)); };
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += (id, reward, info) => _rewardedEarned = true;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent    += (id, info) => MBAdCurtain.Instance.AdDisplayed();
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += (id, err, info) => FinishRewarded();
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent       += (id, info) => FinishRewarded();
         }
@@ -116,8 +119,12 @@ namespace qp {
             _onRewardedDone = onDone;
             _rewardedEarned = false;
             _rewardedLoaded = false;   // consumed — the next OnAdLoaded flips it back
-            PauseGameAudio();
-            MaxSdk.ShowRewardedAd(RewardedId);
+            // Curtain first: MAX's hidden callback can fire late, and without the black cover the
+            // player would glimpse this screen again before the callback swaps to the next one.
+            MBAdCurtain.Instance.FadeIn(() => {
+                PauseGameAudio();
+                MaxSdk.ShowRewardedAd(RewardedId);
+            });
         }
 
         static void FinishRewarded() {
@@ -125,7 +132,8 @@ namespace qp {
             var cb = _onRewardedDone; _onRewardedDone = null;
             bool earned = _rewardedEarned; _rewardedEarned = false;
             MaxSdk.LoadRewardedAd(RewardedId);   // preload the next one
-            cb?.Invoke(earned);
+            cb?.Invoke(earned);                  // runs under the curtain (scene load / popup swap)
+            DropCurtainSoon();
         }
 
         // ================== interstitial ==================
@@ -140,6 +148,7 @@ namespace qp {
         static void WireInterstitial() {
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent        += (id, info) => { _interstitialLoaded = true; _interstitialRetry = 0; };
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent    += (id, err)  => { _interstitialLoaded = false; RetryLoad(ref _interstitialRetry, () => MaxSdk.LoadInterstitial(InterstitialId)); };
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent     += (id, info) => MBAdCurtain.Instance.AdDisplayed();
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += (id, err, info) => FinishInterstitial(displayed: false);
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent        += (id, info) => FinishInterstitial(displayed: true);
         }
@@ -158,8 +167,11 @@ namespace qp {
 
             _onInterstitialClosed = onClosed;
             _interstitialLoaded = false;   // consumed — the next OnAdLoaded flips it back
-            PauseGameAudio();
-            MaxSdk.ShowInterstitial(InterstitialId);
+            // Curtain first — same reason as ShowRewarded.
+            MBAdCurtain.Instance.FadeIn(() => {
+                PauseGameAudio();
+                MaxSdk.ShowInterstitial(InterstitialId);
+            });
         }
 
         static void FinishInterstitial(bool displayed) {
@@ -168,7 +180,8 @@ namespace qp {
             if (displayed) _lastInterClosedAt = Time.realtimeSinceStartup;
             var cb = _onInterstitialClosed; _onInterstitialClosed = null;
             MaxSdk.LoadInterstitial(InterstitialId);   // preload the next one
-            cb?.Invoke();
+            cb?.Invoke();                              // runs under the curtain (scene load / popup swap)
+            DropCurtainSoon();
         }
 
         // ================== banner ==================
@@ -233,6 +246,13 @@ namespace qp {
 
         static bool Usable(string id) => !string.IsNullOrEmpty(id) && id != Placeholder;
 
+        // Reveal the screen two frames after the close-callback ran, so whatever it triggered
+        // (a scene load, a popup) has rendered before the black lifts.
+        static void DropCurtainSoon() {
+            if (_runner != null) _runner.RunAfterFrames(2, MBAdCurtain.Instance.FadeOut);
+            else MBAdCurtain.Instance.FadeOut();
+        }
+
         // Exponential backoff (2^n s, capped), per MAX's recommended retry pattern.
         static void RetryLoad(ref int retry, Action load) {
             retry++;
@@ -244,6 +264,9 @@ namespace qp {
         class AdsRunner : MonoBehaviour {
             public void RunAfter(float seconds, Action action) => StartCoroutine(After(seconds, action));
             IEnumerator After(float s, Action a) { yield return new WaitForSeconds(s); a?.Invoke(); }
+
+            public void RunAfterFrames(int frames, Action action) => StartCoroutine(AfterFrames(frames, action));
+            IEnumerator AfterFrames(int f, Action a) { for (int i = 0; i < f; i++) yield return null; a?.Invoke(); }
         }
     }
 }
