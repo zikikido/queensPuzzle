@@ -53,6 +53,20 @@ namespace qp {
             if (!_showing) gameObject.SetActive(false);
         }
 
+        /// <summary>Info view (e.g. from the lobby streak button): the current streak with the
+        /// entrance animation only — checks applied up front, no stamp and no old→new scroll.</summary>
+        public void Show(int streak) {
+            _showing = true;
+            _group.alpha = 1f;
+            gameObject.SetActive(true);
+
+            _streakOld.text = _streakNew.text = streak.ToString();
+            _streakScroll.anchoredPosition = new Vector2(_streakScroll.anchoredPosition.x, 0f);   // new in view
+            if (_progress != null) _progress.ApplyImmediately(streak);
+
+            GetComponent<IPopupAnim>()?.PlayIn();
+        }
+
         public void Show(int oldStreak, int newStreak) {
             _showing = true;
             _group.alpha = 1f;

@@ -1,6 +1,7 @@
 using Common;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace qp {
 
@@ -19,6 +20,7 @@ namespace qp {
         GameObject _active, _offline;
         TMP_Text _currentDay;                 // the 🔥 streak number
         MBDailyStreakProgress _progress;      // the bar widget under $DailyButtonActive
+        MBDailyStreakInfoPopup _infoPopup;    // opened on tap (found lazily)
 
         // What the UI currently shows. Sentinels so the first tick always paints.
         EStreakStatus _shownStatus = (EStreakStatus)(-1);
@@ -32,6 +34,16 @@ namespace qp {
 
             _currentDay = transform.RecursiveFindChild<TMP_Text>("$CurrentDay");
             _progress = GetComponentInChildren<MBDailyStreakProgress>(true);
+
+            // Tapping the active button opens the streak info popup (current streak, entrance only).
+            var btn = activeT != null ? activeT.GetComponent<Button>() : null;
+            if (btn != null) btn.onClick.AddListener(_openInfo);
+        }
+
+        void _openInfo() {
+            if (_infoPopup == null)
+                _infoPopup = FindAnyObjectByType<MBDailyStreakInfoPopup>(FindObjectsInactive.Include);
+            if (_infoPopup != null) _infoPopup.Show(DailyStreakManager.Streak);
         }
 
         void OnEnable() {
