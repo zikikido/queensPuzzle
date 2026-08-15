@@ -21,6 +21,7 @@ namespace qp {
         TMP_Text _doneDate, _solvedTime, _topPct;        // under $DailyButtonDone
 
         EDailyChallengeStatus _shownStatus;   // what Refresh last built — Tick refreshes only on change
+        int _shownDay = -1;                   // day Refresh last painted — midnight repaints even if status didn't flip
 
         void Awake() {
             var lockT = transform.RecursiveFindChild("$DailyButtonLock");
@@ -50,16 +51,20 @@ namespace qp {
 
         void OnDisable() => CancelInvoke(nameof(Tick));
 
-        // 1/sec: only the countdown string changes — a full Refresh only when the status
-        // actually flips (midnight, or Done after a solve) which is a once-a-day event.
+        // 1/sec: only the countdown string changes — a full Refresh only when the status flips
+        // (Done after a solve) or the day does (midnight, even Active→Active: new date, new puzzle).
+        // The day check is skipped while Lock — DayIndex needs the tiers config.
         void Tick() {
-            if (DailyChallengeManager.Status != _shownStatus) { Refresh(); return; }
+            var status = DailyChallengeManager.Status;
+            bool dayChanged = status != EDailyChallengeStatus.Lock && DailyChallengeManager.DayIndex != _shownDay;
+            if (status != _shownStatus || dayChanged) { Refresh(); return; }
             if (_shownStatus == EDailyChallengeStatus.Active && _timeLeft != null)
                 _timeLeft.text = DailyChallengeManager.TimeLeft.ToString(@"hh\:mm\:ss");
         }
 
         void Refresh() {
             var status = _shownStatus = DailyChallengeManager.Status;
+            if (status != EDailyChallengeStatus.Lock) _shownDay = DailyChallengeManager.DayIndex;
             if (_lock != null) _lock.SetActive(status == EDailyChallengeStatus.Lock);
             if (_active != null) _active.SetActive(status == EDailyChallengeStatus.Active);
             if (_done != null) _done.SetActive(status == EDailyChallengeStatus.Done);

@@ -349,6 +349,12 @@ namespace qp {
 
         IEnumerator BuildBoard() {
 
+            // UTC midnight passed mid-session — re-lock the new day BEFORE loading, so the puzzle
+            // served and the day blob agree (timer/attempts/solve count for the new day again)
+            if (DailyChallengeManager.InDailyRun
+                && DailyChallengeManager.State.dayIndex != DailyChallengeManager.DayIndex)
+                DailyChallengeManager.StartDaily();
+
             var level = LevelLoader.LoadLevel();
             if (level == null) {
                 Debug.LogError("[MBGameplay] No level to load.");

@@ -58,23 +58,28 @@ namespace qp {
             _state.dayIndex == DayIndex && _state.solved ? EDailyChallengeStatus.Done :
             EDailyChallengeStatus.Active;
 
-        /// <summary>Days since epoch, UTC — the calendar index all players share.</summary>
-        public static int DayIndex => (int)(DateTime.UtcNow.Date - Tiers.Epoch).TotalDays;
+        /// <summary>Days since epoch, server UTC (device clock only before the first sync) —
+        /// the calendar index all players share.</summary>
+        public static int DayIndex => (int)(MBServerTimeManagerV2.UTCNow.Date - Tiers.Epoch).TotalDays;
 
-        /// <summary>Today's tier: the one locked at first open wins; before that, derived from progress.</summary>
+        /// <summary>Today's tier: the one locked at first open wins; before that, derived from progress.
+        /// Clamped — an update may ship fewer tiers than the one locked earlier today.</summary>
         public static int Tier =>
-            _state.dayIndex == DayIndex && _state.tier >= 0 ? _state.tier : Tiers.TierOf(DailyProgress);
+            _state.dayIndex == DayIndex && _state.tier >= 0
+                ? Math.Min(_state.tier, Tiers.tiers.Length - 1) : Tiers.TierOf(DailyProgress);
 
         /// <summary>Tier name as authored ("Tier2".."Endless") — the pack resource is
         /// Levels/daily_{name,lowercase}, the levelSetId is "Daily{name}".</summary>
         public static string TierName => Tiers.tiers[Tier].name;
 
         /// <summary>Countdown to the next UTC midnight — when today's puzzle is replaced.</summary>
-        public static TimeSpan TimeLeft => DateTime.UtcNow.Date.AddDays(1) - DateTime.UtcNow;
+        public static TimeSpan TimeLeft {
+            get { var now = MBServerTimeManagerV2.UTCNow; return now.Date.AddDays(1) - now; }
+        }
 
-        /// <summary>Today's date for the lobby card, e.g. "Jul 15" (UTC — matches the puzzle day).</summary>
+        /// <summary>Today's date for the lobby card, e.g. "Jul 15" (server UTC — matches the puzzle day).</summary>
         public static string NiceDate =>
-            DateTime.UtcNow.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
+            MBServerTimeManagerV2.UTCNow.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
 
         static bool IsUnlocked => AppData.LevelIdx >= UnlockLevelIdx;
 
