@@ -38,6 +38,7 @@ namespace qp {
             _streakNew = _streakScroll.RecursiveFindChild<TMP_Text>("$StreakNew");
             
             _progress = GetComponentInChildren<MBDailyStreakProgress>(true);
+            if (_progress == null) CDebug.LogError("[MBDailyStreakInfoPopup] MBDailyStreakProgress missing under the popup");
 
             // Continue button carries both markers: $ (found from code) and % (used by the animator).
             var cont = transform.RecursiveFindChild<Button>("$%ContinueButton");

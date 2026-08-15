@@ -35,9 +35,16 @@ namespace qp {
             int slots = _checks != null ? _checks.Length : 0;
 
             // Spread the cycle's days across the slots: slot i is lit once i+1 of them are done.
+            // Reset scale/alpha too — an interrupted stamp (popup closed mid-anim) leaves the $V
+            // big and faded; every Show passes through here, so leftovers never survive.
             if (_checks != null)
-                for (int i = 0; i < slots; i++)
-                    _checks[i].SetActive(done * slots >= (i + 1) * cycle);
+                for (int i = 0; i < slots; i++) {
+                    var v = _checks[i];
+                    v.transform.localScale = Vector3.one;
+                    var img = v.GetComponentInChildren<Image>(true);
+                    if (img != null) { var c = img.color; c.a = 1f; img.color = c; }
+                    v.SetActive(done * slots >= (i + 1) * cycle);
+                }
         }
 
         /// <summary>"Stamp" in the check earned at <paramref name="streak"/> — a big, faded $V that
