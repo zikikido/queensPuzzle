@@ -70,6 +70,11 @@ namespace qp {
             UnityEngine.Object.DontDestroyOnLoad(
                 new GameObject("ServerTime").AddComponent<MBServerTimeManagerV2>().gameObject);
 
+            // UserID: sets UserID.Instance in Awake and kicks off the Android AppSetID fetch.
+            // Nothing else creates it, so without this line user_id is always "" in events/Firebase.
+            UnityEngine.Object.DontDestroyOnLoad(
+                new GameObject("UserID").AddComponent<Common.UserID>().gameObject);
+
 #if NOTIFICATION_INSTALLER
             // Persistent lifecycle bridge — forwards pause/resume to NotificationManager.
             new GameObject("Notifications").AddComponent<MBNotifications>();
