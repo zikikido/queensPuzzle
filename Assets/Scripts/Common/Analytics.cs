@@ -60,25 +60,50 @@ namespace qp {
             SendLevelEvent("level_lost");
         }
 
+        /// <summary>
+        /// One app launch (cold start) → events-server `session_start`. Fired from the boot
+        /// stage right after `user_id` resolves, so it carries the id. Retention is derived
+        /// server-side: install day = the user's first session_start (`session == 1`), and a
+        /// user is retained on day N if any session_start of theirs lands on install day + N.
+        /// </summary>
+        public static void SessionStart() {
+            int session = UserData.Instance.Sessions;
+            CrashLog($"[session] start #{session}");
+            var p = new SessionStartPayload {
+                eventname = "session_start",
+                session   = session,
+                platform  = Application.platform.ToString(),
+                lvl_idx   = AppData.LevelIdx.Value,
+            };
+            FillCommon(p);
+            EventClient.Enqueue(p);
+        }
+
         // Mirror of the game_start/win/lose events into the events server. Reads the same
         // statics as GameEvent (correct here — fires before LevelIdx++ / Invalidate), then
         // hands off to EventClient which buffers + sends async (never blocks, never throws).
         static void SendLevelEvent(string eventname) {
             bool daily = DailyChallengeManager.InDailyRun;
             int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
-            string userId = Common.UserID.Instance != null ? Common.UserID.Instance.GetUserIDFV() : "";
-            EventClient.Enqueue(new EventPayload {
+            var p = new EventPayload {
                 eventname     = eventname,
                 lvl_idx       = LevelIdx,
                 lvl_hash      = LevelLoader.CurrentLevelHash,
                 level_set_id  = LevelLoader.CurrentLevelSetId,
                 lvl_attempts  = Attempts,
                 lvl_time_sec  = timeSec,
-                app_version   = Application.version,
                 daily         = daily,
-                first_version = UserData.Instance.FirstVersion,
-                user_id       = userId,
-            });
+            };
+            FillCommon(p);
+            EventClient.Enqueue(p);
+        }
+
+        // The EventBase head every events-server document carries.
+        static void FillCommon(EventBase p) {
+            p.app_version     = Application.version;
+            p.first_version   = UserData.Instance.FirstVersion;
+            p.user_id         = Common.UserID.GetUserIDLocal();
+            p.singular_source = AppData.SingularSource.Value;
         }
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>

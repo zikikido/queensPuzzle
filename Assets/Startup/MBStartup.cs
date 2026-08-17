@@ -70,22 +70,14 @@ namespace qp {
             UnityEngine.Object.DontDestroyOnLoad(
                 new GameObject("ServerTime").AddComponent<MBServerTimeManagerV2>().gameObject);
 
-            // UserID: sets UserID.Instance in Awake and kicks off the Android AppSetID fetch.
-            // Nothing else creates it, so without this line user_id is always "" in events/Firebase.
-            UnityEngine.Object.DontDestroyOnLoad(
-                new GameObject("UserID").AddComponent<Common.UserID>().gameObject);
-
 #if NOTIFICATION_INSTALLER
             // Persistent lifecycle bridge — forwards pause/resume to NotificationManager.
             new GameObject("Notifications").AddComponent<MBNotifications>();
 #endif
 
-            // ---- boot stages (registered here so TasksTotal is known up front) ----
-            // Stage 0: give UserID up to 3s to resolve (AppSetID is async on Android) so events
-            // and Firebase can carry it. UserID inits itself in Awake — we only poll readiness.
-            Register("user_id", null,
-                () => Common.UserID.Instance != null && Common.UserID.Instance.IsReady,
-                timeoutSec: 3f);
+            // Stage 0: session_start → events server (retention). Instant-done — EventClient
+            // buffers it and sends async, so the boot never waits on the network.
+            Register("session_start", Analytics.SessionStart, () => true);
 
             // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
             Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);

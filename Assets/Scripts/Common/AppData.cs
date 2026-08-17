@@ -48,6 +48,13 @@ namespace qp {
         // time the player is ever down to a single bone, then never again.
         public static readonly PlayerPrefsHelper.BoolHolder LastBoneToturialSeen = new PlayerPrefsHelper.BoolHolder("qp_last_bone_tut_seen", false);
 
+        // Install attribution from Singular's device attribution callback (network / campaign ...).
+        // Written once by SingularBoot when the callback fires (usually first launch, may take a few
+        // seconds — or never, if Singular hasn't enabled the callback for the app). Read on every
+        // later launch and attached to each events-server event. Value == null until it arrives.
+        public static readonly PlayerPrefsHelper.ObjectHolder<SingularSource> SingularSource
+            = new PlayerPrefsHelper.ObjectHolder<SingularSource>("qp_singular_source");
+
 #if UNITY_EDITOR
         // Editor-only guard: catch an enum value that was added but not given a Boosts entry.
         [UnityEditor.InitializeOnLoadMethod]
