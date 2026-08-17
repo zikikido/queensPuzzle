@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 7f8733ce7c9448347a468776d556bb39
+guid: 929d299a0feca314b81a0f54252ee083
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1329256248899702121
-    second: ExampleMobile_0
+      213: -4910651574895747394
+    second: CircleProgress_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: ExampleMobile_0
+      name: CircleProgress_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1080
-        height: 2400
+        width: 60
+        height: 60
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 96d82230487727210800000000000000
-      internalID: 1329256248899702121
+      spriteID: ebe50ae096cd9dbb0800000000000000
+      internalID: -4910651574895747394
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      ExampleMobile_0: 1329256248899702121
+      CircleProgress_0: -4910651574895747394
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

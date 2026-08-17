@@ -1964,6 +1964,7 @@ GameObject:
   - component: {fileID: 2788718602704504439}
   - component: {fileID: 4165792290001916651}
   - component: {fileID: 2280886326977977069}
+  - component: {fileID: 8544820881853032946}
   m_Layer: 0
   m_Name: LosePopup
   m_TagString: Untagged
@@ -2043,7 +2044,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 5
   m_TargetDisplay: 0
 --- !u!114 &151873485466603172
 MonoBehaviour:
@@ -2108,6 +2109,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24ebc344b10ced644ba6eb5c4e7745b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8544820881853032946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7932887595852150522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 243c98e8ac30ede4bb16852f19099f3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _zorderTypeStr: POPUPS
+  _targetMode: 0
+  _specificGameObject: {fileID: 0}
 --- !u!1 &9071129930756455984
 GameObject:
   m_ObjectHideFlags: 0

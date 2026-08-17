@@ -58,23 +58,28 @@ namespace qp {
             _state.dayIndex == DayIndex && _state.solved ? EDailyChallengeStatus.Done :
             EDailyChallengeStatus.Active;
 
-        /// <summary>Days since epoch, UTC — the calendar index all players share.</summary>
-        public static int DayIndex => (int)(DateTime.UtcNow.Date - Tiers.Epoch).TotalDays;
+        /// <summary>Days since epoch, server UTC (device clock only before the first sync) —
+        /// the calendar index all players share.</summary>
+        public static int DayIndex => (int)(MBServerTimeManagerV2.UTCNow.Date - Tiers.Epoch).TotalDays;
 
-        /// <summary>Today's tier: the one locked at first open wins; before that, derived from progress.</summary>
+        /// <summary>Today's tier: the one locked at first open wins; before that, derived from progress.
+        /// Clamped — an update may ship fewer tiers than the one locked earlier today.</summary>
         public static int Tier =>
-            _state.dayIndex == DayIndex && _state.tier >= 0 ? _state.tier : Tiers.TierOf(DailyProgress);
+            _state.dayIndex == DayIndex && _state.tier >= 0
+                ? Math.Min(_state.tier, Tiers.tiers.Length - 1) : Tiers.TierOf(DailyProgress);
 
         /// <summary>Tier name as authored ("Tier2".."Endless") — the pack resource is
         /// Levels/daily_{name,lowercase}, the levelSetId is "Daily{name}".</summary>
         public static string TierName => Tiers.tiers[Tier].name;
 
         /// <summary>Countdown to the next UTC midnight — when today's puzzle is replaced.</summary>
-        public static TimeSpan TimeLeft => DateTime.UtcNow.Date.AddDays(1) - DateTime.UtcNow;
+        public static TimeSpan TimeLeft {
+            get { var now = MBServerTimeManagerV2.UTCNow; return now.Date.AddDays(1) - now; }
+        }
 
-        /// <summary>Today's date for the lobby card, e.g. "Jul 15" (UTC — matches the puzzle day).</summary>
+        /// <summary>Today's date for the lobby card, e.g. "Jul 15" (server UTC — matches the puzzle day).</summary>
         public static string NiceDate =>
-            DateTime.UtcNow.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
+            MBServerTimeManagerV2.UTCNow.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
 
         static bool IsUnlocked => AppData.LevelIdx >= UnlockLevelIdx;
 
@@ -134,7 +139,25 @@ namespace qp {
         public static void OnSolved() {
             if (!InDailyRun || _state.solved || _state.dayIndex != DayIndex) return;
             _state.solved = true;
-            _state.topPct = FakeTopPct(_state.timeSec);
+            _state.topPct = FakeTopPct(_state.timeSec, LevelLoader.CurrentLevelWeight);
+            _state.Save();
+            _boardsSolved.Value++;
+        }
+
+        /// <summary>Debug only (MBDebugWin) — clear today's blob so the card is playable (Active) again.</summary>
+        public static void DebugResetToday() {
+            _state.dayIndex = -1; _state.tier = -1; _state.timeSec = 0f; _state.attempts = 0;
+            _state.solved = false; _state.topPct = 0; _state.Save();
+        }
+
+        /// <summary>Debug only (MBDebugWin) — mark today solved (Done card) without playing it.</summary>
+        public static void DebugMarkSolvedToday() {
+            if (_state.solved && _state.dayIndex == DayIndex) return;
+            _state.dayIndex = DayIndex;
+            if (_state.tier < 0) _state.tier = Tier;
+            if (_state.timeSec <= 0f) _state.timeSec = 120f;
+            _state.solved = true;
+            _state.topPct = FakeTopPct(_state.timeSec, 0);
             _state.Save();
             _boardsSolved.Value++;
         }
@@ -145,12 +168,21 @@ namespace qp {
             return s >= 3600 ? $"{s / 3600}:{s / 60 % 60:00}:{s % 60:00}" : $"{s / 60}:{s % 60:00}";
         }
 
-        // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time:
-        // 2 min or faster = top 5%, then linear to 95% at 25 min. Replace with the real
+        // Weight of a mid-difficulty "no-guess" board — the neutral point where the raw solve
+        // time is used as-is. Harder boards score better for the same time, easier ones worse.
+        const int RefWeight = 600;
+
+        // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time, adjusted
+        // for how hard the board was (LevelPack.Level.weight). Effective time = solve time scaled
+        // by RefWeight/weight (clamped ±2x), so a fast solve on a hard board beats the same time
+        // on an easy one. 2 min effective = top 5%, linear to 95% at 25 min. Replace with the real
         // leaderboard percentile when a server exists.
-        static int FakeTopPct(float timeSec) {
+        static int FakeTopPct(float timeSec, int weight) {
+            float factor = weight > 0 ? (float)weight / RefWeight : 1f;   // 0 = unrated → neutral
+            if (factor < 0.5f) factor = 0.5f; else if (factor > 2f) factor = 2f;
+            float adj = timeSec / factor;                                 // harder → smaller → better %
             const float fast = 120f, slow = 1500f;
-            float t = (timeSec - fast) / (slow - fast);
+            float t = (adj - fast) / (slow - fast);
             int pct = (int)Math.Round(5f + 90f * t);
             return pct < 5 ? 5 : pct > 95 ? 95 : pct;
         }

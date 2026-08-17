@@ -17,6 +17,7 @@ namespace qp {
         Vector2 _scroll;
         float _scale;
         string _levelInput = "";
+        string _streakInput = "";
         EventSystem _blockedEventSystem;   // the EventSystem we disabled while we're up
 
         public static void Open() {
@@ -71,6 +72,29 @@ namespace qp {
             GUILayout.EndHorizontal();
             if (Button("Clear saved board")) AppData.LastPlayData.Invalidate();
             if (Button("Restore bones")) { AppData.LastPlayData.bonesLost = 0; AppData.LastPlayData.Save(); }
+
+            GUILayout.Space(16);
+            GUILayout.Label($"Daily Streak (now {DailyStreakManager.Streak}, {DailyStreakManager.Status})");
+            GUILayout.BeginHorizontal();
+            if (Button("Streak -1")) DailyStreakManager.DebugSetStreak(DailyStreakManager.Streak - 1);
+            if (Button("Streak +1")) DailyStreakManager.DebugSetStreak(DailyStreakManager.Streak + 1);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            _streakInput = GUILayout.TextField(_streakInput, GUILayout.Height(44), GUILayout.Width(120));
+            if (Button("Set streak") && int.TryParse(_streakInput, out int streak)) DailyStreakManager.DebugSetStreak(streak);
+            GUILayout.EndHorizontal();
+            if (Button("Last win = yesterday (win to ++)")) DailyStreakManager.DebugSetLastWinYesterday();
+            if (Button("Simulate win (streak++ & grant reward)")) {
+                DailyStreakManager.DebugSetLastWinYesterday();
+                var r = DailyStreakManager.RegisterWin();
+                Debug.Log($"[Debug] streak now {r.streak}, reward: {(r.reward != null ? $"{r.reward.type} {r.reward.Label}" : "none")}");
+            }
+
+            GUILayout.Space(16);
+            var dc = DailyChallengeManager.State;
+            GUILayout.Label($"Daily Challenge ({DailyChallengeManager.Status}, day {dc.dayIndex}, tier {dc.tier}, solved {dc.solved}, boards {DailyChallengeManager.BoardsSolved})");
+            if (Button("DC: reset today (playable)")) DailyChallengeManager.DebugResetToday();
+            if (Button("DC: mark solved today")) DailyChallengeManager.DebugMarkSolvedToday();
 
             GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");

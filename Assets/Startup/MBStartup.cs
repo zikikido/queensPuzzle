@@ -65,6 +65,16 @@ namespace qp {
 
             new GameObject("SFX").AddComponent<MBSFX>();   // registers itself as MBSFX.Instance
 
+            // Server time: start syncing as early as possible so it's ready by the time the loading
+            // screen ends. Persist it — it lives for the whole app and hooks OnApplicationPause.
+            UnityEngine.Object.DontDestroyOnLoad(
+                new GameObject("ServerTime").AddComponent<MBServerTimeManagerV2>().gameObject);
+
+            // UserID: sets UserID.Instance in Awake and kicks off the Android AppSetID fetch.
+            // Nothing else creates it, so without this line user_id is always "" in events/Firebase.
+            UnityEngine.Object.DontDestroyOnLoad(
+                new GameObject("UserID").AddComponent<Common.UserID>().gameObject);
+
 #if NOTIFICATION_INSTALLER
             // Persistent lifecycle bridge — forwards pause/resume to NotificationManager.
             new GameObject("Notifications").AddComponent<MBNotifications>();
@@ -98,6 +108,11 @@ namespace qp {
             // Stage 3: start loading ads. Instant-done — ad loading runs in the background, so
             // the loading screen never waits on it.
             Register("ads", Ads.Init, () => true);
+
+            // Final stage: the sync was kicked off at the top of Boot, so it usually landed long
+            // ago. This just gives it a last moment to finish before we leave the loading screen —
+            // capped at 3s, then boot continues whether or not we're synced.
+            Register("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f);
         }
 
         /// <summary>

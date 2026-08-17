@@ -12,6 +12,10 @@ namespace qp {
             if (lvlBtn != null) lvlBtn.GetButton().onClick.AddListener(PlayCurrentLevel);
 
             transform.RecursiveFindChild<Button>("$SettingsBtn").onClick.AddListener(OpenSettings);
+
+            var streakProgressPopup = FindAnyObjectByType<MBDailyStreakInfoPopup>(FindObjectsInactive.Include);
+            if (streakProgressPopup != null) streakProgressPopup.gameObject.SetActive(true);
+            else Debug.LogError("[MBGameplay] MBDailyStreakInGamePopup missing in the scene");
         }
 
         // Open plays the in animation; the popup closes itself (X / BG tap → out animation).

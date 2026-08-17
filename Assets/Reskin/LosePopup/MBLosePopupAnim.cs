@@ -34,6 +34,13 @@ namespace qp {
             if (_animator.isInitialized) _animator.Update(0f);
         }
 
+        /// <summary>True once the Show cascade has played through (or moved on to Idle).</summary>
+        public bool IsFinished() {
+            if (_animator == null || !_animator.isInitialized) return true;
+            var st = _animator.GetCurrentAnimatorStateInfo(0);
+            return !st.IsName("Show") || st.normalizedTime >= 1f;
+        }
+
         /// <summary>Animation event. Starts the character flipbook; the lose "In" state loops.</summary>
         public void PlayCharIn() {
             if (_char != null) _char.Play("In");

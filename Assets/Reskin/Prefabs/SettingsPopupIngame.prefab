@@ -1349,6 +1349,7 @@ GameObject:
   - component: {fileID: 4019035151285439513}
   - component: {fileID: 1715749458153178930}
   - component: {fileID: 151873485466603172}
+  - component: {fileID: 3636107584904645648}
   m_Layer: 0
   m_Name: SettingsPopupIngame
   m_TagString: Untagged
@@ -1427,7 +1428,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 5
   m_TargetDisplay: 0
 --- !u!114 &151873485466603172
 MonoBehaviour:
@@ -1446,6 +1447,21 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &3636107584904645648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7932887595852150522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 243c98e8ac30ede4bb16852f19099f3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _zorderTypeStr: POPUPS
+  _targetMode: 0
+  _specificGameObject: {fileID: 0}
 --- !u!1 &8261199588962372712
 GameObject:
   m_ObjectHideFlags: 0

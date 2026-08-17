@@ -7,5 +7,8 @@ namespace qp {
     public interface IPopupAnim {
         /// <summary>Play the open animation from the start. Called by the popup's Show().</summary>
         void PlayIn();
+
+        /// <summary>True once the open animation has finished — callers can wait on it.</summary>
+        bool IsFinished();
     }
 }
