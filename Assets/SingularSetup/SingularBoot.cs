@@ -24,6 +24,10 @@ namespace qp {
             // Singular's side (BETA feature; requested from support 2026-08-17). No-op in the Editor.
             SingularSDK.SetSingularDeviceAttributionCallbackHandler(new AttributionHandler());
 
+            // Same id events-server gets as `user_id` — lets Singular's BI postbacks / export logs
+            // (custom_user_id) be joined to our events. Set BEFORE init so the install session carries it.
+            SingularSDK.SetCustomUserId(Common.UserID.GetUserIDLocal());
+
             SingularSDK.InitializeSingularSDK();
             if (!limitSharing) SingularSDK.TrackingOptIn();
             SingularSDK.LimitDataSharing(limitSharing);
