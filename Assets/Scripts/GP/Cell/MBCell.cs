@@ -106,6 +106,20 @@ namespace qp {
             ApplyHintGhost();
         }
 
+#if UNITY_EDITOR
+        /// <summary>GPRecorder scrub: jump the cell to a state INSTANTLY, hiding whatever shows —
+        /// unlike StartWithMark it also works from a non-empty state (scrubbing backwards).</summary>
+        public void ReplaySetMark(ECellType type) {
+            if (type == State) return;
+            var showing = OverlayFor(State);
+            if (showing != null) showing.InitOut();
+            State = type;
+            var target = OverlayFor(type);
+            if (target != null) target.InitIn();
+            ApplyHintGhost();
+        }
+#endif
+
         public void MarkCell(ECellType type) {
 
             if (type == State) {
@@ -114,6 +128,10 @@ namespace qp {
 
             var prev = State;
             State = type;
+
+#if UNITY_EDITOR
+            GPRecorder.OnCellMarked(this, prev, type);   // ad-recorder capture (GPRecorder/)
+#endif
 
             var showing = OverlayFor(prev);
             if (showing != null) {

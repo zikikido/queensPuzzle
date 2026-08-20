@@ -414,7 +414,12 @@ namespace qp {
 
             // same level reopened → back to the exact last state (wrong queens, boost counters);
             // a fresh board starts a fresh attempt (all counters zeroed, all bones back)
-            if (!RestoreBoard()) {
+            bool restored =
+#if UNITY_EDITOR
+                !GPReplayer.WantsFreshBoard &&   // a replay / ad-record run starts from an empty board
+#endif
+                RestoreBoard();
+            if (!restored) {
                 // attempts counter: fresh level → 1; a new attempt on the same level (retry) → +1.
                 // A restored board is the SAME attempt — resuming the app never counts.
                 if (daily) {
@@ -732,6 +737,13 @@ namespace qp {
         public void ReplayMark(int x, int y, MBCell.ECellType to) {
             var cell = CellAt(y, x);
             if (cell == null || cell.State == to) return;
+            // an edited record can unmark a queen — a transition real play never makes, and the
+            // queen overlay has no animated out (ActOut throws). Clear it instantly instead.
+            if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) {
+                cell.ReplaySetMark(MBCell.ECellType.EMPTY);
+                _topBar?.SetProgress(CountQueens());
+                if (to == MBCell.ECellType.EMPTY) return;
+            }
             PaintCell(cell, to);
         }
 
@@ -740,6 +752,14 @@ namespace qp {
             var cell = CellAt(y, x);
             if (cell == null || cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) return;
             PlaceQueenAt(cell);
+        }
+
+        /// <summary>Timeline scrub: jump the whole board to a state instantly (no anims).</summary>
+        public void ReplaySetBoard(MBCell.ECellType[] states) {   // row-major, n*n
+            if (_cells == null || states == null || states.Length != _n * _n) return;
+            foreach (var cell in _cells) cell.ReplaySetMark(states[cell.Y * _n + cell.X]);
+            _undo.Clear(); _stroke = null;   // strokes from before the jump are meaningless now
+            _topBar?.SetProgress(CountQueens());
         }
 #endif
 

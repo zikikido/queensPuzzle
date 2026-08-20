@@ -48,6 +48,13 @@ namespace qp {
                     }
                 }
             }
+
+            // GPRecorder replay: play mode was entered to replay a recording — its embedded level wins.
+            var replayLevel = GPReplayer.LoadPendingLevel();
+            if (replayLevel != null) {
+                SetCurrentIdentity("gp_record", -1, replayLevel);
+                return replayLevel;
+            }
 #endif
             if (DailyChallengeManager.InDailyRun) return LoadDailyLevel();
 
