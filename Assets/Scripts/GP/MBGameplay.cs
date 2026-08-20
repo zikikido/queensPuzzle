@@ -683,32 +683,7 @@ namespace qp {
                 if (_undo.Count > 0 && _undo[_undo.Count - 1].Count == 1 && _undo[_undo.Count - 1][0].idx == qidx)
                     _undo.RemoveAt(_undo.Count - 1);
 
-                bool correct = cell.IsSolutionQueen;
-                cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
-                SaveBoard();
-                if (correct) {
-                    PlayQueens(MBCell.QueenState.HAPPY);   // every opened queen (incl. this one) celebrates
-                    int placed = CountQueens();
-                    _topBar?.SetProgress(placed);
-                    MaybePrepareReview(placed);
-                    if (placed == _n) Win();
-                    else {
-                        Haptics.Play(GameHaptic.Happy);
-                        CommonSFX.Play(GPSFX.Instance.PlaceQueen);
-                    }
-                } else {
-                    PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
-                    AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
-                    AppData.LastPlayData.Save();
-                    _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
-                    Haptics.Play(GameHaptic.Wrong);
-                    CommonSFX.Play(GPSFX.Instance.Error);
-                    if (_shake != null) StopCoroutine(_shake);
-                    _shake = StartCoroutine(ShakeBoard());
-                    if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
-                    else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
-                        MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
-                }
+                PlaceQueenAt(cell);
             }
             else if (_stroke != null) {
                 // a tap or a whole drag of X edits = one undo entry
@@ -718,6 +693,55 @@ namespace qp {
 
             _drag = DragMode.None;
         }
+
+        // Resolve a queen landing on the cell — right or wrong decided here, with everything that
+        // follows (progress, win, bone loss, fail). Shared by the double-tap gesture and replay.
+        void PlaceQueenAt(MBCell cell) {
+            bool correct = cell.IsSolutionQueen;
+            cell.MarkCell(correct ? MBCell.ECellType.QUEEN : MBCell.ECellType.WRONG_QUEEN);
+            SaveBoard();
+            if (correct) {
+                PlayQueens(MBCell.QueenState.HAPPY);   // every opened queen (incl. this one) celebrates
+                int placed = CountQueens();
+                _topBar?.SetProgress(placed);
+                MaybePrepareReview(placed);
+                if (placed == _n) Win();
+                else {
+                    Haptics.Play(GameHaptic.Happy);
+                    CommonSFX.Play(GPSFX.Instance.PlaceQueen);
+                }
+            } else {
+                PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
+                AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
+                AppData.LastPlayData.Save();
+                _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
+                Haptics.Play(GameHaptic.Wrong);
+                CommonSFX.Play(GPSFX.Instance.Error);
+                if (_shake != null) StopCoroutine(_shake);
+                _shake = StartCoroutine(ShakeBoard());
+                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
+                else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
+                    MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
+            }
+        }
+
+#if UNITY_EDITOR
+        // ---- GPRecorder replay entries: drive the board exactly like a player's gesture would ----
+
+        /// <summary>Replay an X / erase edit — the tap / drag-paint path (anims + sound).</summary>
+        public void ReplayMark(int x, int y, MBCell.ECellType to) {
+            var cell = CellAt(y, x);
+            if (cell == null || cell.State == to) return;
+            PaintCell(cell, to);
+        }
+
+        /// <summary>Replay a queen double-tap — right/wrong and win/fail resolved by the normal logic.</summary>
+        public void ReplayQueenTap(int x, int y) {
+            var cell = CellAt(y, x);
+            if (cell == null || cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN) return;
+            PlaceQueenAt(cell);
+        }
+#endif
 
         // Queens correctly placed (they only ever land on solution cells).
         public int CountQueens() {
