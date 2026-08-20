@@ -717,13 +717,23 @@ namespace qp {
                 }
             } else {
                 PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
-                AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
-                AppData.LastPlayData.Save();
-                _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
+#if UNITY_EDITOR
+                // GPRecorder sessions: shake, flash and sound still sell the mistake, but no bone
+                // is lost and the board can't fail mid-take — ad recordings need unlimited tries
+                bool countBones = !(GPRecorder.NoFail && (GPRecorder.IsRecording || GPReplayer.IsReplaying));
+#else
+                const bool countBones = true;
+#endif
+                if (countBones) {
+                    AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
+                    AppData.LastPlayData.Save();
+                    _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
+                }
                 Haptics.Play(GameHaptic.Wrong);
                 CommonSFX.Play(GPSFX.Instance.Error);
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
+                if (!countBones) return;
                 if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
                 else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
                     MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());

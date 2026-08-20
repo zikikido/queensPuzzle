@@ -22,6 +22,10 @@ namespace qp {
         public static bool IsInserting => IsRecording && _mode == EMode.Insert;
         public static GPRecord Record { get; private set; }
 
+        /// <summary>While recording/replaying, wrong queens lose no bones and can't fail the
+        /// board — ad takes need unlimited wrong tries. Checked by MBGameplay.PlaceQueenAt.</summary>
+        public static bool NoFail = true;
+
         static EMode _mode;
         static float _t0;        // Record: Time.time that maps to record-time 0
         static float _insertAt;  // Insert: the stamp for every new action

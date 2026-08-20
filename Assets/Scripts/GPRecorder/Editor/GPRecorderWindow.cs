@@ -42,6 +42,7 @@ namespace qp {
         [SerializeField] float _pxPerSec = 80f;   // zoom
         [SerializeField] float _viewStart;        // seconds at the timeline's left edge (pan)
         [SerializeField] EPending _pending = EPending.None;
+        [SerializeField] bool _noFail = true;   // wrong queens don't lose bones during record/replay
 
         // reset by the domain reload — selection is not precious
         readonly System.Collections.Generic.List<GPRecordAction> _selection = new System.Collections.Generic.List<GPRecordAction>();
@@ -183,6 +184,7 @@ namespace qp {
         // ---- GUI -----------------------------------------------------------------------
 
         void OnGUI() {
+            GPRecorder.NoFail = _noFail;   // statics reset on domain reload — the window is the source
             // ✎ Edit (insert) keeps the timeline fully editable — only a running record/replay locks it
             bool live = GPReplayer.IsReplaying || (GPRecorder.IsRecording && !GPRecorder.IsInserting);
             if (GPRecorder.IsRecording) _playhead = GPRecorder.Elapsed;
@@ -272,6 +274,10 @@ namespace qp {
                                     GUILayout.Width(105f)))
                                 AddHandDoubleTap();
                         }
+                        GUILayout.Space(12f);
+                        _noFail = GUILayout.Toggle(_noFail, new GUIContent("NoFail",
+                            "During record & replay: wrong queens shake and flash but lose no bones and can never fail the board"),
+                            GUILayout.Width(60f));
                     }
                     GUILayout.FlexibleSpace();
                     GUILayout.Label($"playhead {_playhead:0.00}s");
