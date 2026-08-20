@@ -105,9 +105,17 @@ namespace qp {
         void ArmFreshRecord() {
             _record = new GPRecord { level = GPRecord.LevelSnapshot.From(MBGameplay.instance.Level) };
             _path = "";
+            _saveName = NextFreeName();   // a fresh recording NEVER inherits the loaded file's name
             ClearSelection();
             _playhead = 0f;
             GPRecorder.Begin(_record, 0f);
+        }
+
+        static string NextFreeName() {
+            for (int i = 1; ; i++) {
+                string name = "record_" + i;
+                if (!File.Exists(Path.Combine(GPRecord.Dir, name + ".json"))) return name;
+            }
         }
 
         void ClearSelection() {
@@ -118,6 +126,14 @@ namespace qp {
         }
 
         void StartFreshRecordRun() {
+            // recording over a record that has keys replaces it in the window — make sure
+            if (_record.IsValid && (_record.actions.Count > 0 || _record.handKeys.Count > 0) &&
+                !EditorUtility.DisplayDialog("GP Recorder",
+                    $"Start a NEW recording?\n\nThe {_record.actions.Count} board keys and {_record.handKeys.Count} hand keys " +
+                    "currently in the window are replaced. The saved file itself is not touched — the new recording " +
+                    "saves under a new name.", "Record", "Cancel"))
+                return;
+
             if (EditorApplication.isPlaying) { ArmFreshRecord(); return; }   // record the level being played
             SessionState.SetBool(GPReplayer.FreshBoardKey, true);            // no saved-board restore
             _pending = EPending.RecordFresh;
@@ -127,7 +143,7 @@ namespace qp {
         // Replay and re-record both restart play mode so the board is guaranteed fresh; the
         // record travels by file path via SessionState (LevelLoader serves its embedded level).
         void StartReplayRun(EPending mode) {
-            SaveRecord();
+            if (!SaveRecord()) return;   // the run reads the record from its file — no file, no run
             SessionState.SetString(GPReplayer.ReplayRecordKey, _path);
             _pending = mode;
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;   // OnPlayMode relaunches
@@ -140,11 +156,19 @@ namespace qp {
 
         // ---- files ---------------------------------------------------------------------
 
-        void SaveRecord() {
-            if (!_record.IsValid) return;
-            if (string.IsNullOrWhiteSpace(_saveName)) _saveName = "record";
-            _path = Path.Combine(GPRecord.Dir, _saveName + ".json");
+        bool SaveRecord() {
+            if (!_record.IsValid) return false;
+            if (string.IsNullOrWhiteSpace(_saveName)) _saveName = NextFreeName();
+            string target = Path.Combine(GPRecord.Dir, _saveName + ".json");
+            // saving over a DIFFERENT existing file than this record's own needs an OK; re-saving
+            // the file the record was loaded from (or already saved to) is a normal save
+            if (target != _path && File.Exists(target) &&
+                !EditorUtility.DisplayDialog("GP Recorder",
+                    $"Override the existing file \"{_saveName}.json\"?", "Override", "Cancel"))
+                return false;
+            _path = target;
             _record.Save(_path);
+            return true;
         }
 
         void LoadRecord(string path) {
