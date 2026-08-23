@@ -21,10 +21,13 @@ namespace qp {
     /// board previews that moment when the level is live), drag a marker = retime,
     /// ctrl-click = toggle-select, shift-click = range-select, Del = delete.
     ///
-    /// Hand track (thin strip under the board keys): "+ Hand Move" adds a START→END sweep and
-    /// "+ Hand DblTap" a double-tap, both at the playhead (cell = nearest board key, editable in
-    /// the row below). The hand shows automatically whenever hand keys exist. Visual only —
-    /// GPHand clones the tutorial's $Hand and follows these keys during replay and scrubbing.
+    /// Hand track (thin strip under the board keys): a drag is POINTs closed by an END — the
+    /// first POINT is where the hand appears and presses, each next POINT a corner it drags
+    /// through (rows AND columns), END where it lifts and vanishes; DOUBLE_CLICK appears at the
+    /// cell and taps twice. Keys land at the playhead (cell = nearest board key, editable in the
+    /// row below); a line spans each drag on the strip. The hand exists only inside a gesture.
+    /// Visual only — GPHand clones the tutorial's $Hand and follows these keys during replay
+    /// and scrubbing.
     /// </summary>
     public class GPRecorderWindow : EditorWindow {
 
@@ -265,14 +268,22 @@ namespace qp {
                         }
                         GUILayout.Space(12f);
                         using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                            if (GUILayout.Button(new GUIContent("+ Hand Move",
-                                    "Add a START→END hand sweep at the playhead (cell taken from the nearest board key — edit below)"),
+                            if (GUILayout.Button(new GUIContent("+ Hand Point",
+                                    "Add a drag point. Select a board key first: it goes on that cell — a drag's first point " +
+                                    "slightly early so the press lands on the mark, a corner inside the drag exactly at the key. " +
+                                    "Otherwise at the playhead."),
                                     GUILayout.Width(95f)))
-                                AddHandMove();
+                                AddHandKey(GPHandKey.EKind.POINT);
+                            if (GUILayout.Button(new GUIContent("+ Hand End",
+                                    "Add the drag's END: the finger lifts and the hand vanishes. On a selected board key → " +
+                                    "that cell, exactly at the key's time. Otherwise at the playhead."),
+                                    GUILayout.Width(85f)))
+                                AddHandKey(GPHandKey.EKind.END_MOVE);
                             if (GUILayout.Button(new GUIContent("+ Hand DblTap",
-                                    "Add a hand double-tap at the playhead (cell taken from the nearest board key — edit below)"),
+                                    "Add a hand double-tap. Select a QUEEN board key first: it goes on that cell, timed so the " +
+                                    "2nd tap lands exactly when the queen appears. Otherwise it lands at the playhead."),
                                     GUILayout.Width(105f)))
-                                AddHandDoubleTap();
+                                AddHandKey(GPHandKey.EKind.DOUBLE_CLICK);
                         }
                         GUILayout.Space(12f);
                         _noFail = GUILayout.Toggle(_noFail, new GUIContent("NoFail",
@@ -428,15 +439,17 @@ namespace qp {
                 var hs = HandStrip(r);
                 EditorGUI.DrawRect(hs, new Color(0.17f, 0.17f, 0.17f));
                 EditorGUI.DrawRect(new Rect(hs.x, hs.y - 1f, hs.width, 1f), new Color(1f, 1f, 1f, 0.12f));
-                float pendingStartX = float.NaN;
+                // a line spans each drag: from its first POINT to its END
+                float dragStartX = float.NaN;
                 foreach (var k in _record.handKeys) {
                     float x = TimeToX(r, k.time);
-                    if (k.kind == GPHandKey.EKind.START_MOVE) pendingStartX = x;
-                    else if (k.kind == GPHandKey.EKind.END_MOVE && !float.IsNaN(pendingStartX)) {
-                        // the sweep between a START/END pair
-                        float x0 = Mathf.Max(Mathf.Min(pendingStartX, x), r.x), x1 = Mathf.Min(Mathf.Max(pendingStartX, x), r.xMax);
-                        if (x1 > x0) EditorGUI.DrawRect(new Rect(x0, hs.center.y - 1f, x1 - x0, 2f), new Color(0.3f, 0.85f, 0.45f, 0.5f));
-                        pendingStartX = float.NaN;
+                    if (k.kind == GPHandKey.EKind.POINT) { if (float.IsNaN(dragStartX)) dragStartX = x; }
+                    else {
+                        if (k.kind == GPHandKey.EKind.END_MOVE && !float.IsNaN(dragStartX)) {
+                            float x0 = Mathf.Max(Mathf.Min(dragStartX, x), r.x), x1 = Mathf.Min(Mathf.Max(dragStartX, x), r.xMax);
+                            if (x1 > x0) EditorGUI.DrawRect(new Rect(x0, hs.center.y - 1f, x1 - x0, 2f), new Color(0.3f, 0.85f, 0.45f, 0.5f));
+                        }
+                        dragStartX = float.NaN;   // END closes the drag, a DOUBLE_CLICK cuts it
                     }
                 }
                 foreach (var k in _record.handKeys) {
@@ -517,10 +530,10 @@ namespace qp {
                     EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), ColorOf(t));
                     GUILayout.Label(t == MBCell.ECellType.EMPTY ? "UNMARK" : t.ToString(), EditorStyles.miniLabel, GUILayout.Width(90f));
                 }
-                foreach (var k in new[] { GPHandKey.EKind.START_MOVE, GPHandKey.EKind.END_MOVE, GPHandKey.EKind.DOUBLE_CLICK }) {
+                foreach (var k in new[] { GPHandKey.EKind.POINT, GPHandKey.EKind.END_MOVE, GPHandKey.EKind.DOUBLE_CLICK }) {
                     var sw = GUILayoutUtility.GetRect(10f, 10f, GUILayout.Width(10f));
                     EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), HandColorOf(k));
-                    GUILayout.Label(k.ToString(), EditorStyles.miniLabel, GUILayout.Width(86f));
+                    GUILayout.Label("HAND " + k, EditorStyles.miniLabel, GUILayout.Width(k == GPHandKey.EKind.POINT ? 70f : 110f));
                 }
                 GUILayout.FlexibleSpace();
                 GUILayout.Label("wheel zoom · alt-drag pan · click playhead · ctrl-click toggle · shift-click range · drag = retime · Del", EditorStyles.miniLabel);
@@ -529,29 +542,49 @@ namespace qp {
 
         // ---- hand keys -----------------------------------------------------------------
 
-        // New hand keys land at the playhead; the cell starts as the nearest board key's
-        // (usually what the hand should point at) and is edited in the selected-key row.
-        void AddHandMove() {
-            var cell = NearestAction(_playhead);
-            var start = new GPHandKey { time = _playhead, x = cell.x, y = cell.y, kind = GPHandKey.EKind.START_MOVE };
-            var end = new GPHandKey { time = _playhead + 0.3f, x = cell.x, y = cell.y, kind = GPHandKey.EKind.END_MOVE };
-            _record.handKeys.Add(start);
-            _record.handKeys.Add(end);
-            _record.Sort();
-            _handSel.Clear();
-            _handSel.Add(start);
-            _handSel.Add(end);   // the fresh pair is selected — drag both to place them
-            ScrubPreview();
-        }
+        // A new hand key lands on the selected board key's cell, timed so the hand's action
+        // coincides with that mark appearing:
+        //   DOUBLE_CLICK on a queen → 2nd tap lands on the queen (key − 0.42s)
+        //   first POINT of a drag  → the press completes on the mark (key − PressIn)
+        //   POINT inside a drag / END → exactly the key's time (the finger passes / lifts there)
+        // With no board key selected: at the playhead, on the nearest board key's cell.
+        void AddHandKey(GPHandKey.EKind kind) {
+            var sel = _selection.Count == 1 ? _selection[0] : null;
+            var cell = sel != null ? (sel.x, sel.y) : NearestAction(_playhead);
+            float time = _playhead;
+            if (sel != null) {
+                switch (kind) {
+                    case GPHandKey.EKind.DOUBLE_CLICK:
+                        if (sel.to == MBCell.ECellType.QUEEN || sel.to == MBCell.ECellType.WRONG_QUEEN)
+                            time = sel.time - GPHand.DcSecondPress;
+                        break;
+                    case GPHandKey.EKind.POINT:
+                        time = DragOpenAt(sel.time) ? sel.time : sel.time - GPHand.PressIn;
+                        break;
+                    case GPHandKey.EKind.END_MOVE:
+                        time = sel.time;
+                        break;
+                }
+                time = Mathf.Max(0f, time);
+            }
 
-        void AddHandDoubleTap() {
-            var cell = NearestAction(_playhead);
-            var key = new GPHandKey { time = _playhead, x = cell.x, y = cell.y, kind = GPHandKey.EKind.DOUBLE_CLICK };
+            var key = new GPHandKey { time = time, x = cell.x, y = cell.y, kind = kind };
             _record.handKeys.Add(key);
             _record.Sort();
+            _selection.Clear(); _dragging = _anchor = null;
             _handSel.Clear();
             _handSel.Add(key);
             ScrubPreview();
+        }
+
+        // Is a drag open (a POINT seen, no END / DOUBLE_CLICK since) just before time t?
+        bool DragOpenAt(float t) {
+            bool open = false;
+            foreach (var k in _record.handKeys) {   // time-sorted
+                if (k.time >= t) break;
+                open = k.kind == GPHandKey.EKind.POINT;
+            }
+            return open;
         }
 
         (int x, int y) NearestAction(float t) {
@@ -599,7 +632,7 @@ namespace qp {
 
         static Color HandColorOf(GPHandKey.EKind kind) {
             switch (kind) {
-                case GPHandKey.EKind.START_MOVE:   return new Color(0.30f, 0.85f, 0.45f);
+                case GPHandKey.EKind.POINT:        return new Color(0.30f, 0.85f, 0.45f);
                 case GPHandKey.EKind.END_MOVE:     return new Color(0.30f, 0.80f, 0.80f);
                 default:                           return new Color(1.00f, 0.80f, 0.20f);   // DOUBLE_CLICK
             }

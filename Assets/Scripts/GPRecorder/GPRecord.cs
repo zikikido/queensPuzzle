@@ -16,12 +16,15 @@ namespace qp {
         public MBCell.ECellType to;
     }
 
-    /// <summary>One hand-track key: at <see cref="time"/> the ad hand does <see cref="kind"/> at cell (x, y).
-    /// START_MOVE presses down, END_MOVE has glided there from the START cell and lifts,
-    /// DOUBLE_CLICK plays the tap-tap that seats a queen. Visual only — never drives the board.</summary>
+    /// <summary>One hand-track key: at <see cref="time"/> the ad hand is at cell (x, y).
+    /// A drag is a run of POINTs closed by an END: the first POINT is where the finger appears
+    /// and presses down, every next POINT a corner it drags through (finger stays down — e.g.
+    /// sweeping the rows AND columns a queen blocks), END where it lifts and vanishes.
+    /// DOUBLE_CLICK: the hand appears at the cell and plays the tap-tap that seats a queen.
+    /// The hand exists only inside a gesture — never before its first key. Visual only.</summary>
     [Serializable]
     public class GPHandKey {
-        public enum EKind { START_MOVE, END_MOVE, DOUBLE_CLICK }
+        public enum EKind { POINT, END_MOVE, DOUBLE_CLICK }
         public float time;
         public int x, y;
         public EKind kind;

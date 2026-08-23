@@ -73,100 +73,99 @@ namespace qp {
             return hand;
         }
 
-        // one continuous piece of hand motion
+        // One pressed piece of a drag (POINT→POINT / POINT→END) or a double-click. The hand
+        // exists ONLY inside these — between gestures it's gone, so it never shows before a key.
         struct Seg {
             public float t0, t1;
             public Vector3 a, b;
-            public int kind;   // 0 = glide (finger up), 1 = pressed sweep, 2 = double-click
+            public bool doubleClick;       // tap-tap in place (a == b) instead of a pressed move
+            public bool rampIn, rampOut;   // press down at the start / lift at the end — a corner POINT
+                                           // in the middle of a drag keeps the finger down
         }
 
         readonly List<Seg> _segs = new List<Seg>();
         Transform _hand;     // the cloned $Hand visual (this component sits on its canvas root)
         Transform _finger;
         CanvasGroup _cg;
-        float _showFrom, _hideAfter;
 
         // press rhythm — the same numbers MBToturial uses (taken from the playable ad's keyframes)
         const float TapCycle = 1.5f, TapScale = 0.82f, TapAngle = -7f;
-        const float PressIn = 0.12f, PressOut = 0.15f;
-        const float DcLead = 0.45f;   // the double-click cycle starts early so its 2nd press lands on the key
+        const float PressOut = 0.15f;
+
+        /// <summary>Seconds a drag's first POINT takes to press fully — a first point placed this
+        /// much before a board key lands the press on the mark.</summary>
+        public const float PressIn = 0.12f;
         static readonly float[] DoubleKeys = { 0f, 0.12f, 0.20f, 0.28f, 0.40f, 1f };
         static readonly float[] DoubleVals = { 0f, 1f, 0f, 1f, 0f, 0f };
+        const float DcShow = 0.40f * TapCycle;   // gone the instant the 2nd tap has released (0.6s)
+
+        /// <summary>Seconds from a DOUBLE_CLICK key to its 2nd press (0.28 of the 1.5s cycle) — a
+        /// hand double-tap placed this much before a queen key lands the press on the queen.</summary>
+        public const float DcSecondPress = 0.28f * TapCycle;
 
         void Build(GPRecord record) {
             _segs.Clear();
             var gp = MBGameplay.instance;
-            var keys = record.handKeys;
-            if (gp == null || keys.Count == 0) { _showFrom = _hideAfter = -1f; return; }
+            if (gp == null) return;
 
-            Vector3 lastPos = default;
-            float lastT = float.MinValue;
-            bool started = false;         // a START_MOVE waiting for its END_MOVE
-            Vector3 startPos = default;
-            float startT = 0f;
+            bool dragging = false;        // inside a drag: first POINT seen, END not yet
+            bool first = false;           // the next piece is the drag's first (press down)
+            Vector3 dragPos = default;    // where the pressed finger is now
+            float dragT = 0f;
 
-            void Glide(float toT, Vector3 toPos) {
-                if (lastT != float.MinValue && toT > lastT)
-                    _segs.Add(new Seg { t0 = lastT, t1 = toT, a = lastPos, b = toPos, kind = 0 });
-            }
-            void CloseSweep(float t, Vector3 pos) {
-                _segs.Add(new Seg { t0 = startT, t1 = Mathf.Max(t, startT + 0.05f), a = startPos, b = pos, kind = 1 });
-                started = false;
+            // one pressed piece of the drag; `last` lifts the finger
+            void DragTo(float t, Vector3 pos, bool last) {
+                float t1 = Mathf.Max(t, dragT + 0.05f);
+                _segs.Add(new Seg { t0 = dragT, t1 = t1, a = dragPos, b = pos, rampIn = first, rampOut = last });
+                dragT = t1; dragPos = pos; first = false;
+                if (last) dragging = false;
             }
 
-            foreach (var k in keys) {
+            foreach (var k in record.handKeys) {
                 var cell = gp.CellAt(k.y, k.x);
                 if (cell == null) continue;
                 Vector3 p = cell.transform.position;
                 switch (k.kind) {
-                    case GPHandKey.EKind.START_MOVE:
-                        if (started) CloseSweep(k.time, p);   // stray START — close the open sweep here
-                        else Glide(k.time, p);
-                        started = true; startT = k.time; startPos = p;
-                        lastT = k.time; lastPos = p;
-                        break;
                     case GPHandKey.EKind.END_MOVE:
-                        if (started) CloseSweep(k.time, p);
-                        else Glide(k.time, p);                // stray END — just a waypoint
-                        lastT = Mathf.Max(lastT, k.time); lastPos = p;
+                        if (dragging) DragTo(k.time, p, true);   // a stray END (no drag open) is ignored
                         break;
                     case GPHandKey.EKind.DOUBLE_CLICK:
-                        float s = k.time - DcLead;
-                        if (started) CloseSweep(s, lastPos);
-                        Glide(s, p);
-                        _segs.Add(new Seg { t0 = s, t1 = s + TapCycle * 0.6f, a = p, b = p, kind = 2 });
-                        lastT = s + TapCycle * 0.6f; lastPos = p;
+                        if (dragging) DragTo(k.time, dragPos, true);
+                        _segs.Add(new Seg { t0 = k.time, t1 = k.time + DcShow, a = p, b = p, doubleClick = true });
+                        break;
+                    default:   // POINT: the hand appears here and presses, or turns a corner mid-drag
+                        if (dragging) DragTo(k.time, p, false);
+                        else { dragging = true; first = true; dragT = k.time; dragPos = p; }
                         break;
                 }
             }
-            if (started) CloseSweep(startT + 0.25f, startPos);   // unclosed sweep = a tap
+            if (dragging) DragTo(dragT + 0.25f, dragPos, true);   // a drag never closed = a tap
 
             _segs.Sort((x, y) => x.t0.CompareTo(y.t0));
-            _showFrom = keys[0].time - 1f;
-            _hideAfter = lastT + 1.5f;
         }
 
         void Update() => Evaluate(GPReplayer.PlayheadTime);
 
         void Evaluate(float t) {
-            bool visible = _segs.Count > 0 && t >= _showFrom && t <= _hideAfter;
-            if (_cg != null) _cg.alpha = visible ? 1f : 0f;
-            if (!visible) return;
-
-            Vector3 pos = _segs[0].a;
+            bool visible = false;
+            Vector3 pos = default;
             float press = 0f;
             foreach (var s in _segs) {
-                if (t >= s.t1) { pos = s.b; continue; }
-                if (t < s.t0) break;
+                if (t < s.t0 || t > s.t1) continue;
+                visible = true;
                 float u = Mathf.InverseLerp(s.t0, s.t1, t);
                 u = u < 0.5f ? 2f * u * u : 1f - Mathf.Pow(-2f * u + 2f, 2f) * 0.5f;   // ease in-out
                 pos = Vector3.Lerp(s.a, s.b, u);
-                if (s.kind == 1)
-                    press = Mathf.Min(Mathf.Clamp01((t - s.t0) / PressIn), Mathf.Clamp01((s.t1 - t) / PressOut));
-                else if (s.kind == 2)
+                if (s.doubleClick)
                     press = SampleEased(DoubleKeys, DoubleVals, Mathf.Clamp01((t - s.t0) / TapCycle));
+                else
+                    press = Mathf.Min(s.rampIn ? Mathf.Clamp01((t - s.t0) / PressIn) : 1f,
+                                      s.rampOut ? Mathf.Clamp01((s.t1 - t) / PressOut) : 1f);
                 break;
             }
+
+            if (_cg != null) _cg.alpha = visible ? 1f : 0f;
+            if (!visible) return;
 
             _hand.position = pos;
             if (_finger != null) {
