@@ -7,18 +7,15 @@ namespace qp {
     // Singular boot task. Manual init on purpose: the SingularSDKObject in the boot scene has
     // InitializeOnAwake OFF, so nothing tracks before this task decides to.
     //
-    // Registered in a LATER boot stage than MAX (see MBStartup), so by the time Begin() runs the
-    // consent flow has already resolved and MaxBoot.Geography is set.
+    // Does NOT wait for the consent flow: initializes immediately with partner data sharing
+    // OFF (the privacy-safe state, valid even in GDPR before consent), so the install and every
+    // session are recorded without stalling the boot on MAX. The real consent decision is applied
+    // via MaxBoot.WhenResolved — whenever it lands (seconds later, or not at all this session).
     public static class SingularBoot {
 
         public static bool Done { get; private set; }
 
         public static void Begin() {
-            // Outside a GDPR region → full attribution. In a GDPR region → still initialize after
-            // the flow, but limit partner data sharing (LimitDataSharing = true = opted out).
-            // TODO tighten: read the exact UMP/TCF consent bit to flip LimitDataSharing precisely.
-            bool limitSharing = MaxBoot.InGdprRegion;
-
             // Must be registered BEFORE init. Fires (main thread, via UnitySendMessage) once Singular
             // resolves the install's attribution — only if the callback is enabled for the app on
             // Singular's side (BETA feature; requested from support 2026-08-17). No-op in the Editor.
@@ -29,11 +26,23 @@ namespace qp {
             SingularSDK.SetCustomUserId(Common.UserID.GetUserIDLocal());
 
             SingularSDK.InitializeSingularSDK();
+            SingularSDK.LimitDataSharing(true);   // safe default until consent resolves (same frame → nothing shared before)
+
+            // Apply the real consent whenever MAX resolves the region (may be after boot).
+            MaxBoot.WhenResolved(ApplyConsent);
+
+            Debug.Log($"[SingularBoot] Singular initialized (partner sharing limited until consent), source {(AppData.SingularSource.Value != null ? AppData.SingularSource.Value.ToString() : "unknown")}");
+            Done = true;
+        }
+
+        // Outside a GDPR region → full attribution sharing. In a GDPR region → stays limited
+        // (LimitDataSharing = true = opted out).
+        // TODO tighten: read the exact UMP/TCF consent bit to flip LimitDataSharing precisely.
+        static void ApplyConsent() {
+            bool limitSharing = MaxBoot.InGdprRegion;
             if (!limitSharing) SingularSDK.TrackingOptIn();
             SingularSDK.LimitDataSharing(limitSharing);
-
-            Debug.Log($"[SingularBoot] Singular initialized — geography {MaxBoot.Geography}, limitDataSharing {limitSharing}, source {(AppData.SingularSource.Value != null ? AppData.SingularSource.Value.ToString() : "unknown")}");
-            Done = true;
+            Debug.Log($"[SingularBoot] consent applied — geography {MaxBoot.Geography}, limitDataSharing {limitSharing}");
         }
 
         // Persists the resolved attribution; Analytics attaches it to every events-server event.

@@ -79,8 +79,10 @@ namespace qp {
             // buffers it and sends async, so the boot never waits on the network.
             Register("session_start", Analytics.SessionStart, () => true);
 
-            // Stage 1: MAX alone — it owns the consent flow (UMP/ATT).
-            Register("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 30f);
+            Register(
+                Task("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f),
+                Task("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 5f)
+            );
 
             // Stage 1b: right after the ads consent prompt is dismissed, ask for the OS
             // notification permission (first launch only). Instant-done — the boot never waits
@@ -89,7 +91,9 @@ namespace qp {
             Register("notif-permission", RequestNotificationPermission, () => true);
 #endif
 
-            // Stage 2 (parallel): consent is resolved now — Firebase + Singular init together.
+            // Stage 2 (parallel): Firebase + Singular. Singular inits with partner sharing off and
+            // updates via MaxBoot.WhenResolved, so it no longer depends on consent being ready here
+            // (matters when stage 1 hit its cap offline).
             Register(
 #if !IGNORE_FIREBASE
                 Task("firebase", FirebaseBootstrap.Init, () => FirebaseBootstrap.FBSetupFinished),
@@ -100,11 +104,6 @@ namespace qp {
             // Stage 3: start loading ads. Instant-done — ad loading runs in the background, so
             // the loading screen never waits on it.
             Register("ads", Ads.Init, () => true);
-
-            // Final stage: the sync was kicked off at the top of Boot, so it usually landed long
-            // ago. This just gives it a last moment to finish before we leave the loading screen —
-            // capped at 3s, then boot continues whether or not we're synced.
-            Register("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f);
         }
 
         /// <summary>

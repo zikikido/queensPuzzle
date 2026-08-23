@@ -29,6 +29,19 @@ namespace qp {
         public int lvl_idx;          // campaign progress at launch
     }
 
+    /// <summary>One paid ad impression (MAX OnAdRevenuePaidEvent) → events-server `ad_impression`.
+    /// Carries `user_id`, so ad revenue joins to install source (extra_data.user_id) for ROAS.</summary>
+    [Serializable]
+    public class AdImpressionPayload : EventBase {
+        public string ad_platform;   // always "AppLovin" (the mediation layer)
+        public string network;       // MAX AdInfo.NetworkName — the winning demand source
+        public string format;        // AdInfo.AdFormat — banner / interstitial / rewarded
+        public string ad_unit;       // AdInfo.AdUnitIdentifier
+        public string placement;     // AdInfo.Placement (may be empty)
+        public double revenue;       // AdInfo.Revenue, USD
+        public string precision;     // AdInfo.RevenuePrecision — exact / estimated / ...
+    }
+
     /// <summary>Serialized shape of one level event document sent to the events server.</summary>
     [Serializable]
     public class EventPayload : EventBase {

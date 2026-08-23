@@ -79,6 +79,23 @@ namespace qp {
             EventClient.Enqueue(p);
         }
 
+        /// <summary>One paid ad impression → events-server `ad_impression` (revenue per user).
+        /// Called from Ads.OnRevenuePaid, alongside the Singular/Firebase reporting.</summary>
+        public static void AdImpression(MaxSdkBase.AdInfo info) {
+            var p = new AdImpressionPayload {
+                eventname   = "ad_impression",
+                ad_platform = "AppLovin",
+                network     = info.NetworkName,
+                format      = info.AdFormat,
+                ad_unit     = info.AdUnitIdentifier,
+                placement   = info.Placement,
+                revenue     = info.Revenue,
+                precision   = info.RevenuePrecision,
+            };
+            FillCommon(p);
+            EventClient.Enqueue(p);
+        }
+
         // Mirror of the game_start/win/lose events into the events server. Reads the same
         // statics as GameEvent (correct here — fires before LevelIdx++ / Invalidate), then
         // hands off to EventClient which buffers + sends async (never blocks, never throws).
