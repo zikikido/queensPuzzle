@@ -19,6 +19,7 @@ namespace qp {
     public class MBDailyStreakProgress : MonoBehaviour {
 
         GameObject[] _checks;        // $V of every dot, in order
+        Transform _ps;               // $PS — one-shot burst, moved over the dot a stamp lands on
         bool _cached;
 
         int _shownStreak;            // last streak painted — the anim start point
@@ -59,6 +60,17 @@ namespace qp {
 
             if (_checks == null || idx < 0 || idx >= _checks.Length) yield break;
             yield return _stampIn(_checks[idx]);
+            _burstAt(_checks[idx].transform);
+        }
+
+        // Fire the $PS burst over the dot the stamp just landed on — the impact accent of the stamp.
+        void _burstAt(Transform dot) {
+            if (_ps == null) return;
+            _ps.position = dot.position;
+            var uip = _ps.GetComponentInChildren<Coffee.UIExtensions.UIParticle>(true);
+            if (uip != null) { uip.Play(); return; }
+            var ps = _ps.GetComponentInChildren<ParticleSystem>(true);
+            if (ps != null) ps.Play();
         }
 
         // Big + transparent → scales down to normal and fades in, landing like a stamp on the circle.
@@ -92,6 +104,7 @@ namespace qp {
                 if (v != null) checks.Add(v.gameObject);
             }
             _checks = checks.ToArray();
+            _ps = transform.RecursiveFindChild("$PS");
         }
     }
 }
