@@ -7,9 +7,8 @@ namespace qp {
     /// MBSpriteFlipbook so game code doesn't care which one it's talking to. The controller's
     /// default state starts on enable; Play("Happy") switches state by name. A non-looping
     /// state chains into its 'next' state (after 'nextDelay' on the last pose) or holds the
-    /// last pose when it has none. Plain loops (no loopDelay) are seeded from the GLOBAL
-    /// unscaled clock, so every instance in the same state animates in sync (all puppies
-    /// blink together, whenever they spawned).
+    /// last pose when it has none. Instances stay in sync because callers play them all in
+    /// the same frame (PlayQueens), not through any clock seeding here.
     /// </summary>
     public class MBSpinePlayer : MonoBehaviour {
 
@@ -100,12 +99,12 @@ namespace qp {
             _done = false;
 
             // A loop with a rest between cycles plays as one-shot and is restarted by Update();
-            // a plain loop is handed to Spine and synced to the global clock.
+            // a plain loop is handed to Spine. Board-wide sync comes from the callers playing
+            // every instance in the same frame (PlayQueens) — no clock seeding needed.
             bool plainLoop = s.loop && s.loopDelay <= 0f;
             var entry = _skeleton.AnimationState.SetAnimation(0, anim, plainLoop);
             entry.TimeScale = Speed(s);
             entry.MixDuration = mixOverride >= 0f ? mixOverride : s.mix;
-            if (plainLoop) entry.TrackTime = (Time.unscaledTime * Speed(s)) % anim.Duration;
         }
 
         // Chain into _state.next, honoring its nextMix override.
