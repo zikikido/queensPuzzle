@@ -4,30 +4,38 @@ using UnityEngine;
 namespace qp {
     public class MBQueenMark : MBABSMarkAnim {
 
-        private MBSpriteFlipbook _flipbook;
+        // the Spine player sits on the "Visual" CHILD: MBMarkPopIn pops the root scale to 1,
+        // so the skeleton's own scale must live one level down where the pop can't stomp it
+        private MBSpinePlayer _player;
 
         private void Awake() {
-            _flipbook = GetComponent<MBSpriteFlipbook>();
+            _player = GetComponentInChildren<MBSpinePlayer>(true);
         }
 
         internal void Play(string v) {
-            _flipbook.Play(v);
+            _player.Play(v);
         }
 
         internal float StateLength(string v) {
 
             // if never awake
-            if (_flipbook == null) {
-                _flipbook = GetComponent<MBSpriteFlipbook>();
+            if (_player == null) {
+                _player = GetComponentInChildren<MBSpinePlayer>(true);
             }
 
-            return _flipbook.StateLength(v);
+            return _player.StateLength(v);
+        }
+
+        public override void InitIn() {
+            base.InitIn();
+            if (_player == null) _player = GetComponentInChildren<MBSpinePlayer>(true);
+            _player.StartFrame("Idle");   // restored queens hold the Idle first frame, not the bind pose
         }
 
         public override void ActIn() {
             gameObject.SetActive(true);
-            if (_flipbook == null) _flipbook = GetComponent<MBSpriteFlipbook>();
-            _flipbook.StartFrame("Idle");   // begin on the Idle first frame
+            if (_player == null) _player = GetComponentInChildren<MBSpinePlayer>(true);
+            _player.StartFrame("Idle");   // begin on the Idle first frame
             GetComponent<MBMarkPopIn>().PopIn();
             MBGameplay.instance.QueenMarkPS.Play(transform.position);
         }
@@ -37,5 +45,3 @@ namespace qp {
         }
     }
 }
-
-
