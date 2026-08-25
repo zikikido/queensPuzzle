@@ -44,6 +44,6 @@ MonoBehaviour:
   - Name: Blue
     Color: {r: 0.4508, g: 0.4508, b: 0.98, a: 1}
   - Name: Yellow
-    Color: {r: 0.98, g: 0.91336, b: 0.6468, a: 1}
+    Color: {r: 0.9411765, g: 0.85882354, b: 0.33333334, a: 1}
   - Name: Blue
     Color: {r: 0.5828, g: 0.94, b: 0.880467, a: 1}
