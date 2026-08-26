@@ -1,6 +1,7 @@
 Puppy.png
 size:1024,1024
 filter:Linear,Linear
+pma:true
 1
 bounds:433,73,102,72
 rotate:90

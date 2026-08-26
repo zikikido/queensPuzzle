@@ -19,7 +19,7 @@ MonoBehaviour:
     spineAnim: idle_thinking
     speed: 1
     loop: 1
-    loopDelay: 3
+    loopDelay: 4
     next: 
     nextDelay: 0
     mix: 0
@@ -43,11 +43,11 @@ MonoBehaviour:
     mix: 0
     nextMix: -1
   - name: Disappointed
-    spineAnim: idle_thinking
+    spineAnim: disappointed
     speed: 1
     loop: 0
     loopDelay: 0
     next: Idle
-    nextDelay: 2
+    nextDelay: 4
     mix: 0
     nextMix: -1
