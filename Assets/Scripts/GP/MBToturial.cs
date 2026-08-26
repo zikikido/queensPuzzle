@@ -143,6 +143,10 @@ namespace qp {
         /// player does what the hint says (or taps Apply, which does it for them).
         /// </summary>
         public void ShowHint(Hint hint) {
+            CancelPendingSleep();
+            // self-heal: the GP recorder's spotlight (and the last-bone callout) borrow the
+            // curtain without the message box — a real hint always brings it back
+            if (_textContainer != null) _textContainer.gameObject.SetActive(true);
             ClearHintGhosts();
             _targets.Clear();
             var gp = MBGameplay.instance;
@@ -471,7 +475,12 @@ namespace qp {
             foreach (var kv in _targets) kv.Key.SetHintGhost(null);
         }
 
+        // Hide starts the curtain fade-out; the GO must stay active until it ends (deactivating
+        // would cut the fade), so the actual sleep is delayed and any new Show* cancels it.
+        bool _sleepPending;
+
         public void Hide() {
+            if (_sleepPending) return;   // already fading out (AutoHide calls every frame)
             ClearHintGhosts();
             _allowed.Clear();
             _targets.Clear();
@@ -480,7 +489,19 @@ namespace qp {
             if (_hand != null) _hand.SetActive(false);
             ClearCauseDots();
             MBDrapeHoles.Clear();
-            gameObject.SetActive(false);   // back to sleep until the next Show*
+            _sleepPending = true;
+            Invoke(nameof(Sleep), MBDrapeHoles.CurtainFadeOut);   // back to sleep after the fade
+        }
+
+        void Sleep() {
+            _sleepPending = false;
+            gameObject.SetActive(false);
+        }
+
+        // A Show* while the fade-out sleep is pending must survive it.
+        void CancelPendingSleep() {
+            CancelInvoke(nameof(Sleep));
+            _sleepPending = false;
         }
 
         // ---- last-bone callout --------------------------------------------------------
@@ -495,6 +516,7 @@ namespace qp {
         /// tap after a short grace window. Shown only the very first time, ever.
         /// </summary>
         public void ShowLastBoneToturial(Transform matchTo) {
+            CancelPendingSleep();
             if (_lastBonePopup == null || matchTo == null) return;
             if (AppData.LastBoneToturialSeen.Value) return;
             AppData.LastBoneToturialSeen.Value = true;
@@ -557,6 +579,7 @@ namespace qp {
 
         void Spot(List<MBCell> cells) {
             if (cells.Count == 0) return;
+            CancelPendingSleep();
             _allowed.Clear();
             foreach (var c in cells) _allowed.Add(c);   // everything else is locked
             SetText("");                  // stale text never survives into a new spotlight

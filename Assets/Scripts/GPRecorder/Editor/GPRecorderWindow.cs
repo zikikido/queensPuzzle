@@ -28,6 +28,9 @@ namespace qp {
     /// row below); a line spans each drag on the strip. The hand exists only inside a gesture.
     /// Visual only — GPHand clones the tutorial's $Hand and follows these keys during replay
     /// and scrubbing.
+    ///
+    /// Spotlight track (bottom strip): SHOW pops a tutorial curtain hole over a cell (holes add
+    /// up), CLEAR drops the curtain — driven by MBDrapeHoles, the tutorial's own spotlight.
     /// </summary>
     public class GPRecorderWindow : EditorWindow {
 
@@ -51,17 +54,35 @@ namespace qp {
         readonly System.Collections.Generic.List<GPRecordAction> _selection = new System.Collections.Generic.List<GPRecordAction>();
         GPRecordAction _dragging;   // drag anchor — the whole selection moves with it
         GPRecordAction _anchor;     // last clicked marker — shift-click selects the range from here
-        // the hand track mirrors the same selection model
+        // the hand and spotlight tracks mirror the same selection model
         readonly System.Collections.Generic.List<GPHandKey> _handSel = new System.Collections.Generic.List<GPHandKey>();
         GPHandKey _dragHand;    // drag anchor for the hand selection
         GPHandKey _handAnchor;  // shift-range anchor on the hand track
+        readonly System.Collections.Generic.List<GPSpotKey> _spotSel = new System.Collections.Generic.List<GPSpotKey>();
+        GPSpotKey _dragSpot;
+        GPSpotKey _spotAnchor;
         bool _scrubbing;
 
         const float RulerH = 18f;
         const float HandH = 20f;   // the hand strip under the board band — thin, it never stacks
+        const float SpotH = 20f;   // the spotlight strip under the hand strip
 
         void OnEnable() => EditorApplication.playModeStateChanged += OnPlayMode;
         void OnDisable() => EditorApplication.playModeStateChanged -= OnPlayMode;
+
+        // Runs need MBGameplay — make sure play mode starts on the Gameplay scene, whatever is
+        // open in the editor (same pattern as the Level Builder's Play).
+        static bool EnsureGameplayScene() {
+            const string scenePath = "Assets/Scenes/Gameplay.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path == scenePath) return true;
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null) {
+                Debug.LogError($"[GPRecorder] Scene not found: {scenePath}");
+                return false;
+            }
+            if (!UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
+            return true;
+        }
 
         void OnPlayMode(PlayModeStateChange c) {
             if (c == PlayModeStateChange.ExitingPlayMode) {
@@ -70,7 +91,10 @@ namespace qp {
                 GPReplayer.Stop();
             } else if (c == PlayModeStateChange.EnteredEditMode) {
                 if (_pending != EPending.None) {   // a queued run asked for a play-mode restart
-                    EditorApplication.delayCall += () => EditorApplication.isPlaying = true;
+                    EditorApplication.delayCall += () => {
+                        if (EnsureGameplayScene()) EditorApplication.isPlaying = true;
+                        else _pending = EPending.None;
+                    };
                     return;
                 }
                 // never leak the handover into a normal editor play
@@ -101,7 +125,10 @@ namespace qp {
                 }
             }
             GPRecorder.ConsumeOverwritten();   // overdub: old keys the record head passed are consumed
-            if (GPRecorder.IsRecording || GPReplayer.IsReplaying) Repaint();
+            // 🎯 Pick lives only while its single SHOW key stays selected
+            if (GPSpotPicker.Active && (_spotSel.Count != 1 || _spotSel[0].kind != GPSpotKey.EKind.SHOW))
+                GPSpotPicker.End();
+            if (GPRecorder.IsRecording || GPReplayer.IsReplaying || GPSpotPicker.Active) Repaint();
         }
 
         // ---- run control ---------------------------------------------------------------
@@ -127,6 +154,8 @@ namespace qp {
             _dragging = _anchor = null;
             _handSel.Clear();
             _dragHand = _handAnchor = null;
+            _spotSel.Clear();
+            _dragSpot = _spotAnchor = null;
         }
 
         void StartFreshRecordRun() {
@@ -139,6 +168,7 @@ namespace qp {
                 return;
 
             if (EditorApplication.isPlaying) { ArmFreshRecord(); return; }   // record the level being played
+            if (!EnsureGameplayScene()) return;
             SessionState.SetBool(GPReplayer.FreshBoardKey, true);            // no saved-board restore
             _pending = EPending.RecordFresh;
             EditorApplication.isPlaying = true;
@@ -148,6 +178,7 @@ namespace qp {
         // record travels by file path via SessionState (LevelLoader serves its embedded level).
         void StartReplayRun(EPending mode) {
             if (!SaveRecord()) return;   // the run reads the record from its file — no file, no run
+            if (!EditorApplication.isPlaying && !EnsureGameplayScene()) return;
             SessionState.SetString(GPReplayer.ReplayRecordKey, _path);
             _pending = mode;
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;   // OnPlayMode relaunches
@@ -163,10 +194,13 @@ namespace qp {
         bool SaveRecord() {
             if (!_record.IsValid) return false;
             if (string.IsNullOrWhiteSpace(_saveName)) _saveName = NextFreeName();
-            string target = Path.Combine(GPRecord.Dir, _saveName + ".json");
+            string target = Path.GetFullPath(Path.Combine(GPRecord.Dir, _saveName + ".json"));
             // saving over a DIFFERENT existing file than this record's own needs an OK; re-saving
-            // the file the record was loaded from (or already saved to) is a normal save
-            if (target != _path && File.Exists(target) &&
+            // the file the record was loaded from (or already saved to) is a normal save.
+            // Compare normalized — the Load file panel returns forward slashes.
+            bool samePath = !string.IsNullOrEmpty(_path) &&
+                string.Equals(Path.GetFullPath(_path), target, System.StringComparison.OrdinalIgnoreCase);
+            if (!samePath && File.Exists(target) &&
                 !EditorUtility.DisplayDialog("GP Recorder",
                     $"Override the existing file \"{_saveName}.json\"?", "Override", "Cancel"))
                 return false;
@@ -178,7 +212,7 @@ namespace qp {
         void LoadRecord(string path) {
             if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
             _record = GPRecord.Load(path);
-            _path = path;
+            _path = Path.GetFullPath(path);
             _saveName = Path.GetFileNameWithoutExtension(path);
             ClearSelection();
             _playhead = _viewStart = 0f;
@@ -267,25 +301,6 @@ namespace qp {
                                 GPRecorder.BeginInsert(_record, _playhead);
                         }
                         GUILayout.Space(12f);
-                        using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                            if (GUILayout.Button(new GUIContent("+ Hand Point",
-                                    "Add a drag point. Select a board key first: it goes on that cell — a drag's first point " +
-                                    "slightly early so the press lands on the mark, a corner inside the drag exactly at the key. " +
-                                    "Otherwise at the playhead."),
-                                    GUILayout.Width(95f)))
-                                AddHandKey(GPHandKey.EKind.POINT);
-                            if (GUILayout.Button(new GUIContent("+ Hand End",
-                                    "Add the drag's END: the finger lifts and the hand vanishes. On a selected board key → " +
-                                    "that cell, exactly at the key's time. Otherwise at the playhead."),
-                                    GUILayout.Width(85f)))
-                                AddHandKey(GPHandKey.EKind.END_MOVE);
-                            if (GUILayout.Button(new GUIContent("+ Hand DblTap",
-                                    "Add a hand double-tap. Select a QUEEN board key first: it goes on that cell, timed so the " +
-                                    "2nd tap lands exactly when the queen appears. Otherwise it lands at the playhead."),
-                                    GUILayout.Width(105f)))
-                                AddHandKey(GPHandKey.EKind.DOUBLE_CLICK);
-                        }
-                        GUILayout.Space(12f);
                         _noFail = GUILayout.Toggle(_noFail, new GUIContent("NoFail",
                             "During record & replay: wrong queens shake and flash but lose no bones and can never fail the board"),
                             GUILayout.Width(60f));
@@ -293,6 +308,40 @@ namespace qp {
                     GUILayout.FlexibleSpace();
                     GUILayout.Label($"playhead {_playhead:0.00}s");
                 }
+            }
+
+            // hand + spotlight key buttons, their own row — the transport row is full
+            bool idle = !GPRecorder.IsRecording && !GPReplayer.IsReplaying && _pending == EPending.None;
+            if (!idle) return;
+            using (new EditorGUILayout.HorizontalScope())
+            using (new EditorGUI.DisabledScope(!_record.IsValid)) {
+                if (GUILayout.Button(new GUIContent("+ Hand Point",
+                        "Add a drag point. Select a board key first: it goes on that cell — a drag's first point " +
+                        "slightly early so the press lands on the mark, a corner inside the drag exactly at the key. " +
+                        "Otherwise at the playhead."),
+                        GUILayout.Width(95f)))
+                    AddHandKey(GPHandKey.EKind.POINT);
+                if (GUILayout.Button(new GUIContent("+ Hand End",
+                        "Add the drag's END: the finger lifts and the hand vanishes. On a selected board key → " +
+                        "that cell, exactly at the key's time. Otherwise at the playhead."),
+                        GUILayout.Width(85f)))
+                    AddHandKey(GPHandKey.EKind.END_MOVE);
+                if (GUILayout.Button(new GUIContent("+ Hand DblTap",
+                        "Add a hand double-tap. Select a QUEEN board key first: it goes on that cell, timed so the " +
+                        "2nd tap lands exactly when the queen appears. Otherwise it lands at the playhead."),
+                        GUILayout.Width(105f)))
+                    AddHandKey(GPHandKey.EKind.DOUBLE_CLICK);
+                GUILayout.Space(12f);
+                if (GUILayout.Button(new GUIContent("+ Spot",
+                        "Spotlight: tutorial-style curtain with holes over this key's CELL LIST. Selected board keys' cells " +
+                        "seed the list (time = earliest); refine it with 🎯 Pick by clicking cells on the live board. " +
+                        "Holes add up until a Spot Clear."),
+                        GUILayout.Width(60f)))
+                    AddSpotKey(GPSpotKey.EKind.SHOW);
+                if (GUILayout.Button(new GUIContent("+ Spot Clear",
+                        "Drop the curtain and close all spotlight holes at the playhead"),
+                        GUILayout.Width(90f)))
+                    AddSpotKey(GPSpotKey.EKind.CLEAR);
             }
         }
 
@@ -307,7 +356,7 @@ namespace qp {
         }
 
         void TimelineGUI(bool live) {
-            Rect r = GUILayoutUtility.GetRect(100, 100000, 170, 170, GUILayout.ExpandWidth(true));
+            Rect r = GUILayoutUtility.GetRect(100, 100000, 190, 190, GUILayout.ExpandWidth(true));
             var e = Event.current;
 
             // zoom around the mouse / pan
@@ -329,6 +378,7 @@ namespace qp {
                     var hit = HitMarker(r, e.mousePosition);
                     if (hit != null) {
                         _handSel.Clear(); _dragHand = _handAnchor = null;
+                        _spotSel.Clear(); _dragSpot = _spotAnchor = null;
                         if (e.shift && _anchor != null && _record.actions.Contains(_anchor)) {
                             // shift-click: select the whole range between the anchor and here
                             float lo = Mathf.Min(_anchor.time, hit.time), hi = Mathf.Max(_anchor.time, hit.time);
@@ -347,6 +397,7 @@ namespace qp {
                         }
                     } else if (HitHandKey(r, e.mousePosition) is GPHandKey hhit) {
                         _selection.Clear(); _dragging = _anchor = null;
+                        _spotSel.Clear(); _dragSpot = _spotAnchor = null;
                         if (e.shift && _handAnchor != null && _record.handKeys.Contains(_handAnchor)) {
                             // shift-click: select the whole range between the anchor and here
                             float lo = Mathf.Min(_handAnchor.time, hhit.time), hi = Mathf.Max(_handAnchor.time, hhit.time);
@@ -362,6 +413,23 @@ namespace qp {
                             if (!_handSel.Contains(hhit)) { _handSel.Clear(); _handSel.Add(hhit); }
                             _handAnchor = hhit;
                             _dragHand = hhit;
+                        }
+                    } else if (HitSpotKey(r, e.mousePosition) is GPSpotKey spotHit) {
+                        _selection.Clear(); _dragging = _anchor = null;
+                        _handSel.Clear(); _dragHand = _handAnchor = null;
+                        if (e.shift && _spotAnchor != null && _record.spotKeys.Contains(_spotAnchor)) {
+                            float lo = Mathf.Min(_spotAnchor.time, spotHit.time), hi = Mathf.Max(_spotAnchor.time, spotHit.time);
+                            _spotSel.Clear();
+                            _spotSel.AddRange(_record.spotKeys.Where(k => k.time >= lo && k.time <= hi));
+                            _dragSpot = null;
+                        } else if (e.control || e.command) {
+                            if (!_spotSel.Remove(spotHit)) _spotSel.Add(spotHit);
+                            _spotAnchor = spotHit;
+                            _dragSpot = null;
+                        } else {
+                            if (!_spotSel.Contains(spotHit)) { _spotSel.Clear(); _spotSel.Add(spotHit); }
+                            _spotAnchor = spotHit;
+                            _dragSpot = spotHit;
                         }
                     } else if (!multiKey) {
                         ClearSelection();
@@ -384,14 +452,22 @@ namespace qp {
                         foreach (var s in _handSel) delta = Mathf.Max(delta, -s.time);
                         foreach (var s in _handSel) s.time += delta;
                         e.Use();
+                    } else if (_dragSpot != null) {
+                        float delta = Mathf.Max(0f, XToTime(r, e.mousePosition.x)) - _dragSpot.time;
+                        foreach (var s in _spotSel) delta = Mathf.Max(delta, -s.time);
+                        foreach (var s in _spotSel) s.time += delta;
+                        e.Use();
                     } else if (_scrubbing) { _playhead = Mathf.Max(0f, XToTime(r, e.mousePosition.x)); ScrubPreview(); e.Use(); }
                 } else if (e.type == EventType.MouseUp && e.button == 0) {
                     if (_dragging != null) { _record.Sort(); _dragging = null; e.Use(); }
                     if (_dragHand != null) { _record.Sort(); _dragHand = null; ScrubPreview(); e.Use(); }
+                    if (_dragSpot != null) { _record.Sort(); _dragSpot = null; ScrubPreview(); e.Use(); }
                     _scrubbing = false;
-                } else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Delete && (_selection.Count > 0 || _handSel.Count > 0)) {
+                } else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Delete
+                           && (_selection.Count > 0 || _handSel.Count > 0 || _spotSel.Count > 0)) {
                     foreach (var s in _selection) _record.actions.Remove(s);
                     foreach (var s in _handSel) _record.handKeys.Remove(s);
+                    foreach (var s in _spotSel) _record.spotKeys.Remove(s);
                     ClearSelection();
                     ScrubPreview();
                     e.Use();
@@ -459,6 +535,32 @@ namespace qp {
                     if (_handSel.Contains(k)) EditorGUI.DrawRect(new Rect(m.x - 2f, m.y - 2f, m.width + 4f, m.height + 4f), Color.white);
                     EditorGUI.DrawRect(m, HandColorOf(k.kind));
                 }
+
+                // spotlight strip — a line spans each curtain-up stretch (first SHOW → CLEAR)
+                var ss = SpotStrip(r);
+                EditorGUI.DrawRect(ss, new Color(0.16f, 0.15f, 0.19f));
+                EditorGUI.DrawRect(new Rect(ss.x, ss.y - 1f, ss.width, 1f), new Color(1f, 1f, 1f, 0.12f));
+                float spotStartX = float.NaN;
+                foreach (var k in _record.spotKeys) {
+                    float x = TimeToX(r, k.time);
+                    if (k.kind == GPSpotKey.EKind.SHOW) { if (float.IsNaN(spotStartX)) spotStartX = x; }
+                    else {
+                        if (!float.IsNaN(spotStartX)) {
+                            float x0 = Mathf.Max(Mathf.Min(spotStartX, x), r.x), x1 = Mathf.Min(Mathf.Max(spotStartX, x), r.xMax);
+                            if (x1 > x0) EditorGUI.DrawRect(new Rect(x0, ss.center.y - 1f, x1 - x0, 2f), new Color(0.72f, 0.50f, 1f, 0.5f));
+                        }
+                        spotStartX = float.NaN;
+                    }
+                }
+                foreach (var k in _record.spotKeys) {
+                    float x = TimeToX(r, k.time);
+                    if (x < r.x - 4f || x > r.xMax + 4f) continue;
+                    var m = new Rect(x - 3f, ss.y + 2f, 6f, ss.height - 4f);
+                    if (_spotSel.Contains(k)) EditorGUI.DrawRect(new Rect(m.x - 2f, m.y - 2f, m.width + 4f, m.height + 4f), Color.white);
+                    EditorGUI.DrawRect(m, SpotColorOf(k.kind));
+                    if (k.kind == GPSpotKey.EKind.SHOW && k.Count > 1)
+                        GUI.Label(new Rect(m.x + 6f, ss.y + 1f, 32f, 14f), "×" + k.Count, EditorStyles.miniLabel);
+                }
             }
 
             // playhead
@@ -470,6 +572,51 @@ namespace qp {
         void SelectedGUI(bool live) {
             _selection.RemoveAll(s => !_record.actions.Contains(s));   // drop stale refs
             _handSel.RemoveAll(k => !_record.handKeys.Contains(k));
+            _spotSel.RemoveAll(k => !_record.spotKeys.Contains(k));
+
+            if (!live && _spotSel.Count > 0) {
+                using (new EditorGUILayout.HorizontalScope()) {
+                    if (_spotSel.Count == 1) {
+                        var sel = _spotSel[0];
+                        GUILayout.Label("spot:", GUILayout.Width(38f));
+                        EditorGUI.BeginChangeCheck();
+                        var kind = (GPSpotKey.EKind)EditorGUILayout.EnumPopup(sel.kind, GUILayout.Width(80f));
+                        GUILayout.Label("time", GUILayout.Width(32f));
+                        float st = EditorGUILayout.FloatField(sel.time, GUILayout.Width(60f));
+                        if (EditorGUI.EndChangeCheck()) {
+                            sel.kind = kind;
+                            sel.time = Mathf.Max(0f, st);
+                            _record.Sort();
+                            ScrubPreview();
+                        }
+                        if (sel.kind == GPSpotKey.EKind.SHOW) {
+                            GUILayout.Label($"{sel.Count} cells", GUILayout.Width(50f));
+                            if (GPSpotPicker.Active) {
+                                if (GUILayout.Button("✔ Done", GUILayout.Width(64f))) GPSpotPicker.End();
+                                GUILayout.Label("click cells on the board to toggle them", EditorStyles.miniLabel);
+                            } else using (new EditorGUI.DisabledScope(!GPReplayer.CanDrive(_record))) {
+                                if (GUILayout.Button(new GUIContent("🎯 Pick",
+                                        "Click cells on the live board to toggle them in this spotlight — the board is NOT " +
+                                        "changed, and the curtain previews the result live. Needs the level live (press ▶ once)."),
+                                        GUILayout.Width(64f))) {
+                                    _playhead = sel.time;
+                                    ScrubPreview();
+                                    GPSpotPicker.Begin(sel);
+                                }
+                            }
+                        }
+                    } else {
+                        GUILayout.Label($"{_spotSel.Count} spot keys selected — drag together, or:", GUILayout.Width(250f));
+                    }
+                    if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                        foreach (var k in _spotSel) _record.spotKeys.Remove(k);
+                        _spotSel.Clear();
+                        _dragSpot = _spotAnchor = null;
+                        ScrubPreview();
+                    }
+                }
+                return;
+            }
 
             if (!live && _handSel.Count > 0) {
                 using (new EditorGUILayout.HorizontalScope()) {
@@ -534,6 +681,11 @@ namespace qp {
                     var sw = GUILayoutUtility.GetRect(10f, 10f, GUILayout.Width(10f));
                     EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), HandColorOf(k));
                     GUILayout.Label("HAND " + k, EditorStyles.miniLabel, GUILayout.Width(k == GPHandKey.EKind.POINT ? 70f : 110f));
+                }
+                foreach (var k in new[] { GPSpotKey.EKind.SHOW, GPSpotKey.EKind.CLEAR }) {
+                    var sw = GUILayoutUtility.GetRect(10f, 10f, GUILayout.Width(10f));
+                    EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), SpotColorOf(k));
+                    GUILayout.Label("SPOT " + k, EditorStyles.miniLabel, GUILayout.Width(74f));
                 }
                 GUILayout.FlexibleSpace();
                 GUILayout.Label("wheel zoom · alt-drag pan · click playhead · ctrl-click toggle · shift-click range · drag = retime · Del", EditorStyles.miniLabel);
@@ -617,7 +769,8 @@ namespace qp {
             public bool clusterFirst;   // draw the ×N count once per cluster
         }
 
-        Rect HandStrip(Rect r) => new Rect(r.x, r.yMax - HandH - 4f, r.width, HandH);
+        Rect HandStrip(Rect r) => new Rect(r.x, r.yMax - SpotH - HandH - 8f, r.width, HandH);
+        Rect SpotStrip(Rect r) => new Rect(r.x, r.yMax - SpotH - 4f, r.width, SpotH);
 
         GPHandKey HitHandKey(Rect r, Vector2 mouse) {
             if (!HandStrip(r).Contains(mouse)) return null;
@@ -628,6 +781,50 @@ namespace qp {
                 if (dx < bestDx) { bestDx = dx; best = k; }
             }
             return best;
+        }
+
+        GPSpotKey HitSpotKey(Rect r, Vector2 mouse) {
+            if (!SpotStrip(r).Contains(mouse)) return null;
+            GPSpotKey best = null;
+            float bestDx = 6f;   // hit slop in px
+            foreach (var k in _record.spotKeys) {
+                float dx = Mathf.Abs(TimeToX(r, k.time) - mouse.x);
+                if (dx < bestDx) { bestDx = dx; best = k; }
+            }
+            return best;
+        }
+
+        static Color SpotColorOf(GPSpotKey.EKind kind) =>
+            kind == GPSpotKey.EKind.SHOW ? new Color(0.72f, 0.50f, 1f) : new Color(0.50f, 0.50f, 0.55f);
+
+        // A spot key starts from the selected board keys: their cells become the SHOW list, its
+        // time the earliest of them (spotlight up as the first mark appears). With no selection:
+        // playhead time, nearest key's cell. Cells are then refined on the board with 🎯 Pick.
+        void AddSpotKey(GPSpotKey.EKind kind) {
+            float time = _playhead;
+            var xs = new System.Collections.Generic.List<int>();
+            var ys = new System.Collections.Generic.List<int>();
+            if (_selection.Count > 0) {
+                time = float.MaxValue;
+                foreach (var a in _selection) {
+                    time = Mathf.Min(time, a.time);
+                    bool dup = false;
+                    for (int i = 0; i < xs.Count; i++) if (xs[i] == a.x && ys[i] == a.y) { dup = true; break; }
+                    if (!dup) { xs.Add(a.x); ys.Add(a.y); }
+                }
+            } else {
+                var c = NearestAction(_playhead);
+                xs.Add(c.x);
+                ys.Add(c.y);
+            }
+
+            var key = new GPSpotKey { time = time, x = xs[0], y = ys[0], kind = kind };
+            if (kind == GPSpotKey.EKind.SHOW) { key.xs = xs.ToArray(); key.ys = ys.ToArray(); }
+            _record.spotKeys.Add(key);
+            _record.Sort();
+            ClearSelection();
+            _spotSel.Add(key);
+            ScrubPreview();
         }
 
         static Color HandColorOf(GPHandKey.EKind kind) {
@@ -644,7 +841,7 @@ namespace qp {
         System.Collections.Generic.List<MarkerRect> LayoutMarkers(Rect r) {
             var result = new System.Collections.Generic.List<MarkerRect>();
             float bandY = r.y + RulerH + 4f;
-            float bandH = r.height - RulerH - HandH - 14f;   // leave room for the hand strip
+            float bandH = r.height - RulerH - HandH - SpotH - 18f;   // room for the hand + spot strips
             var acts = _record.actions;
             int i = 0;
             while (i < acts.Count) {

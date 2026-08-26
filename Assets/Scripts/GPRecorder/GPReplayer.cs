@@ -1,6 +1,9 @@
 #if UNITY_EDITOR
+using Common;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using QueensPuzzle;
 using UnityEngine;
 
@@ -57,9 +60,11 @@ namespace qp {
         public static void Seek(GPRecord record, float t) {
             var gp = MBGameplay.instance;
             if (gp == null || !gp.Ready) return;
-            // the hand shows whenever the record has hand keys; it follows PlayheadTime on its own
+            // hand and spotlight show whenever their tracks have keys; both follow PlayheadTime
             if (record.handKeys.Count > 0) GPHand.Ensure(record);
             else GPHand.Remove();
+            if (record.spotKeys.Count > 0) GPSpotlight.Ensure(record);
+            else GPSpotlight.Remove();
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -120,6 +125,143 @@ namespace qp {
                     gp.ReplayQueenTap(a.x, a.y);
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// Tutorial-style spotlight driven by the record's spot track — implemented WITH the real
+    /// tutorial: MBToturial.ShowCells lights the cells (curtain + popping holes, correct sorting,
+    /// everything the tutorial already does) and Hide() drops it. The only twist: AutoHide is
+    /// parked off while our spotlight is up — a targetless "step" counts as done, so the
+    /// tutorial's Update would close it instantly — and restored on clear/remove.
+    /// </summary>
+    public class GPSpotlight : MonoBehaviour {
+
+        public static GPSpotlight Instance { get; private set; }
+
+        public static void Ensure(GPRecord record) {
+            if (Instance == null) Instance = new GameObject("$GPSpotlight").AddComponent<GPSpotlight>();
+            Instance._record = record;
+            Instance._applied = null;   // force a re-apply with the fresh keys
+        }
+
+        public static void Remove() {
+            if (Instance != null) Destroy(Instance.gameObject);   // OnDestroy clears the spotlight
+            Instance = null;
+        }
+
+        /// <summary>Force a re-apply on the next frame (🎯 Pick edited a key's cell list).</summary>
+        public static void Refresh() {
+            if (Instance != null) Instance._applied = null;
+        }
+
+        GPRecord _record;
+        string _applied;   // signature of the hole set currently shown — re-apply only on change
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+            Clear();
+        }
+
+        static void Clear() {
+            var tut = MBToturial.instance;
+            if (tut == null) return;
+            tut.AutoHide = true;
+            tut.SetApplyVisible(true);            // flags only — nothing may turn visible here: the
+            tut.SetHandVisible(true);             // tutorial stays awake through the curtain fade-out,
+                                                  // so a restored text box would flash on screen.
+                                                  // ShowHint re-activates $TextContainer itself.
+            if (tut.gameObject.activeSelf) tut.Hide();
+        }
+
+        // Our spotlight is curtain + holes ONLY — no hint message bubble, no Apply button
+        // (same trimming the first-level tutorial does for its hand-guided steps).
+        static void SetTextContainerVisible(MBToturial tut, bool on) {
+            var tc = tut.transform.RecursiveFindChild("$TextContainer");
+            if (tc != null) tc.gameObject.SetActive(on);
+        }
+
+        void Update() {
+            var gp = MBGameplay.instance;
+            if (_record == null || gp == null || !gp.Ready) return;
+
+            // the hole set at the playhead: every SHOW since the last CLEAR
+            float t = GPReplayer.PlayheadTime;
+            var indices = new List<int>();
+            var sig = new StringBuilder();
+            foreach (var k in _record.spotKeys) {   // time-sorted
+                if (k.time > t) break;
+                if (k.kind == GPSpotKey.EKind.CLEAR) { indices.Clear(); sig.Clear(); continue; }
+                for (int i = 0; i < k.Count; i++) {
+                    int idx = k.ys[i] * gp.N + k.xs[i];
+                    if (indices.Contains(idx)) continue;
+                    indices.Add(idx);
+                    sig.Append(idx).Append(';');
+                }
+            }
+
+            string s = sig.ToString();
+            if (s == _applied) return;   // unchanged — never re-pop the open holes
+            _applied = s;
+
+            var tut = MBToturial.instance;
+            if (tut == null) return;
+            if (indices.Count == 0) Clear();
+            else {
+                tut.AutoHide = false;   // our targetless spotlight must not close itself
+                tut.ShowCells(indices);
+                tut.SetApplyVisible(false);
+                tut.SetHandVisible(false);   // the scene leaves $Hand active-self — waking the tutorial would show it
+                SetTextContainerVisible(tut, false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 🎯 Pick mode: while active, clicks on the live board toggle cells in a SHOW spot key's
+    /// list WITHOUT touching the game — board input is locked via MBGameplay.InputLocks and the
+    /// clicks are read here, mapped to cells, and previewed live through the spotlight.
+    /// </summary>
+    public class GPSpotPicker : MonoBehaviour {
+
+        public static GPSpotPicker Instance { get; private set; }
+        public static bool Active => Instance != null;
+
+        public static void Begin(GPSpotKey key) {
+            if (Instance == null) {
+                Instance = new GameObject("$GPSpotPicker").AddComponent<GPSpotPicker>();
+                MBGameplay.instance.InputLocks++;   // clicks must not paint the board
+            }
+            Instance._key = key;
+        }
+
+        public static void End() {
+            if (Instance == null) return;
+            if (MBGameplay.instance != null) MBGameplay.instance.InputLocks--;
+            Destroy(Instance.gameObject);
+            Instance = null;
+        }
+
+        GPSpotKey _key;
+
+        void Update() {
+            if (_key == null || !Input.GetMouseButtonDown(0)) return;
+            var gp = MBGameplay.instance;
+            var cam = Camera.main;
+            if (gp == null || !gp.Ready || cam == null) return;
+
+            Vector3 wp = cam.ScreenToWorldPoint(Input.mousePosition);
+            for (int r = 0; r < gp.N; r++)
+                for (int c = 0; c < gp.N; c++) {
+                    var cell = gp.CellAt(r, c);
+                    if (cell == null) continue;
+                    float half = cell.GetSize().x * cell.transform.lossyScale.x * 0.5f;
+                    var d = cell.transform.position - wp;
+                    if (Mathf.Abs(d.x) > half || Mathf.Abs(d.y) > half) continue;
+                    _key.ToggleCell(c, r);
+                    GPSpotlight.Refresh();   // the curtain holes preview the new list next frame
+                    return;
+                }
         }
     }
 }
