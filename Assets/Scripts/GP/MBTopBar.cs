@@ -17,10 +17,11 @@ namespace qp {
         private CanvasGroup _canvasGroup;
         private Button _settingsBtn;
         private MBSettingsPopup _settings;   // inactive in the scene by default (its OUT state)
-        private GameObject[] _bones;         // lives — ordered so [0] is the first to disappear
+        private GameObject[][] _boneRows;    // lives, one row per bottom layout — [row][0] is the first to disappear
+        private Transform[] _boneRoots;      // the rows' containers, same order as _boneRows
 
         // How many wrong moves end the level (one bone each).
-        public int MaxWrongMoves => _bones.Length;
+        public int MaxWrongMoves => _boneRows[0].Length;
 
         private GameObject _withoutTime, _withTime;   // bottom row: campaign layout / daily layout with the timer
         private TMPro.TMP_Text _timeProgress;
@@ -66,13 +67,18 @@ namespace qp {
                 btn.colors = colors;
             }
 
-            // Bones = lives. Collect them under the "Bones" container, rightmost lost first.
-            var bonesRoot = transform.RecursiveFindChild("Bones");
+            // Bones = lives. Each bottom layout carries its own bone row — collect both so a
+            // wrong move hides a bone in whichever layout is visible. Rightmost lost first.
+            _boneRoots = new[] { withoutTime.RecursiveFindChild("$Bones"), withTime.RecursiveFindChild("Bones") };
+            _boneRows = Array.ConvertAll(_boneRoots, _collectBones);
+        }
+
+        private static GameObject[] _collectBones(Transform bonesRoot) {
             var bones = new List<Transform>();
             foreach (Transform child in bonesRoot)
                 if (child.name.StartsWith("$Bone")) bones.Add(child);
             bones.Sort((a, b) => b.localPosition.x.CompareTo(a.localPosition.x));
-            _bones = bones.ConvertAll(t => t.gameObject).ToArray();
+            return bones.ConvertAll(t => t.gameObject).ToArray();
         }
 
         bool _settingsLockHeld;   // pairs the ++/-- exactly once per open, whatever the popup does
@@ -123,8 +129,9 @@ namespace qp {
 
         // One bone gone per wrong move — called on every wrong move AND on level load/restore.
         public void SetWrongMoves(int wrong) {
-            for (int i = 0; i < _bones.Length; i++)
-                _bones[i].SetActive(i >= wrong);
+            foreach (var row in _boneRows)
+                for (int i = 0; i < row.Length; i++)
+                    row[i].SetActive(i >= wrong);
         }
 
 
@@ -137,7 +144,7 @@ namespace qp {
         }
 
         public Transform GetBonesTransform() {
-            return transform.RecursiveFindChild("$Bones");
+            return _withTime.activeSelf ? _boneRoots[1] : _boneRoots[0];   // the visible row
         }
     }
 }
