@@ -462,6 +462,16 @@ namespace qp {
             yield return new WaitForEndOfFrame();
             yield return new WaitForEndOfFrame();
 
+#if UNITY_EDITOR
+            // A direct play-mode start hitches through its first frames (domain reload, first
+            // render) with unscaled deltas of a second+ — enough to swallow the whole bloom.
+            // GP replay/capture runs wait for two calm frames so the intro is actually visible.
+            if (GPReplayer.WantsFreshBoard)
+                for (int calm = 0; calm < 2;) {
+                    yield return null;
+                    calm = Time.unscaledDeltaTime < 0.1f ? calm + 1 : 0;
+                }
+#endif
             // "Bloom" the cells in from the centre, then let the player interact
             yield return BloomReveal();
             Haptics.Prepare();   // warm the engine so the first tap fires without latency

@@ -74,6 +74,9 @@ namespace qp {
             _applyRt = transform.RecursiveFindChild("$ApplyButton") as RectTransform;
             var hand = transform.RecursiveFindChild("$Hand");
             _hand = hand != null ? hand.gameObject : null;
+            // the hand is positioned by code, so it needs no layout pass — and left active it
+            // flashes mid-screen for the first frames (visible in GP captures)
+            if (_hand != null) _hand.SetActive(false);
             var dtt = transform.RecursiveFindChild("$DoublieTapTex");
             _doubleTapText = dtt != null ? dtt.gameObject : null;
             _finger = transform.RecursiveFindChild("$FingerImage");

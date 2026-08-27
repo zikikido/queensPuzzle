@@ -38,7 +38,7 @@ namespace qp {
         static void Open() => GetWindow<GPRecorderWindow>("GP Recorder");
 
         // A queued run: what to start once play mode is up and the board is ready.
-        enum EPending { None, RecordFresh, Replay, RecordAtPlayhead }
+        enum EPending { None, RecordFresh, Replay, RecordAtPlayhead, RecordVideo }
 
         // survives the domain reload on play-mode entry via EditorWindow serialization
         [SerializeField] GPRecord _record = new GPRecord();
@@ -111,8 +111,11 @@ namespace qp {
 
         void Update() {
             // a queued run starts once the board finished its bloom
+            // RecordVideo must not wait for Ready — the capture has to include the bloom intro
+            // (GPReplayer.Play waits for the bloom internally before firing actions)
             if (_pending != EPending.None && EditorApplication.isPlaying && MBGameplay.instance != null
-                && MBGameplay.instance.Ready && !GPReplayer.IsReplaying && !GPRecorder.IsRecording) {
+                && (MBGameplay.instance.Ready || _pending == EPending.RecordVideo)
+                && !GPReplayer.IsReplaying && !GPRecorder.IsRecording) {
                 var mode = _pending;
                 _pending = EPending.None;
                 switch (mode) {
@@ -128,6 +131,19 @@ namespace qp {
                         GPReplayer.Seek(_record, _playhead);   // jump straight to the point
                         GPRecorder.Begin(_record, _playhead);
                         break;
+                    case EPending.RecordVideo:
+                        EnsureRecordLoaded();
+                        // <recordName>.mp4 in the (git-ignored) output folder, never overwriting: _1, _2, …
+                        string outDir = Path.Combine(GPRecord.Dir, "..", "GPRecorderOutput");
+                        Directory.CreateDirectory(outDir);
+                        string baseNoExt = Path.Combine(Path.GetFullPath(outDir), _saveName);
+                        _captureOutput = baseNoExt;
+                        for (int i = 1; File.Exists(_captureOutput + ".mp4"); i++) _captureOutput = baseNoExt + "_" + i;
+                        GPVideoCapture.Start(_captureOutput);
+                        GPReplayer.Play(_record, 0f);
+                        _captureWaiting = true;
+                        _replayDoneAt = 0;
+                        break;
                 }
             }
             GPRecorder.ConsumeOverwritten();   // overdub: old keys the record head passed are consumed
@@ -137,6 +153,24 @@ namespace qp {
 
             GPReplayer.RecordFolder = string.IsNullOrEmpty(_path) ? null : GPRecord.FolderOf(_path);
             ApplyHideFlags();
+
+            // 🎬 Record GP: capture runs until the replay (incl. endTime) finishes
+            if (_captureWaiting) {
+                if (!EditorApplication.isPlaying) {
+                    GPVideoCapture.Stop();
+                    _captureWaiting = false;
+                } else if (!GPReplayer.IsReplaying && _pending == EPending.None) {
+                    if (_replayDoneAt == 0) _replayDoneAt = EditorApplication.timeSinceStartup;
+                    else if (EditorApplication.timeSinceStartup - _replayDoneAt > 0.5) {
+                        GPVideoCapture.Stop();
+                        _captureWaiting = false;
+                        _replayDoneAt = 0;
+                        EditorApplication.isPlaying = false;
+                        EditorUtility.RevealInFinder(_captureOutput + ".mp4");
+                    }
+                } else _replayDoneAt = 0;
+            }
+            if (_captureWaiting) Repaint();
 
             // the record file changed on disk (script, git, hand edit) — reload it, keeping the view
             if (_pending == EPending.None && !GPRecorder.IsRecording && !GPReplayer.IsReplaying
@@ -521,6 +555,16 @@ namespace qp {
                         }
                     }
                     GUILayout.FlexibleSpace();
+                    using (new EditorGUI.DisabledScope(!_record.IsValid)) {
+                        GUI.backgroundColor = new Color(0.75f, 1f, 0.75f);
+                        if (GUILayout.Button(new GUIContent(" 🎬 Record GP ",
+                                "Capture the final video: restart play mode, record the Game View (with voices) from 0 " +
+                                "to the END marker, save <record name>.mp4 into the record's folder"),
+                                GUILayout.Width(110f), GUILayout.Height(H)))
+                            StartRecordVideo();
+                        GUI.backgroundColor = Color.white;
+                    }
+                    GUILayout.Space(10f);
                     GUILayout.Label($"{_playhead:0.00}s", EditorStyles.boldLabel, GUILayout.Height(H));
                     GUILayout.Space(6f);
                 }
@@ -569,6 +613,26 @@ namespace qp {
                     m.AddItem(new GUIContent("Hide UI/Counters (puppies, bones)"), _record.hideCounters, () => _record.hideCounters = !_record.hideCounters);
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Subtitles overlay"), _record.showAdText, () => _record.showAdText = !_record.showAdText);
+                    m.AddSeparator("");
+                    m.AddItem(new GUIContent("Capture/Quality: Low"), GPVideoCapture.Quality == 0, () => GPVideoCapture.Quality = 0);
+                    m.AddItem(new GUIContent("Capture/Quality: Medium"), GPVideoCapture.Quality == 1, () => GPVideoCapture.Quality = 1);
+                    m.AddItem(new GUIContent("Capture/Quality: High"), GPVideoCapture.Quality == 2, () => GPVideoCapture.Quality = 2);
+                    m.AddSeparator("Capture/");
+                    m.AddItem(new GUIContent("Capture/30 FPS"), GPVideoCapture.Fps == 30, () => GPVideoCapture.Fps = 30);
+                    m.AddItem(new GUIContent("Capture/60 FPS"), GPVideoCapture.Fps == 60, () => GPVideoCapture.Fps = 60);
+                    m.AddSeparator("Capture/");
+                    m.AddItem(new GUIContent("Capture/1080 × 1920  (portrait)"),
+                        GPVideoCapture.Width == 1080 && GPVideoCapture.Height == 1920,
+                        () => { GPVideoCapture.Width = 1080; GPVideoCapture.Height = 1920; });
+                    m.AddItem(new GUIContent("Capture/720 × 1280  (portrait small)"),
+                        GPVideoCapture.Width == 720 && GPVideoCapture.Height == 1280,
+                        () => { GPVideoCapture.Width = 720; GPVideoCapture.Height = 1280; });
+                    m.AddItem(new GUIContent("Capture/1080 × 1080  (square)"),
+                        GPVideoCapture.Width == 1080 && GPVideoCapture.Height == 1080,
+                        () => { GPVideoCapture.Width = 1080; GPVideoCapture.Height = 1080; });
+                    m.AddItem(new GUIContent("Capture/1920 × 1080  (landscape)"),
+                        GPVideoCapture.Width == 1920 && GPVideoCapture.Height == 1080,
+                        () => { GPVideoCapture.Width = 1920; GPVideoCapture.Height = 1080; });
                     m.ShowAsContext();
                 }
             }
@@ -887,6 +951,20 @@ namespace qp {
         }
 
         bool _dragEndKey;
+        bool _captureWaiting;
+        double _replayDoneAt;
+        string _captureOutput;   // capture target, extensionless — uniquified per take
+
+        void StartRecordVideo() {
+            if (!SaveRecord()) return;
+            var problems = _record.ValidateVoices(_path, Voices);
+            if (problems.Count > 0 && !EditorUtility.DisplayDialog("GP Recorder",
+                    "Voice problems:\n- " + string.Join("\n- ", problems) + "\n\nRecord the video anyway (those keys stay silent)?",
+                    "Record", "Cancel"))
+                return;
+            _playhead = 0f;
+            StartReplayRun(EPending.RecordVideo);
+        }
 
         // ---- undo / redo: whole-record snapshots at every commit point -----------------
 

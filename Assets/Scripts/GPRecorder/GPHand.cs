@@ -69,6 +69,7 @@ namespace qp {
             if (hand._cg == null) hand._cg = go.AddComponent<CanvasGroup>();
             hand._cg.blocksRaycasts = false;   // the hand must never eat board touches
             hand._cg.interactable = false;
+            hand._cg.alpha = 0f;               // born invisible — Evaluate shows it at its first key
             hand.PivotAtFingertip();
             return hand;
         }
