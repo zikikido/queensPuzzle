@@ -143,6 +143,7 @@ namespace qp {
                 && _dragging == null && _dragHand == null && _dragSpot == null && _dragVoice == null
                 && !string.IsNullOrEmpty(_path) && File.Exists(_path)
                 && File.GetLastWriteTimeUtc(_path) != _recordStamp) {
+                PushUndo();   // Ctrl+Z can revert an external (AI/git) change
                 float ph = _playhead, vs = _viewStart, zoom = _pxPerSec;
                 LoadRecord(_path);
                 _playhead = ph; _viewStart = vs; _pxPerSec = zoom;
@@ -259,6 +260,7 @@ namespace qp {
 
         void LoadRecord(string path) {
             if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
+            if (Path.GetFullPath(path) != _path) { _undoStack.Clear(); _redoStack.Clear(); }   // other record
             _record = GPRecord.Load(path);
             _path = Path.GetFullPath(path);
             _recordStamp = File.GetLastWriteTimeUtc(_path);
@@ -277,6 +279,12 @@ namespace qp {
             bool live = GPReplayer.IsReplaying || (GPRecorder.IsRecording && !GPRecorder.IsInserting);
             if (GPRecorder.IsRecording) _playhead = GPRecorder.Elapsed;
             else if (GPReplayer.IsReplaying) _playhead = GPReplayer.PlayheadTime;
+
+            var ev = Event.current;
+            if (ev.type == EventType.KeyDown && ev.control && !live) {
+                if (ev.keyCode == KeyCode.Z) { DoUndo(); ev.Use(); }
+                else if (ev.keyCode == KeyCode.Y) { DoRedo(); ev.Use(); }
+            }
 
             FilesGUI(live);
             TransportGUI();
@@ -412,6 +420,12 @@ namespace qp {
                 using (new EditorGUI.DisabledScope(!_record.IsValid)) {
                     if (GUILayout.Button("Save", GUILayout.Width(48))) SaveRecord();
                 }
+                using (new EditorGUI.DisabledScope(_undoStack.Count == 0)) {
+                    if (GUILayout.Button(new GUIContent("↶", "Undo (Ctrl+Z)"), GUILayout.Width(26f))) DoUndo();
+                }
+                using (new EditorGUI.DisabledScope(_redoStack.Count == 0)) {
+                    if (GUILayout.Button(new GUIContent("↷", "Redo (Ctrl+Y)"), GUILayout.Width(26f))) DoRedo();
+                }
                 if (GUILayout.Button("New", GUILayout.Width(48))) {
                     if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
                     _record = new GPRecord();
@@ -443,6 +457,11 @@ namespace qp {
                     using (new EditorGUI.DisabledScope(!_record.IsValid)) {
                         // when the record's level is already live on the board, drive it in place
                         // (video-player style, from the playhead); otherwise restart play mode
+                        if (GUILayout.Button(new GUIContent("▶ From 0", "Play the whole record from the start"), GUILayout.Width(70))) {
+                            _playhead = 0f;
+                            if (GPReplayer.CanDrive(_record)) GPReplayer.Play(_record, 0f);
+                            else StartReplayRun(EPending.Replay);
+                        }
                         if (GUILayout.Button($"▶ Play from {_playhead:0.00}s", GUILayout.Width(130))) {
                             if (GPReplayer.CanDrive(_record)) GPReplayer.Play(_record, _playhead);
                             else StartReplayRun(EPending.Replay);
@@ -523,6 +542,24 @@ namespace qp {
                 _record.hideCounters = GUILayout.Toggle(_record.hideCounters, new GUIContent("Counters",
                     "Hide the puppy count and the bones row during the session"), GUILayout.Width(72f));
             }
+
+            // AdsVoiceTextPortrait overlay: subtitles typed letter-by-letter with each voice line
+            using (new EditorGUILayout.HorizontalScope()) {
+                _record.showAdText = GUILayout.Toggle(_record.showAdText, new GUIContent("Ad Text scene",
+                    "Load the AdsVoiceTextPortrait overlay scene during the session — each voice line's text types " +
+                    "in letter-by-letter, synced to its audio"), GUILayout.Width(100f));
+                using (new EditorGUI.DisabledScope(!_record.showAdText)) {
+                    GUILayout.Label("BG", EditorStyles.miniLabel, GUILayout.Width(20f));
+                    _record.adTextBg = EditorGUILayout.ColorField(_record.adTextBg, GUILayout.Width(50f));
+                    GUILayout.Label("Text", EditorStyles.miniLabel, GUILayout.Width(26f));
+                    _record.adTextColor = EditorGUILayout.ColorField(_record.adTextColor, GUILayout.Width(50f));
+                    GUILayout.Label("H", EditorStyles.miniLabel, GUILayout.Width(12f));
+                    _record.adTextHeight = GUILayout.HorizontalSlider(_record.adTextHeight, 0.03f, 0.5f, GUILayout.Width(80f));
+                    GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(22f));
+                    _record.adTextPos = GUILayout.HorizontalSlider(_record.adTextPos, 0f, 1f, GUILayout.Width(80f));
+                }
+                GUILayout.FlexibleSpace();
+            }
         }
 
         void InfoGUI() {
@@ -584,10 +621,12 @@ namespace qp {
                 if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)
                     && e.mousePosition.y < r.y + RulerH
                     && Mathf.Abs(TimeToX(r, _record.Duration) - e.mousePosition.x) < 7f) {
+                    PushUndo();
                     _dragEndKey = true;   // the END marker lives on the ruler
                     GUI.FocusControl(null);
                     e.Use();
                 } else if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)) {
+                    PushUndo();   // pre-drag state; a click that changes nothing is deduped away
                     var hit = HitMarker(r, e.mousePosition);
                     if (hit != null) {
                         _handSel.Clear(); _dragHand = _handAnchor = null;
@@ -709,6 +748,7 @@ namespace qp {
                     _scrubbing = false;
                 } else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Delete
                            && (_selection.Count > 0 || _handSel.Count > 0 || _spotSel.Count > 0 || _voiceSel.Count > 0)) {
+                    PushUndo();
                     foreach (var s in _selection) _record.actions.Remove(s);
                     foreach (var s in _handSel) _record.handKeys.Remove(s);
                     foreach (var s in _spotSel) _record.spotKeys.Remove(s);
@@ -838,6 +878,42 @@ namespace qp {
 
         bool _dragEndKey;
 
+        // ---- undo / redo: whole-record snapshots at every commit point -----------------
+
+        readonly System.Collections.Generic.List<string> _undoStack = new System.Collections.Generic.List<string>();
+        readonly System.Collections.Generic.List<string> _redoStack = new System.Collections.Generic.List<string>();
+
+        /// <summary>Capture the record BEFORE a mutation (drag start, delete, add, field edit).
+        /// Duplicate states are skipped, so calling on a click that mutates nothing is free.</summary>
+        void PushUndo() {
+            string s = JsonUtility.ToJson(_record);
+            if (_undoStack.Count > 0 && _undoStack[_undoStack.Count - 1] == s) return;
+            _undoStack.Add(s);
+            if (_undoStack.Count > 60) _undoStack.RemoveAt(0);
+            _redoStack.Clear();
+        }
+
+        void DoUndo() {
+            if (_undoStack.Count == 0) return;
+            _redoStack.Add(JsonUtility.ToJson(_record));
+            RestoreSnapshot(_undoStack[_undoStack.Count - 1]);
+            _undoStack.RemoveAt(_undoStack.Count - 1);
+        }
+
+        void DoRedo() {
+            if (_redoStack.Count == 0) return;
+            _undoStack.Add(JsonUtility.ToJson(_record));
+            RestoreSnapshot(_redoStack[_redoStack.Count - 1]);
+            _redoStack.RemoveAt(_redoStack.Count - 1);
+        }
+
+        void RestoreSnapshot(string json) {
+            _record = JsonUtility.FromJson<GPRecord>(json);
+            ClearSelection();
+            ScrubPreview();
+            Repaint();
+        }
+
         // Hide/show the chrome pieces to match the flags, every editor tick while playing —
         // cheap, and it self-heals when the scene reloads (new level, replay restart).
         void ApplyHideFlags() {
@@ -879,6 +955,7 @@ namespace qp {
                         GUILayout.Label("time", GUILayout.Width(32f));
                         float vt = EditorGUILayout.FloatField(sel.time, GUILayout.Width(60f));
                         if (EditorGUI.EndChangeCheck()) {
+                            PushUndo();
                             sel.name = name;
                             sel.time = Mathf.Max(0f, vt);
                             _record.Sort();
@@ -896,6 +973,7 @@ namespace qp {
                         GUILayout.Label($"{_voiceSel.Count} voice keys selected — drag together, or:", GUILayout.Width(250f));
                     }
                     if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                        PushUndo();
                         foreach (var k in _voiceSel) _record.voiceKeys.Remove(k);
                         _voiceSel.Clear();
                         _dragVoice = _voiceAnchor = null;
@@ -914,6 +992,7 @@ namespace qp {
                         GUILayout.Label("time", GUILayout.Width(32f));
                         float st = EditorGUILayout.FloatField(sel.time, GUILayout.Width(60f));
                         if (EditorGUI.EndChangeCheck()) {
+                            PushUndo();
                             sel.kind = kind;
                             sel.time = Mathf.Max(0f, st);
                             _record.Sort();
@@ -939,6 +1018,7 @@ namespace qp {
                         GUILayout.Label($"{_spotSel.Count} spot keys selected — drag together, or:", GUILayout.Width(250f));
                     }
                     if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                        PushUndo();
                         foreach (var k in _spotSel) _record.spotKeys.Remove(k);
                         _spotSel.Clear();
                         _dragSpot = _spotAnchor = null;
@@ -962,6 +1042,7 @@ namespace qp {
                         GUILayout.Label("time", GUILayout.Width(32f));
                         float ht = EditorGUILayout.FloatField(sel.time, GUILayout.Width(60f));
                         if (EditorGUI.EndChangeCheck()) {
+                            PushUndo();
                             sel.kind = kind;
                             sel.x = hx;
                             sel.y = hy;
@@ -973,6 +1054,7 @@ namespace qp {
                         GUILayout.Label($"{_handSel.Count} hand keys selected — drag together, or:", GUILayout.Width(250f));
                     }
                     if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                        PushUndo();
                         foreach (var k in _handSel) _record.handKeys.Remove(k);
                         _handSel.Clear();
                         _dragHand = _handAnchor = null;
@@ -989,11 +1071,12 @@ namespace qp {
                     GUILayout.Label($"selected: {sel.to}  cell ({sel.x},{sel.y})", GUILayout.Width(220));
                     EditorGUI.BeginChangeCheck();
                     float t = EditorGUILayout.FloatField("time", sel.time);
-                    if (EditorGUI.EndChangeCheck()) { sel.time = Mathf.Max(0f, t); _record.Sort(); }
+                    if (EditorGUI.EndChangeCheck()) { PushUndo(); sel.time = Mathf.Max(0f, t); _record.Sort(); }
                 } else {
                     GUILayout.Label($"{_selection.Count} selected — drag together, or:", GUILayout.Width(220));
                 }
                 if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                    PushUndo();
                     foreach (var s in _selection) _record.actions.Remove(s);
                     ClearSelection();
                 }
@@ -1036,6 +1119,7 @@ namespace qp {
         //   POINT inside a drag / END → exactly the key's time (the finger passes / lifts there)
         // With no board key selected: at the playhead, on the nearest board key's cell.
         void AddHandKey(GPHandKey.EKind kind) {
+            PushUndo();
             var sel = _selection.Count == 1 ? _selection[0] : null;
             var cell = sel != null ? (sel.x, sel.y) : NearestAction(_playhead);
             float time = _playhead;
@@ -1149,6 +1233,7 @@ namespace qp {
         // A voice key lands at the playhead; the line starts as the active set's first line and
         // is switched in the selected-key row.
         void AddVoiceKey() {
+            PushUndo();
             var v = Voices;
             var key = new GPVoiceKey { time = _playhead, name = v != null && v.lines.Count > 0 ? v.lines[0].name : "" };
             _record.voiceKeys.Add(key);
@@ -1161,6 +1246,7 @@ namespace qp {
         // time the earliest of them (spotlight up as the first mark appears). With no selection:
         // playhead time, nearest key's cell. Cells are then refined on the board with 🎯 Pick.
         void AddSpotKey(GPSpotKey.EKind kind) {
+            PushUndo();
             float time = _playhead;
             var xs = new System.Collections.Generic.List<int>();
             var ys = new System.Collections.Generic.List<int>();

@@ -69,6 +69,8 @@ namespace qp {
             else GPSpotlight.Remove();
             if (record.voiceKeys.Count > 0 && !string.IsNullOrEmpty(RecordFolder)) GPVoicePlayer.Ensure(record, RecordFolder);
             else GPVoicePlayer.Remove();
+            if (record.showAdText && !string.IsNullOrEmpty(RecordFolder)) GPAdText.Ensure(record, RecordFolder);
+            else GPAdText.Remove();
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -291,6 +293,115 @@ namespace qp {
                 if (_clips.TryGetValue(k.name, out var clip)) _source.PlayOneShot(clip);
             }
             _lastT = t;
+        }
+
+        /// <summary>Length of a loaded line's clip (0 when not loaded) — the ad-text typewriter
+        /// paces itself with this.</summary>
+        public static float ClipLength(string name) =>
+            Instance != null && Instance._clips.TryGetValue(name, out var c) && c != null ? c.length : 0f;
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+        }
+    }
+
+    /// <summary>
+    /// The AdsBottonText overlay: loads the scene additively during the session, colors $BG and
+    /// $Text from the record, and types each voice line letter-by-letter in sync with its audio.
+    /// Pure function of the playhead — scrubbing always shows the right text state.
+    /// </summary>
+    public class GPAdText : MonoBehaviour {
+
+        public static GPAdText Instance { get; private set; }
+        const string ScenePath = "Assets/Scenes/AdsVoiceTextPortrait.unity";
+
+        public static void Ensure(GPRecord record, string folder) {
+            if (Instance == null) Instance = new GameObject("$GPAdText").AddComponent<GPAdText>();
+            Instance._record = record;
+            Instance._folder = folder;
+        }
+
+        public static void Remove() {
+            if (Instance != null) {
+                Instance.UnloadScene();
+                Destroy(Instance.gameObject);
+            }
+            Instance = null;
+        }
+
+        GPRecord _record;
+        string _folder, _voicesFile;
+        GPVoices _voices;
+        TMPro.TMP_Text _text;
+        UnityEngine.UI.Image _bg;
+        bool _loading;
+
+        void Update() {
+            if (_record == null) return;
+            if (_text == null) { EnsureScene(); return; }
+            if (_voices == null || _voicesFile != _record.voicesFile) {
+                _voicesFile = _record.voicesFile;
+                _voices = GPVoices.Load(Path.Combine(_folder, _record.voicesFile));
+            }
+
+            if (_bg != null) {
+                _bg.color = _record.adTextBg;
+                // $Text stretches inside $BG — placing the strip places both
+                var rt = _bg.rectTransform;
+                float h = Mathf.Clamp(_record.adTextHeight, 0.03f, 0.6f);
+                float y0 = Mathf.Clamp01(_record.adTextPos) * (1f - h);
+                rt.anchorMin = new Vector2(0f, y0);
+                rt.anchorMax = new Vector2(1f, y0 + h);
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+            _text.color = _record.adTextColor;
+
+            // the line at the playhead = the latest voice key before it
+            float t = GPReplayer.PlayheadTime;
+            GPVoiceKey cur = null;
+            foreach (var k in _record.voiceKeys) {
+                if (k.time > t) break;
+                cur = k;
+            }
+            var line = cur != null ? _voices.Find(cur.name) : null;
+            if (line == null || string.IsNullOrEmpty(line.text)) {
+                _text.text = "";
+                return;
+            }
+
+            // typewriter paced to the audio clip (fallback: ~16 chars/s when not loaded yet)
+            float dur = GPVoicePlayer.ClipLength(cur.name);
+            if (dur <= 0f) dur = Mathf.Max(0.5f, line.text.Length * 0.06f);
+            _text.text = line.text;
+            _text.maxVisibleCharacters =
+                Mathf.Clamp(Mathf.CeilToInt(line.text.Length * (t - cur.time) / dur), 0, line.text.Length);
+        }
+
+        void EnsureScene() {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(ScenePath);
+            if (!scene.isLoaded) {
+                if (!_loading) {
+                    _loading = true;
+                    // editor-only load — the scene doesn't need to be in Build Settings
+                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(ScenePath,
+                        new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Additive));
+                }
+                return;
+            }
+            _loading = false;
+            foreach (var root in scene.GetRootGameObjects()) {
+                var tt = root.transform.RecursiveFindChild("$Text");
+                if (tt != null && _text == null) _text = tt.GetComponent<TMPro.TMP_Text>();
+                var bb = root.transform.RecursiveFindChild("$BG");
+                if (bb != null && _bg == null) _bg = bb.GetComponent<UnityEngine.UI.Image>();
+            }
+            if (_text != null) _text.maxVisibleCharacters = 0;
+        }
+
+        void UnloadScene() {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(ScenePath);
+            if (scene.isLoaded) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(scene);
         }
 
         void OnDestroy() {

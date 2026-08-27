@@ -143,6 +143,14 @@ namespace qp {
         public bool hideBoosters;        // the bottom booster buttons
         public bool hideCounters;        // the puppy count + bones row
 
+        // the AdsVoiceTextPortrait overlay scene: subtitles typed letter-by-letter with each
+        // voice line. Height and position are screen fractions (pos 0 = bottom, 1 = top).
+        public bool showAdText;
+        public Color adTextBg = new Color(0f, 0f, 0f, 0.85f);
+        public Color adTextColor = Color.white;
+        public float adTextHeight = 0.12f;
+        public float adTextPos = 0.08f;
+
         /// <summary>True once a level was captured — a default-constructed (or Unity-deserialized
         /// empty) instance has size 0 and means "no record loaded".</summary>
         public bool IsValid => level != null && level.size > 0;

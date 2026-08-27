@@ -485,11 +485,26 @@
         }
     ],
     "voicesFile": "voices1.json",
-    "endTime": 45.34375,
+    "endTime": 46.052276611328128,
     "noFail": true,
     "noWin": true,
     "hideTop": true,
     "hideRules": true,
     "hideBoosters": true,
-    "hideCounters": true
+    "hideCounters": true,
+    "showAdText": true,
+    "adTextBg": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 0.8999999761581421
+    },
+    "adTextColor": {
+        "r": 0.18000000715255738,
+        "g": 0.49399998784065249,
+        "b": 0.4860000014305115,
+        "a": 1.0
+    },
+    "adTextHeight": 0.18042856454849244,
+    "adTextPos": 0.04428571090102196
 }
