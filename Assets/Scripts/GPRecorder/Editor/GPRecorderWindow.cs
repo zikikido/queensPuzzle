@@ -48,7 +48,7 @@ namespace qp {
         [SerializeField] float _pxPerSec = 80f;   // zoom
         [SerializeField] float _viewStart;        // seconds at the timeline's left edge (pan)
         [SerializeField] EPending _pending = EPending.None;
-        [SerializeField] bool _noFail = true;   // wrong queens don't lose bones during record/replay
+        // session flags (NoFail/NoWin/Hide*) live IN the record — each video carries its setup
 
         // reset by the domain reload — selection is not precious
         readonly System.Collections.Generic.List<GPRecordAction> _selection = new System.Collections.Generic.List<GPRecordAction>();
@@ -136,6 +136,7 @@ namespace qp {
                 GPSpotPicker.End();
 
             GPReplayer.RecordFolder = string.IsNullOrEmpty(_path) ? null : GPRecord.FolderOf(_path);
+            ApplyHideFlags();
 
             // the record file changed on disk (script, git, hand edit) — reload it, keeping the view
             if (_pending == EPending.None && !GPRecorder.IsRecording && !GPReplayer.IsReplaying
@@ -270,7 +271,8 @@ namespace qp {
         // ---- GUI -----------------------------------------------------------------------
 
         void OnGUI() {
-            GPRecorder.NoFail = _noFail;   // statics reset on domain reload — the window is the source
+            GPRecorder.NoFail = _record.noFail;   // statics reset on domain reload — the record is the source
+            GPRecorder.NoWin = _record.noWin;
             // ✎ Edit (insert) keeps the timeline fully editable — only a running record/replay locks it
             bool live = GPReplayer.IsReplaying || (GPRecorder.IsRecording && !GPRecorder.IsInserting);
             if (GPRecorder.IsRecording) _playhead = GPRecorder.Elapsed;
@@ -460,9 +462,13 @@ namespace qp {
                                 GPRecorder.BeginInsert(_record, _playhead);
                         }
                         GUILayout.Space(12f);
-                        _noFail = GUILayout.Toggle(_noFail, new GUIContent("NoFail",
+                        _record.noFail = GUILayout.Toggle(_record.noFail, new GUIContent("NoFail",
                             "During record & replay: wrong queens shake and flash but lose no bones and can never fail the board"),
                             GUILayout.Width(60f));
+                        _record.noWin = GUILayout.Toggle(_record.noWin, new GUIContent("NoWin",
+                            "During record & replay: finishing the board plays the win sound and celebration but NO popups " +
+                            "(win/streak) — the session stays alive. Turn OFF to capture the real win ending."),
+                            GUILayout.Width(58f));
                     }
                     GUILayout.FlexibleSpace();
                     GUILayout.Label($"playhead {_playhead:0.00}s");
@@ -506,6 +512,16 @@ namespace qp {
                         "Add a voice key at the playhead — pick which line it plays in the row below"),
                         GUILayout.Width(66f)))
                     AddVoiceKey();
+                GUILayout.Space(12f);
+                GUILayout.Label("Hide:", EditorStyles.miniLabel, GUILayout.Width(30f));
+                _record.hideTop = GUILayout.Toggle(_record.hideTop, new GUIContent("Top",
+                    "Hide the back arrow, level title and settings gear during the session"), GUILayout.Width(44f));
+                _record.hideRules = GUILayout.Toggle(_record.hideRules, new GUIContent("Rules",
+                    "Hide the three rule cards during the session"), GUILayout.Width(52f));
+                _record.hideBoosters = GUILayout.Toggle(_record.hideBoosters, new GUIContent("Boosters",
+                    "Hide the bottom booster buttons during the session"), GUILayout.Width(70f));
+                _record.hideCounters = GUILayout.Toggle(_record.hideCounters, new GUIContent("Counters",
+                    "Hide the puppy count and the bones row during the session"), GUILayout.Width(72f));
             }
         }
 
@@ -565,7 +581,13 @@ namespace qp {
 
             if (!live && _record.IsValid) {
                 bool multiKey = e.control || e.command || e.shift;
-                if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)) {
+                if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)
+                    && e.mousePosition.y < r.y + RulerH
+                    && Mathf.Abs(TimeToX(r, _record.Duration) - e.mousePosition.x) < 7f) {
+                    _dragEndKey = true;   // the END marker lives on the ruler
+                    GUI.FocusControl(null);
+                    e.Use();
+                } else if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)) {
                     var hit = HitMarker(r, e.mousePosition);
                     if (hit != null) {
                         _handSel.Clear(); _dragHand = _handAnchor = null;
@@ -652,7 +674,10 @@ namespace qp {
                     GUI.FocusControl(null);
                     e.Use();
                 } else if (e.type == EventType.MouseDrag && e.button == 0) {
-                    if (_dragging != null) {
+                    if (_dragEndKey) {
+                        _record.endTime = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
+                        e.Use();
+                    } else if (_dragging != null) {
                         // move the whole selection by the anchor's delta, nothing below 0
                         float delta = Mathf.Max(0f, XToTime(r, e.mousePosition.x)) - _dragging.time;
                         foreach (var s in _selection) delta = Mathf.Max(delta, -s.time);
@@ -676,6 +701,7 @@ namespace qp {
                         e.Use();
                     } else if (_scrubbing) { _playhead = Mathf.Max(0f, XToTime(r, e.mousePosition.x)); ScrubPreview(); e.Use(); }
                 } else if (e.type == EventType.MouseUp && e.button == 0) {
+                    _dragEndKey = false;
                     if (_dragging != null) { _record.Sort(); _dragging = null; e.Use(); }
                     if (_dragHand != null) { _record.Sort(); _dragHand = null; ScrubPreview(); e.Use(); }
                     if (_dragSpot != null) { _record.Sort(); _dragSpot = null; ScrubPreview(); e.Use(); }
@@ -795,10 +821,37 @@ namespace qp {
                 }
             }
 
+            // END marker on the ruler — drag it right to hold the ending longer
+            if (_record.IsValid) {
+                float ex = TimeToX(r, _record.Duration);
+                if (ex >= r.x && ex <= r.xMax) {
+                    EditorGUI.DrawRect(new Rect(ex - 1f, r.y, 2f, RulerH), new Color(1f, 1f, 1f, 0.85f));
+                    GUI.Label(new Rect(ex + 3f, r.y + 1f, 34f, 14f), "END", EditorStyles.miniLabel);
+                }
+            }
+
             // playhead
             float px2 = TimeToX(r, _playhead);
             if (px2 >= r.x && px2 <= r.xMax)
                 EditorGUI.DrawRect(new Rect(px2, r.y, 2f, r.height), new Color(1f, 0.25f, 0.25f));
+        }
+
+        bool _dragEndKey;
+
+        // Hide/show the chrome pieces to match the flags, every editor tick while playing —
+        // cheap, and it self-heals when the scene reloads (new level, replay restart).
+        void ApplyHideFlags() {
+            if (!EditorApplication.isPlaying || MBGameplay.instance == null) return;
+            var layout = GameObject.Find("GameLayout");
+            if (layout == null) return;
+            SetActive(layout.transform.Find("TopBar/MinMax/Top"), !_record.hideTop);
+            SetActive(layout.transform.Find("TopBar/MinMax/Help"), !_record.hideRules);
+            SetActive(layout.transform.Find("Boosters"), !_record.hideBoosters);
+            SetActive(layout.transform.Find("TopBar/MinMax/Bottom"), !_record.hideCounters);
+        }
+
+        static void SetActive(Transform t, bool on) {
+            if (t != null && t.gameObject.activeSelf != on) t.gameObject.SetActive(on);
         }
 
         void SelectedGUI(bool live) {

@@ -712,9 +712,14 @@ namespace qp {
                 MaybePrepareReview(placed);
                 bool win = placed == _n;
 #if UNITY_EDITOR
-                // GPRecorder NoWin: the board completes but the win flow (popup, level++) doesn't
-                // run — the ad-editing session stays alive for scrubbing and re-records
-                if (win && GPRecorder.NoWin && (GPRecorder.IsRecording || GPReplayer.IsReplaying)) win = false;
+                // GPRecorder NoWin: the win's full feel — win sound, haptic, queens celebrating —
+                // but no popups (win/streak), no analytics/level++, no input shutoff. The ad
+                // session stays alive for scrubbing and re-records.
+                if (win && GPRecorder.NoWin && (GPRecorder.IsRecording || GPReplayer.IsReplaying)) {
+                    Haptics.Play(GameHaptic.Win);
+                    CommonSFX.Play(GPSFX.Instance.Win);
+                    return;
+                }
 #endif
                 if (win) Win();
                 else {

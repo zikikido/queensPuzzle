@@ -26,9 +26,10 @@ namespace qp {
         /// board — ad takes need unlimited wrong tries. Checked by MBGameplay.PlaceQueenAt.</summary>
         public static bool NoFail = true;
 
-        /// <summary>While recording/replaying, completing the board does NOT run the win flow
-        /// (popup, level++) — the session stays alive for scrubbing and re-records. Turn OFF to
-        /// capture the real win ending. Checked by MBGameplay.PlaceQueenAt.</summary>
+        /// <summary>While recording/replaying, completing the board keeps the win's feel (win
+        /// sound, haptic, celebration) but skips the popups, analytics and level++ — the session
+        /// stays alive for scrubbing and re-records. Turn OFF to capture the real win ending.
+        /// Checked by MBGameplay.PlaceQueenAt.</summary>
         public static bool NoWin = false;
 
         static EMode _mode;

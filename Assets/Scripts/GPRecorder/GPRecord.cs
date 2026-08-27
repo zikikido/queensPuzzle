@@ -133,6 +133,15 @@ namespace qp {
         public List<GPSpotKey> spotKeys = new List<GPSpotKey>();
         public List<GPVoiceKey> voiceKeys = new List<GPVoiceKey>();
         public string voicesFile = "voices1.json";   // the active voice set in the record's folder
+        public float endTime;   // replay runs at least to here (END marker on the ruler) — 0 = last key
+
+        // per-record session flags (all applied by the window while the session runs)
+        public bool noFail = true;       // wrong queens lose no bones, board can't fail
+        public bool noWin = true;        // finishing plays the win sound but no popups — session stays alive
+        public bool hideTop;             // back arrow + level title + settings gear
+        public bool hideRules;           // the three rule cards
+        public bool hideBoosters;        // the bottom booster buttons
+        public bool hideCounters;        // the puppy count + bones row
 
         /// <summary>True once a level was captured — a default-constructed (or Unity-deserialized
         /// empty) instance has size 0 and means "no record loaded".</summary>
@@ -144,7 +153,7 @@ namespace qp {
                 if (handKeys.Count > 0) d = Mathf.Max(d, handKeys[handKeys.Count - 1].time);
                 if (spotKeys.Count > 0) d = Mathf.Max(d, spotKeys[spotKeys.Count - 1].time);
                 if (voiceKeys.Count > 0) d = Mathf.Max(d, voiceKeys[voiceKeys.Count - 1].time);
-                return d;
+                return Mathf.Max(d, endTime);
             }
         }
 

@@ -114,6 +114,12 @@ namespace qp {
                 catch (System.Exception e) { Common.CDebug.LogError($"[GPReplayer] action at {a.time:0.00}s ({a.to} on {a.x},{a.y}) failed: {e.Message}"); }
             }
 
+            // keep the clock running to the END of all tracks — voice/hand/spot keys can sit
+            // after the last board action (e.g. the closing voice line over the win)
+            float end = record.Duration;
+            while (Time.time - t0 < end) { PlayheadTime = Time.time - t0; yield return null; }
+            PlayheadTime = end;
+
             IsReplaying = false;
             gp.InputLocks--;
             _run = null;
