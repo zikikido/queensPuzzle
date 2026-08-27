@@ -480,12 +480,12 @@
             "name": "lastone"
         },
         {
-            "time": 44.5,
+            "time": 44.934906005859378,
             "name": "cta"
         }
     ],
-    "voicesFile": "voices1.json",
-    "endTime": 46.052276611328128,
+    "voicesFile": "female_jessica.voices.json",
+    "endTime": 46.20365524291992,
     "noFail": true,
     "noWin": true,
     "hideTop": true,

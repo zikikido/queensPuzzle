@@ -766,6 +766,13 @@ namespace qp {
                 if (to == MBCell.ECellType.EMPTY) return;
             }
             PaintCell(cell, to);
+            // played moves tick (sound + haptic) after painting — replayed ones must too,
+            // with the drags' throttle so a same-frame burst doesn't stack sounds
+            if (Time.unscaledTime - _lastTick >= TickInterval) {
+                _lastTick = Time.unscaledTime;
+                Haptics.Play(to == MBCell.ECellType.EMPTY ? GameHaptic.Tap : GameHaptic.XMark);
+                CommonSFX.Play(to == MBCell.ECellType.EMPTY ? GPSFX.Instance.Erase : GPSFX.Instance.XMark);
+            }
         }
 
         /// <summary>Replay a queen double-tap — right/wrong and win/fail resolved by the normal logic.</summary>

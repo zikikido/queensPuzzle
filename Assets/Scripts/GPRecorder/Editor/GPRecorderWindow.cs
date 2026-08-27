@@ -398,35 +398,36 @@ namespace qp {
             _voicesStamp = File.GetLastWriteTimeUtc(VoicesPath);   // our own write is not a "change"
         }
 
-        // wavs of set "voices1.json" land in Voices/1/, "voices2.json" in Voices/2/ — swapping
-        // the set swaps the folder, the timeline keys never change
+        // wavs of set "will.voices.json" land in Voices/will/ (legacy "voices1.json" → Voices/1/) —
+        // swapping the set swaps the folder, the timeline keys never change
         void GenerateLine(GPVoiceLine l) {
-            string setId = Path.GetFileNameWithoutExtension(_record.voicesFile).Replace("voices", "");
+            string n = _record.voicesFile;
+            string setId = n.EndsWith(".voices.json")
+                ? n.Substring(0, n.Length - ".voices.json".Length)
+                : Path.GetFileNameWithoutExtension(n).Replace("voices", "");
             if (string.IsNullOrEmpty(setId)) setId = "A";
             GPVoiceGen.Generate(l, Voices.voiceId, GPRecord.FolderOf(_path), "Voices/" + setId, () => { SaveVoices(); Repaint(); });
         }
 
 
+        // ---- header: three clean toolbar rows ------------------------------------------
+        //  1  record ▾ · Save · New          ↶ ↷ · voices ▾
+        //  2  transport (state-aware)                     playhead
+        //  3  + Hand ▾ · + Spot ▾ · + Voice   NoFail NoWin · Hide ▾
+
         void FilesGUI(bool live) {
-            using (new EditorGUILayout.HorizontalScope())
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             using (new EditorGUI.DisabledScope(live)) {
                 var paths = GPRecord.ListPaths();
                 var names = paths.Select(GPRecord.NameOf).ToArray();
                 int cur = System.Array.IndexOf(paths, _path);
-                int pick = EditorGUILayout.Popup(cur, names, GUILayout.Width(170));
+                int pick = EditorGUILayout.Popup(cur, names, EditorStyles.toolbarPopup, GUILayout.Width(180f));
                 if (pick != cur && pick >= 0) LoadRecord(paths[pick]);
 
-                GUILayout.Label(_saveName, EditorStyles.boldLabel, GUILayout.Width(140f));
                 using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                    if (GUILayout.Button("Save", GUILayout.Width(48))) SaveRecord();
+                    if (GUILayout.Button("Save", EditorStyles.toolbarButton, GUILayout.Width(44f))) SaveRecord();
                 }
-                using (new EditorGUI.DisabledScope(_undoStack.Count == 0)) {
-                    if (GUILayout.Button(new GUIContent("↶", "Undo (Ctrl+Z)"), GUILayout.Width(26f))) DoUndo();
-                }
-                using (new EditorGUI.DisabledScope(_redoStack.Count == 0)) {
-                    if (GUILayout.Button(new GUIContent("↷", "Redo (Ctrl+Y)"), GUILayout.Width(26f))) DoRedo();
-                }
-                if (GUILayout.Button("New", GUILayout.Width(48))) {
+                if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(40f))) {
                     if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
                     _record = new GPRecord();
                     _path = "";
@@ -434,131 +435,160 @@ namespace qp {
                     ClearSelection();
                     _playhead = _viewStart = 0f;
                 }
+
+                GUILayout.FlexibleSpace();
+
+                using (new EditorGUI.DisabledScope(_undoStack.Count == 0)) {
+                    if (GUILayout.Button(new GUIContent("↶", "Undo (Ctrl+Z)"), EditorStyles.toolbarButton, GUILayout.Width(28f))) DoUndo();
+                }
+                using (new EditorGUI.DisabledScope(_redoStack.Count == 0)) {
+                    if (GUILayout.Button(new GUIContent("↷", "Redo (Ctrl+Y)"), EditorStyles.toolbarButton, GUILayout.Width(28f))) DoRedo();
+                }
+
+                GUILayout.Space(8f);
+                GUILayout.Label("voices", EditorStyles.miniLabel, GUILayout.Width(38f));
+                if (string.IsNullOrEmpty(_path)) {
+                    GUILayout.Label("—", EditorStyles.miniLabel, GUILayout.Width(90f));
+                } else {
+                    // convention: <voiceName>.voices.json (legacy voicesN.json still listed)
+                    var files = Directory.GetFiles(GPRecord.FolderOf(_path), "*.json")
+                        .Select(Path.GetFileName)
+                        .Where(n => n.EndsWith(".voices.json") || (n.StartsWith("voices") && n != "record.json"))
+                        .ToArray();
+                    int vcur = System.Array.IndexOf(files, _record.voicesFile);
+                    int vpick = EditorGUILayout.Popup(vcur, files, EditorStyles.toolbarPopup, GUILayout.Width(110f));
+                    if (vpick != vcur && vpick >= 0) {
+                        _record.voicesFile = files[vpick];   // swap the whole voice set
+                        _voices = null;
+                    }
+                }
             }
         }
 
         void TransportGUI() {
+            // row 2 — the transport: a media-player strip showing only what is usable right now
+            const float H = 26f;
             using (new EditorGUILayout.HorizontalScope()) {
+                GUILayout.Space(4f);
                 if (GPRecorder.IsInserting) {
-                    if (GUILayout.Button("✔ Done Editing", GUILayout.Width(130))) { GPRecorder.End(); SaveRecord(); }
-                    GUILayout.Label($"EDIT — board actions are inserted at {_playhead:0.00}s");
+                    GUI.backgroundColor = new Color(0.55f, 0.85f, 1f);
+                    if (GUILayout.Button("\u2714 Done Editing", GUILayout.Width(120f), GUILayout.Height(H))) { GPRecorder.End(); SaveRecord(); }
+                    GUI.backgroundColor = Color.white;
+                    GUILayout.Label($"  inserting board actions at {_playhead:0.00}s \u2014 play the game", EditorStyles.boldLabel, GUILayout.Height(H));
                 } else if (GPRecorder.IsRecording) {
-                    GUI.color = new Color(1f, 0.4f, 0.4f);
-                    if (GUILayout.Button("■ Stop Recording", GUILayout.Width(130))) { GPRecorder.End(); SaveRecord(); }
-                    GUI.color = Color.white;
-                    GUILayout.Label($"REC  {_playhead:0.00}s");
+                    GUI.backgroundColor = new Color(1f, 0.45f, 0.45f);
+                    if (GUILayout.Button("\u25a0 Stop", GUILayout.Width(90f), GUILayout.Height(H))) { GPRecorder.End(); SaveRecord(); }
+                    GUI.backgroundColor = Color.white;
+                    GUILayout.Label($"  \u25cf REC {_playhead:0.00}s", EditorStyles.boldLabel, GUILayout.Height(H));
                 } else if (GPReplayer.IsReplaying) {
-                    if (GUILayout.Button("■ Stop Replay", GUILayout.Width(130))) GPReplayer.Stop();
-                    GUILayout.Label($"PLAY  {_playhead:0.00}s");
+                    if (GUILayout.Button("\u25a0 Stop", GUILayout.Width(90f), GUILayout.Height(H))) GPReplayer.Stop();
+                    GUILayout.Label($"  \u25b6 {_playhead:0.00}s", EditorStyles.boldLabel, GUILayout.Height(H));
                 } else if (_pending != EPending.None) {
-                    GUILayout.Label("starting…");
+                    GUILayout.Label("starting\u2026", EditorStyles.boldLabel, GUILayout.Height(H));
                 } else {
-                    if (GUILayout.Button("● Record", GUILayout.Width(90))) StartFreshRecordRun();
+                    GUI.backgroundColor = new Color(1f, 0.72f, 0.72f);
+                    if (GUILayout.Button(new GUIContent(" \u25cf Record ",
+                            "Record a NEW take: restarts play mode with an empty board and captures your play"),
+                            GUILayout.Width(82f), GUILayout.Height(H)))
+                        StartFreshRecordRun();
+                    GUI.backgroundColor = Color.white;
+                    GUILayout.Space(10f);
                     using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                        // when the record's level is already live on the board, drive it in place
-                        // (video-player style, from the playhead); otherwise restart play mode
-                        if (GUILayout.Button(new GUIContent("▶ From 0", "Play the whole record from the start"), GUILayout.Width(70))) {
+                        if (GUILayout.Button(new GUIContent("\u23ee", "Playhead to 0"), GUILayout.Width(32f), GUILayout.Height(H))) {
                             _playhead = 0f;
-                            if (GPReplayer.CanDrive(_record)) GPReplayer.Play(_record, 0f);
-                            else StartReplayRun(EPending.Replay);
+                            ScrubPreview();
                         }
-                        if (GUILayout.Button($"▶ Play from {_playhead:0.00}s", GUILayout.Width(130))) {
+                        if (GUILayout.Button(new GUIContent(" \u25b6 Play ",
+                                "Play from the playhead (restarts play mode when the level isn't up)"),
+                                GUILayout.Width(70f), GUILayout.Height(H))) {
                             if (GPReplayer.CanDrive(_record)) GPReplayer.Play(_record, _playhead);
                             else StartReplayRun(EPending.Replay);
                         }
-                        // overdub: old keys are consumed only as the head passes them — stop early
-                        // and the tail of the previous recording survives
-                        if (GUILayout.Button($"⦿ Re-record from {_playhead:0.00}s", GUILayout.Width(170))) {
+                        // overdub: old keys are consumed only as the head passes them
+                        if (GUILayout.Button(new GUIContent(" \u29bf Re-record ",
+                                "Overdub from the playhead: your live play records over the old keys as the head passes them"),
+                                GUILayout.Width(100f), GUILayout.Height(H))) {
                             if (GPReplayer.CanDrive(_record)) {
                                 GPReplayer.Seek(_record, _playhead);
                                 GPRecorder.Begin(_record, _playhead);
                             } else StartReplayRun(EPending.RecordAtPlayhead);
                         }
                         using (new EditorGUI.DisabledScope(!GPReplayer.CanDrive(_record))) {
-                            if (GUILayout.Button(new GUIContent("✎ Edit",
-                                    "Insert board actions at the playhead. Needs the level live — press ▶ once first."),
-                                    GUILayout.Width(60)))
+                            if (GUILayout.Button(new GUIContent(" \u270e Insert ",
+                                    "Insert board actions at the playhead (needs the level live \u2014 press \u25b6 once first)"),
+                                    GUILayout.Width(72f), GUILayout.Height(H)))
                                 GPRecorder.BeginInsert(_record, _playhead);
                         }
-                        GUILayout.Space(12f);
-                        _record.noFail = GUILayout.Toggle(_record.noFail, new GUIContent("NoFail",
-                            "During record & replay: wrong queens shake and flash but lose no bones and can never fail the board"),
-                            GUILayout.Width(60f));
-                        _record.noWin = GUILayout.Toggle(_record.noWin, new GUIContent("NoWin",
-                            "During record & replay: finishing the board plays the win sound and celebration but NO popups " +
-                            "(win/streak) — the session stays alive. Turn OFF to capture the real win ending."),
-                            GUILayout.Width(58f));
                     }
                     GUILayout.FlexibleSpace();
-                    GUILayout.Label($"playhead {_playhead:0.00}s");
+                    GUILayout.Label($"{_playhead:0.00}s", EditorStyles.boldLabel, GUILayout.Height(H));
+                    GUILayout.Space(6f);
                 }
             }
 
-            // hand + spotlight key buttons, their own row — the transport row is full
             bool idle = !GPRecorder.IsRecording && !GPReplayer.IsReplaying && _pending == EPending.None;
             if (!idle) return;
-            using (new EditorGUILayout.HorizontalScope())
+
+            // row 3 — add keys, and everything rare inside ONE Options menu
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                if (GUILayout.Button(new GUIContent("+ Hand Point",
-                        "Add a drag point. Select a board key first: it goes on that cell — a drag's first point " +
-                        "slightly early so the press lands on the mark, a corner inside the drag exactly at the key. " +
-                        "Otherwise at the playhead."),
-                        GUILayout.Width(95f)))
-                    AddHandKey(GPHandKey.EKind.POINT);
-                if (GUILayout.Button(new GUIContent("+ Hand End",
-                        "Add the drag's END: the finger lifts and the hand vanishes. On a selected board key → " +
-                        "that cell, exactly at the key's time. Otherwise at the playhead."),
-                        GUILayout.Width(85f)))
-                    AddHandKey(GPHandKey.EKind.END_MOVE);
-                if (GUILayout.Button(new GUIContent("+ Hand DblTap",
-                        "Add a hand double-tap. Select a QUEEN board key first: it goes on that cell, timed so the " +
-                        "2nd tap lands exactly when the queen appears. Otherwise it lands at the playhead."),
-                        GUILayout.Width(105f)))
-                    AddHandKey(GPHandKey.EKind.DOUBLE_CLICK);
-                GUILayout.Space(12f);
-                if (GUILayout.Button(new GUIContent("+ Spot",
-                        "Spotlight: tutorial-style curtain with holes over this key's CELL LIST. Selected board keys' cells " +
-                        "seed the list (time = earliest); refine it with 🎯 Pick by clicking cells on the live board. " +
-                        "Holes add up until a Spot Clear."),
-                        GUILayout.Width(60f)))
-                    AddSpotKey(GPSpotKey.EKind.SHOW);
-                if (GUILayout.Button(new GUIContent("+ Spot Clear",
-                        "Drop the curtain and close all spotlight holes at the playhead"),
-                        GUILayout.Width(90f)))
-                    AddSpotKey(GPSpotKey.EKind.CLEAR);
-                GUILayout.Space(12f);
+                if (GUILayout.Button(new GUIContent("+ Hand \u25be",
+                        "Hand keys at the playhead (select a board key first for perfect cell+time sync)"),
+                        EditorStyles.toolbarDropDown, GUILayout.Width(70f))) {
+                    var m = new GenericMenu();
+                    m.AddItem(new GUIContent("Point \u2014 press / drag corner"), false, () => AddHandKey(GPHandKey.EKind.POINT));
+                    m.AddItem(new GUIContent("End \u2014 lift the finger"), false, () => AddHandKey(GPHandKey.EKind.END_MOVE));
+                    m.AddItem(new GUIContent("Double Tap"), false, () => AddHandKey(GPHandKey.EKind.DOUBLE_CLICK));
+                    m.ShowAsContext();
+                }
+                if (GUILayout.Button(new GUIContent("+ Spot \u25be",
+                        "Spotlight keys at the playhead. Show = curtain holes over cells (refine with Pick), Clear = curtain drops"),
+                        EditorStyles.toolbarDropDown, GUILayout.Width(66f))) {
+                    var m = new GenericMenu();
+                    m.AddItem(new GUIContent("Show \u2014 light cells"), false, () => AddSpotKey(GPSpotKey.EKind.SHOW));
+                    m.AddItem(new GUIContent("Clear \u2014 curtain down"), false, () => AddSpotKey(GPSpotKey.EKind.CLEAR));
+                    m.ShowAsContext();
+                }
                 if (GUILayout.Button(new GUIContent("+ Voice",
-                        "Add a voice key at the playhead — pick which line it plays in the row below"),
-                        GUILayout.Width(66f)))
+                        "Add a voice key at the playhead \u2014 pick which line it plays in the row below"),
+                        EditorStyles.toolbarButton, GUILayout.Width(56f)))
                     AddVoiceKey();
-                GUILayout.Space(12f);
-                GUILayout.Label("Hide:", EditorStyles.miniLabel, GUILayout.Width(30f));
-                _record.hideTop = GUILayout.Toggle(_record.hideTop, new GUIContent("Top",
-                    "Hide the back arrow, level title and settings gear during the session"), GUILayout.Width(44f));
-                _record.hideRules = GUILayout.Toggle(_record.hideRules, new GUIContent("Rules",
-                    "Hide the three rule cards during the session"), GUILayout.Width(52f));
-                _record.hideBoosters = GUILayout.Toggle(_record.hideBoosters, new GUIContent("Boosters",
-                    "Hide the bottom booster buttons during the session"), GUILayout.Width(70f));
-                _record.hideCounters = GUILayout.Toggle(_record.hideCounters, new GUIContent("Counters",
-                    "Hide the puppy count and the bones row during the session"), GUILayout.Width(72f));
+
+                GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button(new GUIContent("Options \u25be",
+                        "Session flags: fail/win behavior, hidden game UI, subtitles overlay \u2014 all saved in the record"),
+                        EditorStyles.toolbarDropDown, GUILayout.Width(76f))) {
+                    var m = new GenericMenu();
+                    m.AddItem(new GUIContent("No Fail \u2014 unlimited wrong tries"), _record.noFail, () => _record.noFail = !_record.noFail);
+                    m.AddItem(new GUIContent("No Win popups \u2014 session stays alive"), _record.noWin, () => _record.noWin = !_record.noWin);
+                    m.AddSeparator("");
+                    m.AddItem(new GUIContent("Hide UI/Top (back, title, settings)"), _record.hideTop, () => _record.hideTop = !_record.hideTop);
+                    m.AddItem(new GUIContent("Hide UI/Rule cards"), _record.hideRules, () => _record.hideRules = !_record.hideRules);
+                    m.AddItem(new GUIContent("Hide UI/Boosters"), _record.hideBoosters, () => _record.hideBoosters = !_record.hideBoosters);
+                    m.AddItem(new GUIContent("Hide UI/Counters (puppies, bones)"), _record.hideCounters, () => _record.hideCounters = !_record.hideCounters);
+                    m.AddSeparator("");
+                    m.AddItem(new GUIContent("Subtitles overlay"), _record.showAdText, () => _record.showAdText = !_record.showAdText);
+                    m.ShowAsContext();
+                }
             }
 
-            // AdsVoiceTextPortrait overlay: subtitles typed letter-by-letter with each voice line
-            using (new EditorGUILayout.HorizontalScope()) {
-                _record.showAdText = GUILayout.Toggle(_record.showAdText, new GUIContent("Ad Text scene",
-                    "Load the AdsVoiceTextPortrait overlay scene during the session — each voice line's text types " +
-                    "in letter-by-letter, synced to its audio"), GUILayout.Width(100f));
-                using (new EditorGUI.DisabledScope(!_record.showAdText)) {
+            // row 4 — subtitle settings, present only while the overlay is on
+            if (_record.showAdText && _record.IsValid) {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    GUILayout.Label("Subtitles", EditorStyles.miniBoldLabel, GUILayout.Width(54f));
                     GUILayout.Label("BG", EditorStyles.miniLabel, GUILayout.Width(20f));
-                    _record.adTextBg = EditorGUILayout.ColorField(_record.adTextBg, GUILayout.Width(50f));
+                    _record.adTextBg = EditorGUILayout.ColorField(_record.adTextBg, GUILayout.Width(44f));
                     GUILayout.Label("Text", EditorStyles.miniLabel, GUILayout.Width(26f));
-                    _record.adTextColor = EditorGUILayout.ColorField(_record.adTextColor, GUILayout.Width(50f));
-                    GUILayout.Label("H", EditorStyles.miniLabel, GUILayout.Width(12f));
-                    _record.adTextHeight = GUILayout.HorizontalSlider(_record.adTextHeight, 0.03f, 0.5f, GUILayout.Width(80f));
-                    GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(22f));
-                    _record.adTextPos = GUILayout.HorizontalSlider(_record.adTextPos, 0f, 1f, GUILayout.Width(80f));
+                    _record.adTextColor = EditorGUILayout.ColorField(_record.adTextColor, GUILayout.Width(44f));
+                    GUILayout.Space(10f);
+                    GUILayout.Label("Height", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    _record.adTextHeight = GUILayout.HorizontalSlider(_record.adTextHeight, 0.03f, 0.5f, GUILayout.Width(90f));
+                    GUILayout.Space(10f);
+                    GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(24f));
+                    _record.adTextPos = GUILayout.HorizontalSlider(_record.adTextPos, 0f, 1f, GUILayout.Width(90f));
+                    GUILayout.FlexibleSpace();
                 }
-                GUILayout.FlexibleSpace();
             }
         }
 
@@ -568,28 +598,8 @@ namespace qp {
                                         "with an empty board and captures your play. Or pick a saved file above.", MessageType.Info);
                 return;
             }
-            using (new EditorGUILayout.HorizontalScope()) {
-                GUILayout.Label($"level {_record.level.size}x{_record.level.size}   " +
-                                $"{_record.actions.Count} actions   {_record.Duration:0.00}s", EditorStyles.miniLabel);
-                GUILayout.Space(16f);
-                GUILayout.Label("voices:", EditorStyles.miniLabel, GUILayout.Width(40f));
-                if (string.IsNullOrEmpty(_path)) {
-                    GUILayout.Label("save the record first", EditorStyles.miniLabel);
-                } else {
-                    var files = Directory.GetFiles(GPRecord.FolderOf(_path), "voices*.json")
-                        .Select(Path.GetFileName).ToArray();
-                    if (files.Length == 0) GUILayout.Label($"(no voices*.json in the folder yet)", EditorStyles.miniLabel);
-                    else {
-                        int cur = System.Array.IndexOf(files, _record.voicesFile);
-                        int pick = EditorGUILayout.Popup(cur, files, GUILayout.Width(110f));
-                        if (pick != cur && pick >= 0) {
-                            _record.voicesFile = files[pick];   // swap the whole voice set
-                            _voices = null;
-                        }
-                    }
-                }
-                GUILayout.FlexibleSpace();
-            }
+            GUILayout.Label($"level {_record.level.size}x{_record.level.size}   " +
+                            $"{_record.actions.Count} actions   {_record.Duration:0.00}s", EditorStyles.miniLabel);
 
             // a broken voice key would silently play nothing in the video — surface it loudly
             if (!string.IsNullOrEmpty(_path)) {
