@@ -58,10 +58,50 @@ namespace qp {
         }
     }
 
+    /// <summary>One voice-track key: at <see cref="time"/>, play the line called <see cref="name"/>
+    /// from the record's active voices file. The content (text, params, wav path) lives in
+    /// voicesN.json in the record's folder — the key holds timing only.</summary>
+    [Serializable]
+    public class GPVoiceKey {
+        public float time;
+        public string name;
+    }
+
+    /// <summary>One voiceover line: text + generation params + where its wav lives
+    /// (<see cref="path"/> is relative to the record's folder, e.g. "Voices/A/oops.wav").</summary>
+    [Serializable]
+    public class GPVoiceLine {
+        public string name;
+        public string text;
+        public float speed = 1f;
+        public float stability = 0.45f;
+        public float style = 0.3f;
+        public string path;
+    }
+
+    /// <summary>A voice set (voices1.json, voices2.json, … in the record's folder). Swapping the
+    /// record's voicesFile swaps every line's audio while the timeline keys stay put.</summary>
+    [Serializable]
+    public class GPVoices {
+        public string voiceId;   // the ElevenLabs voice this set is generated with
+        public List<GPVoiceLine> lines = new List<GPVoiceLine>();
+
+        public GPVoiceLine Find(string name) {
+            foreach (var l in lines) if (l.name == name) return l;
+            return null;
+        }
+
+        public static GPVoices Load(string path) =>
+            File.Exists(path) ? JsonUtility.FromJson<GPVoices>(File.ReadAllText(path)) : new GPVoices();
+
+        public void Save(string path) => File.WriteAllText(path, JsonUtility.ToJson(this, true));
+    }
+
     /// <summary>
     /// A recorded play session for UA ad capture: the level it was played on (embedded, so the
-    /// replay survives level-pack changes) plus the timed cell changes. Saved as JSON in
-    /// GPRecords/ next to the Assets folder (outside it, so Unity doesn't import the files).
+    /// replay survives level-pack changes) plus the timed cell changes. New layout: each record
+    /// is a FOLDER — GPRecords/&lt;name&gt;/record.json + voicesN.json + Voices/*.wav (legacy flat
+    /// GPRecords/*.json files still load). GPRecords sits next to Assets so Unity ignores it.
     /// </summary>
     [Serializable]
     public class GPRecord {
@@ -91,6 +131,8 @@ namespace qp {
         public List<GPRecordAction> actions = new List<GPRecordAction>();
         public List<GPHandKey> handKeys = new List<GPHandKey>();
         public List<GPSpotKey> spotKeys = new List<GPSpotKey>();
+        public List<GPVoiceKey> voiceKeys = new List<GPVoiceKey>();
+        public string voicesFile = "voices1.json";   // the active voice set in the record's folder
 
         /// <summary>True once a level was captured — a default-constructed (or Unity-deserialized
         /// empty) instance has size 0 and means "no record loaded".</summary>
@@ -101,6 +143,7 @@ namespace qp {
                 float d = actions.Count > 0 ? actions[actions.Count - 1].time : 0f;
                 if (handKeys.Count > 0) d = Mathf.Max(d, handKeys[handKeys.Count - 1].time);
                 if (spotKeys.Count > 0) d = Mathf.Max(d, spotKeys[spotKeys.Count - 1].time);
+                if (voiceKeys.Count > 0) d = Mathf.Max(d, voiceKeys[voiceKeys.Count - 1].time);
                 return d;
             }
         }
@@ -117,17 +160,53 @@ namespace qp {
             var spot = spotKeys.OrderBy(k => k.time).ToList();
             spotKeys.Clear();
             spotKeys.AddRange(spot);
+            var voice = voiceKeys.OrderBy(k => k.time).ToList();
+            voiceKeys.Clear();
+            voiceKeys.AddRange(voice);
         }
 
         // ---- files: GPRecords/ beside Assets ------------------------------------------
 
         public static string Dir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "GPRecords"));
 
-        public static string[] ListPaths() =>
-            Directory.Exists(Dir) ? Directory.GetFiles(Dir, "*.json") : Array.Empty<string>();
+        /// <summary>The folder a record's voices and wavs live in (its own folder in the new
+        /// layout; GPRecords itself for a legacy flat file).</summary>
+        public static string FolderOf(string recordPath) => Path.GetDirectoryName(recordPath);
+
+        public static string[] ListPaths() {
+            if (!Directory.Exists(Dir)) return Array.Empty<string>();
+            var result = new List<string>();
+            foreach (var d in Directory.GetDirectories(Dir)) {
+                string rp = Path.Combine(d, "record.json");
+                if (File.Exists(rp)) result.Add(rp);
+            }
+            result.AddRange(Directory.GetFiles(Dir, "*.json"));   // legacy flat records
+            return result.ToArray();
+        }
+
+        /// <summary>Display name: the folder name in the new layout, the file name for legacy.</summary>
+        public static string NameOf(string recordPath) =>
+            Path.GetFileName(recordPath) == "record.json"
+                ? Path.GetFileName(FolderOf(recordPath))
+                : Path.GetFileNameWithoutExtension(recordPath);
+
+        /// <summary>Every voice key must resolve to a line in the active voices file, and every
+        /// referenced wav must exist on disk. Returns the problems; empty = all good.</summary>
+        public List<string> ValidateVoices(string recordPath, GPVoices voices) {
+            var problems = new List<string>();
+            if (voiceKeys.Count == 0) return problems;
+            string folder = FolderOf(recordPath);
+            foreach (var k in voiceKeys) {
+                var line = voices?.Find(k.name);
+                if (line == null) { problems.Add($"voice key '{k.name}' has no line in {voicesFile}"); continue; }
+                if (string.IsNullOrEmpty(line.path) || !File.Exists(Path.Combine(folder, line.path)))
+                    problems.Add($"'{k.name}': wav missing ({(string.IsNullOrEmpty(line.path) ? "no path" : line.path)})");
+            }
+            return problems;
+        }
 
         public void Save(string path) {
-            Directory.CreateDirectory(Dir);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));   // records are folders now
             Sort();
             File.WriteAllText(path, JsonUtility.ToJson(this, true));
         }

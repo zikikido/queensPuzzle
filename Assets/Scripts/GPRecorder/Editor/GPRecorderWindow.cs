@@ -61,11 +61,17 @@ namespace qp {
         readonly System.Collections.Generic.List<GPSpotKey> _spotSel = new System.Collections.Generic.List<GPSpotKey>();
         GPSpotKey _dragSpot;
         GPSpotKey _spotAnchor;
+        readonly System.Collections.Generic.List<GPVoiceKey> _voiceSel = new System.Collections.Generic.List<GPVoiceKey>();
+        GPVoiceKey _dragVoice;
+        GPVoiceKey _voiceAnchor;
         bool _scrubbing;
 
+        GPVoices _voices;   // the record's active voice set — reloaded when the record/voicesFile changes
+
         const float RulerH = 18f;
-        const float HandH = 20f;   // the hand strip under the board band — thin, it never stacks
-        const float SpotH = 20f;   // the spotlight strip under the hand strip
+        const float HandH = 20f;    // the hand strip under the board band — thin, it never stacks
+        const float SpotH = 20f;    // the spotlight strip under the hand strip
+        const float VoiceH = 20f;   // the voice strip at the bottom
 
         void OnEnable() => EditorApplication.playModeStateChanged += OnPlayMode;
         void OnDisable() => EditorApplication.playModeStateChanged -= OnPlayMode;
@@ -128,6 +134,20 @@ namespace qp {
             // 🎯 Pick lives only while its single SHOW key stays selected
             if (GPSpotPicker.Active && (_spotSel.Count != 1 || _spotSel[0].kind != GPSpotKey.EKind.SHOW))
                 GPSpotPicker.End();
+
+            GPReplayer.RecordFolder = string.IsNullOrEmpty(_path) ? null : GPRecord.FolderOf(_path);
+
+            // the record file changed on disk (script, git, hand edit) — reload it, keeping the view
+            if (_pending == EPending.None && !GPRecorder.IsRecording && !GPReplayer.IsReplaying
+                && _dragging == null && _dragHand == null && _dragSpot == null && _dragVoice == null
+                && !string.IsNullOrEmpty(_path) && File.Exists(_path)
+                && File.GetLastWriteTimeUtc(_path) != _recordStamp) {
+                float ph = _playhead, vs = _viewStart, zoom = _pxPerSec;
+                LoadRecord(_path);
+                _playhead = ph; _viewStart = vs; _pxPerSec = zoom;
+                Repaint();
+            }
+
             if (GPRecorder.IsRecording || GPReplayer.IsReplaying || GPSpotPicker.Active) Repaint();
         }
 
@@ -145,7 +165,9 @@ namespace qp {
         static string NextFreeName() {
             for (int i = 1; ; i++) {
                 string name = "record_" + i;
-                if (!File.Exists(Path.Combine(GPRecord.Dir, name + ".json"))) return name;
+                if (!Directory.Exists(Path.Combine(GPRecord.Dir, name)) &&
+                    !File.Exists(Path.Combine(GPRecord.Dir, name + ".json")))   // legacy flat files
+                    return name;
             }
         }
 
@@ -156,6 +178,28 @@ namespace qp {
             _dragHand = _handAnchor = null;
             _spotSel.Clear();
             _dragSpot = _spotAnchor = null;
+            _voiceSel.Clear();
+            _dragVoice = _voiceAnchor = null;
+        }
+
+        // ---- voices --------------------------------------------------------------------
+
+        string VoicesPath => string.IsNullOrEmpty(_path) ? null : Path.Combine(GPRecord.FolderOf(_path), _record.voicesFile);
+
+        System.DateTime _voicesStamp;
+
+        // reloads whenever the file on disk changes (edited by hand, git pull, generated…)
+        GPVoices Voices {
+            get {
+                string p = VoicesPath;
+                if (p == null) return null;
+                var stamp = File.Exists(p) ? File.GetLastWriteTimeUtc(p) : System.DateTime.MinValue;
+                if (_voices == null || stamp != _voicesStamp) {
+                    _voices = GPVoices.Load(p);
+                    _voicesStamp = stamp;
+                }
+                return _voices;
+            }
         }
 
         void StartFreshRecordRun() {
@@ -194,7 +238,7 @@ namespace qp {
         bool SaveRecord() {
             if (!_record.IsValid) return false;
             if (string.IsNullOrWhiteSpace(_saveName)) _saveName = NextFreeName();
-            string target = Path.GetFullPath(Path.Combine(GPRecord.Dir, _saveName + ".json"));
+            string target = Path.GetFullPath(Path.Combine(GPRecord.Dir, _saveName, "record.json"));
             // saving over a DIFFERENT existing file than this record's own needs an OK; re-saving
             // the file the record was loaded from (or already saved to) is a normal save.
             // Compare normalized — the Load file panel returns forward slashes.
@@ -202,18 +246,23 @@ namespace qp {
                 string.Equals(Path.GetFullPath(_path), target, System.StringComparison.OrdinalIgnoreCase);
             if (!samePath && File.Exists(target) &&
                 !EditorUtility.DisplayDialog("GP Recorder",
-                    $"Override the existing file \"{_saveName}.json\"?", "Override", "Cancel"))
+                    $"Override the existing record \"{_saveName}\"?", "Override", "Cancel"))
                 return false;
             _path = target;
             _record.Save(_path);
+            _recordStamp = File.GetLastWriteTimeUtc(_path);   // our own write is not a "change"
             return true;
         }
+
+        System.DateTime _recordStamp;
 
         void LoadRecord(string path) {
             if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
             _record = GPRecord.Load(path);
             _path = Path.GetFullPath(path);
-            _saveName = Path.GetFileNameWithoutExtension(path);
+            _recordStamp = File.GetLastWriteTimeUtc(_path);
+            _saveName = GPRecord.NameOf(path);
+            _voices = null;
             ClearSelection();
             _playhead = _viewStart = 0f;
         }
@@ -233,29 +282,139 @@ namespace qp {
             TimelineGUI(live);
             SelectedGUI(live);
             LegendGUI();
+            VoicesGUI();
         }
+
+        // ---- voice lines editor: text + params per line, generated via ElevenLabs ------
+
+        [SerializeField] bool _voicesOpen = true;
+
+        void VoicesGUI() {
+            if (!_record.IsValid || string.IsNullOrEmpty(_path)) return;   // lines live in the record's folder
+            _voicesOpen = EditorGUILayout.Foldout(_voicesOpen, $"Voice lines ({_record.voicesFile})", true);
+            if (!_voicesOpen) return;
+            var v = Voices;
+            if (v == null) return;
+
+            GPVoiceGen.ApiKey = EditorGUILayout.PasswordField("ElevenLabs API key", GPVoiceGen.ApiKey);
+            GPVoiceGen.FetchVoices();   // once per session, when the key is set
+            using (new EditorGUILayout.HorizontalScope()) {
+                EditorGUI.BeginChangeCheck();
+                v.voiceId = EditorGUILayout.TextField($"Voice ID ({_record.voicesFile})", v.voiceId);
+                if (EditorGUI.EndChangeCheck()) SaveVoices();
+                string vname = GPVoiceGen.VoiceName(v.voiceId);
+                GUILayout.Label(vname ?? "?", EditorStyles.miniLabel, GUILayout.Width(90f));
+                if (GUILayout.Button("▾ Choose", GUILayout.Width(70f))) {
+                    if (GPVoiceGen.AccountVoices == null) {
+                        GPVoiceGen.FetchVoices(force: true);   // retry — list failed or not loaded yet
+                        ShowNotification(new GUIContent("Loading voice list… (see Console if it fails)"));
+                    } else {
+                        var menu = new GenericMenu();
+                        foreach (var opt in GPVoiceGen.AccountVoices) {
+                            var o = opt;   // capture per item
+                            // built-in voices work on every plan's API; the rest need a paid plan
+                            menu.AddItem(new GUIContent(o.premade ? o.name : o.name + "  (paid plan)"),
+                                o.id == v.voiceId, () => {
+                                    v.voiceId = o.id;   // only the ID is saved
+                                    SaveVoices();
+                                    Repaint();
+                                });
+                        }
+                        menu.AddSeparator("");
+                        menu.AddItem(new GUIContent("↻ Refresh list"), false, () => GPVoiceGen.FetchVoices(force: true));
+                        menu.ShowAsContext();
+                    }
+                }
+            }
+
+            string folder = GPRecord.FolderOf(_path);
+            bool canGen = GPVoiceGen.Ready && !string.IsNullOrEmpty(v.voiceId);
+            int remove = -1;
+            for (int i = 0; i < v.lines.Count; i++) {
+                var l = v.lines[i];
+                using (new EditorGUILayout.HorizontalScope()) {
+                    EditorGUI.BeginChangeCheck();
+                    l.name = EditorGUILayout.TextField(l.name, GUILayout.Width(70f));
+                    l.text = EditorGUILayout.TextField(l.text);
+                    GUILayout.Label("spd", EditorStyles.miniLabel, GUILayout.Width(24f));
+                    l.speed = EditorGUILayout.FloatField(l.speed, GUILayout.Width(34f));
+                    GUILayout.Label("stab", EditorStyles.miniLabel, GUILayout.Width(26f));
+                    l.stability = EditorGUILayout.FloatField(l.stability, GUILayout.Width(34f));
+                    GUILayout.Label("style", EditorStyles.miniLabel, GUILayout.Width(28f));
+                    l.style = EditorGUILayout.FloatField(l.style, GUILayout.Width(34f));
+                    if (EditorGUI.EndChangeCheck()) SaveVoices();
+
+                    bool busy = GPVoiceGen.IsBusy(l.name);
+                    bool hasFile = !string.IsNullOrEmpty(l.path) && File.Exists(Path.Combine(folder, l.path));
+                    GUILayout.Label(busy ? "…" : hasFile ? "✓" : "—", GUILayout.Width(16f));
+                    using (new EditorGUI.DisabledScope(!hasFile)) {
+                        if (GUILayout.Button("▶", GUILayout.Width(24f)))
+                            Audition(Path.Combine(folder, l.path));
+                    }
+                    using (new EditorGUI.DisabledScope(busy || !canGen || string.IsNullOrWhiteSpace(l.text))) {
+                        if (GUILayout.Button("♪ Gen", GUILayout.Width(48f))) GenerateLine(l);
+                    }
+                    if (GUILayout.Button("✖", GUILayout.Width(22f))) remove = i;
+                }
+            }
+            if (remove >= 0) { v.lines.RemoveAt(remove); SaveVoices(); }
+
+            using (new EditorGUILayout.HorizontalScope()) {
+                if (GUILayout.Button("+ Line", GUILayout.Width(60f))) {
+                    v.lines.Add(new GPVoiceLine { name = "line" + (v.lines.Count + 1), text = "" });
+                    SaveVoices();
+                }
+                using (new EditorGUI.DisabledScope(!canGen)) {
+                    if (GUILayout.Button("♪ Generate All", GUILayout.Width(100f)))
+                        foreach (var l in v.lines)
+                            if (!string.IsNullOrWhiteSpace(l.text)) GenerateLine(l);
+                }
+                GUILayout.FlexibleSpace();
+                if (!canGen) GUILayout.Label("set API key + Voice ID to generate", EditorStyles.miniLabel);
+            }
+        }
+
+        // .wav plays inline (SoundPlayer); .mp3 opens in the default player — SoundPlayer is WAV-only
+        static void Audition(string path) {
+            if (path.EndsWith(".wav", System.StringComparison.OrdinalIgnoreCase))
+                new System.Media.SoundPlayer(path).Play();
+            else
+                EditorUtility.OpenWithDefaultApp(path);
+        }
+
+        void SaveVoices() {
+            if (VoicesPath == null || _voices == null) return;
+            _voices.Save(VoicesPath);
+            _voicesStamp = File.GetLastWriteTimeUtc(VoicesPath);   // our own write is not a "change"
+        }
+
+        // wavs of set "voices1.json" land in Voices/1/, "voices2.json" in Voices/2/ — swapping
+        // the set swaps the folder, the timeline keys never change
+        void GenerateLine(GPVoiceLine l) {
+            string setId = Path.GetFileNameWithoutExtension(_record.voicesFile).Replace("voices", "");
+            if (string.IsNullOrEmpty(setId)) setId = "A";
+            GPVoiceGen.Generate(l, Voices.voiceId, GPRecord.FolderOf(_path), "Voices/" + setId, () => { SaveVoices(); Repaint(); });
+        }
+
 
         void FilesGUI(bool live) {
             using (new EditorGUILayout.HorizontalScope())
             using (new EditorGUI.DisabledScope(live)) {
                 var paths = GPRecord.ListPaths();
-                var names = paths.Select(Path.GetFileNameWithoutExtension).ToArray();
+                var names = paths.Select(GPRecord.NameOf).ToArray();
                 int cur = System.Array.IndexOf(paths, _path);
                 int pick = EditorGUILayout.Popup(cur, names, GUILayout.Width(170));
                 if (pick != cur && pick >= 0) LoadRecord(paths[pick]);
 
-                _saveName = EditorGUILayout.TextField(_saveName);
+                GUILayout.Label(_saveName, EditorStyles.boldLabel, GUILayout.Width(140f));
                 using (new EditorGUI.DisabledScope(!_record.IsValid)) {
                     if (GUILayout.Button("Save", GUILayout.Width(48))) SaveRecord();
-                }
-                if (GUILayout.Button("Load", GUILayout.Width(48))) {
-                    string picked = EditorUtility.OpenFilePanel("Load GP record", GPRecord.Dir, "json");
-                    if (!string.IsNullOrEmpty(picked)) LoadRecord(picked);
                 }
                 if (GUILayout.Button("New", GUILayout.Width(48))) {
                     if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
                     _record = new GPRecord();
                     _path = "";
+                    _voices = null;
                     ClearSelection();
                     _playhead = _viewStart = 0f;
                 }
@@ -342,6 +501,11 @@ namespace qp {
                         "Drop the curtain and close all spotlight holes at the playhead"),
                         GUILayout.Width(90f)))
                     AddSpotKey(GPSpotKey.EKind.CLEAR);
+                GUILayout.Space(12f);
+                if (GUILayout.Button(new GUIContent("+ Voice",
+                        "Add a voice key at the playhead — pick which line it plays in the row below"),
+                        GUILayout.Width(66f)))
+                    AddVoiceKey();
             }
         }
 
@@ -351,12 +515,39 @@ namespace qp {
                                         "with an empty board and captures your play. Or pick a saved file above.", MessageType.Info);
                 return;
             }
-            GUILayout.Label($"level {_record.level.size}x{_record.level.size}   " +
-                            $"{_record.actions.Count} actions   {_record.Duration:0.00}s", EditorStyles.miniLabel);
+            using (new EditorGUILayout.HorizontalScope()) {
+                GUILayout.Label($"level {_record.level.size}x{_record.level.size}   " +
+                                $"{_record.actions.Count} actions   {_record.Duration:0.00}s", EditorStyles.miniLabel);
+                GUILayout.Space(16f);
+                GUILayout.Label("voices:", EditorStyles.miniLabel, GUILayout.Width(40f));
+                if (string.IsNullOrEmpty(_path)) {
+                    GUILayout.Label("save the record first", EditorStyles.miniLabel);
+                } else {
+                    var files = Directory.GetFiles(GPRecord.FolderOf(_path), "voices*.json")
+                        .Select(Path.GetFileName).ToArray();
+                    if (files.Length == 0) GUILayout.Label($"(no voices*.json in the folder yet)", EditorStyles.miniLabel);
+                    else {
+                        int cur = System.Array.IndexOf(files, _record.voicesFile);
+                        int pick = EditorGUILayout.Popup(cur, files, GUILayout.Width(110f));
+                        if (pick != cur && pick >= 0) {
+                            _record.voicesFile = files[pick];   // swap the whole voice set
+                            _voices = null;
+                        }
+                    }
+                }
+                GUILayout.FlexibleSpace();
+            }
+
+            // a broken voice key would silently play nothing in the video — surface it loudly
+            if (!string.IsNullOrEmpty(_path)) {
+                var problems = _record.ValidateVoices(_path, Voices);
+                if (problems.Count > 0)
+                    EditorGUILayout.HelpBox("Voice problems:\n- " + string.Join("\n- ", problems), MessageType.Error);
+            }
         }
 
         void TimelineGUI(bool live) {
-            Rect r = GUILayoutUtility.GetRect(100, 100000, 190, 190, GUILayout.ExpandWidth(true));
+            Rect r = GUILayoutUtility.GetRect(100, 100000, 210, 210, GUILayout.ExpandWidth(true));
             var e = Event.current;
 
             // zoom around the mouse / pan
@@ -379,6 +570,7 @@ namespace qp {
                     if (hit != null) {
                         _handSel.Clear(); _dragHand = _handAnchor = null;
                         _spotSel.Clear(); _dragSpot = _spotAnchor = null;
+                        _voiceSel.Clear(); _dragVoice = _voiceAnchor = null;
                         if (e.shift && _anchor != null && _record.actions.Contains(_anchor)) {
                             // shift-click: select the whole range between the anchor and here
                             float lo = Mathf.Min(_anchor.time, hit.time), hi = Mathf.Max(_anchor.time, hit.time);
@@ -398,6 +590,7 @@ namespace qp {
                     } else if (HitHandKey(r, e.mousePosition) is GPHandKey hhit) {
                         _selection.Clear(); _dragging = _anchor = null;
                         _spotSel.Clear(); _dragSpot = _spotAnchor = null;
+                        _voiceSel.Clear(); _dragVoice = _voiceAnchor = null;
                         if (e.shift && _handAnchor != null && _record.handKeys.Contains(_handAnchor)) {
                             // shift-click: select the whole range between the anchor and here
                             float lo = Mathf.Min(_handAnchor.time, hhit.time), hi = Mathf.Max(_handAnchor.time, hhit.time);
@@ -414,9 +607,28 @@ namespace qp {
                             _handAnchor = hhit;
                             _dragHand = hhit;
                         }
+                    } else if (HitVoiceKey(r, e.mousePosition) is GPVoiceKey voiceHit) {
+                        _selection.Clear(); _dragging = _anchor = null;
+                        _handSel.Clear(); _dragHand = _handAnchor = null;
+                        _spotSel.Clear(); _dragSpot = _spotAnchor = null;
+                        if (e.shift && _voiceAnchor != null && _record.voiceKeys.Contains(_voiceAnchor)) {
+                            float lo = Mathf.Min(_voiceAnchor.time, voiceHit.time), hi = Mathf.Max(_voiceAnchor.time, voiceHit.time);
+                            _voiceSel.Clear();
+                            _voiceSel.AddRange(_record.voiceKeys.Where(k => k.time >= lo && k.time <= hi));
+                            _dragVoice = null;
+                        } else if (e.control || e.command) {
+                            if (!_voiceSel.Remove(voiceHit)) _voiceSel.Add(voiceHit);
+                            _voiceAnchor = voiceHit;
+                            _dragVoice = null;
+                        } else {
+                            if (!_voiceSel.Contains(voiceHit)) { _voiceSel.Clear(); _voiceSel.Add(voiceHit); }
+                            _voiceAnchor = voiceHit;
+                            _dragVoice = voiceHit;
+                        }
                     } else if (HitSpotKey(r, e.mousePosition) is GPSpotKey spotHit) {
                         _selection.Clear(); _dragging = _anchor = null;
                         _handSel.Clear(); _dragHand = _handAnchor = null;
+                        _voiceSel.Clear(); _dragVoice = _voiceAnchor = null;
                         if (e.shift && _spotAnchor != null && _record.spotKeys.Contains(_spotAnchor)) {
                             float lo = Mathf.Min(_spotAnchor.time, spotHit.time), hi = Mathf.Max(_spotAnchor.time, spotHit.time);
                             _spotSel.Clear();
@@ -457,17 +669,24 @@ namespace qp {
                         foreach (var s in _spotSel) delta = Mathf.Max(delta, -s.time);
                         foreach (var s in _spotSel) s.time += delta;
                         e.Use();
+                    } else if (_dragVoice != null) {
+                        float delta = Mathf.Max(0f, XToTime(r, e.mousePosition.x)) - _dragVoice.time;
+                        foreach (var s in _voiceSel) delta = Mathf.Max(delta, -s.time);
+                        foreach (var s in _voiceSel) s.time += delta;
+                        e.Use();
                     } else if (_scrubbing) { _playhead = Mathf.Max(0f, XToTime(r, e.mousePosition.x)); ScrubPreview(); e.Use(); }
                 } else if (e.type == EventType.MouseUp && e.button == 0) {
                     if (_dragging != null) { _record.Sort(); _dragging = null; e.Use(); }
                     if (_dragHand != null) { _record.Sort(); _dragHand = null; ScrubPreview(); e.Use(); }
                     if (_dragSpot != null) { _record.Sort(); _dragSpot = null; ScrubPreview(); e.Use(); }
+                    if (_dragVoice != null) { _record.Sort(); _dragVoice = null; e.Use(); }
                     _scrubbing = false;
                 } else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Delete
-                           && (_selection.Count > 0 || _handSel.Count > 0 || _spotSel.Count > 0)) {
+                           && (_selection.Count > 0 || _handSel.Count > 0 || _spotSel.Count > 0 || _voiceSel.Count > 0)) {
                     foreach (var s in _selection) _record.actions.Remove(s);
                     foreach (var s in _handSel) _record.handKeys.Remove(s);
                     foreach (var s in _spotSel) _record.spotKeys.Remove(s);
+                    foreach (var s in _voiceSel) _record.voiceKeys.Remove(s);
                     ClearSelection();
                     ScrubPreview();
                     e.Use();
@@ -561,6 +780,19 @@ namespace qp {
                     if (k.kind == GPSpotKey.EKind.SHOW && k.Count > 1)
                         GUI.Label(new Rect(m.x + 6f, ss.y + 1f, 32f, 14f), "×" + k.Count, EditorStyles.miniLabel);
                 }
+
+                // voice strip — each key shows its line name
+                var vs = VoiceStrip(r);
+                EditorGUI.DrawRect(vs, new Color(0.20f, 0.16f, 0.13f));
+                EditorGUI.DrawRect(new Rect(vs.x, vs.y - 1f, vs.width, 1f), new Color(1f, 1f, 1f, 0.12f));
+                foreach (var k in _record.voiceKeys) {
+                    float x = TimeToX(r, k.time);
+                    if (x < r.x - 4f || x > r.xMax + 4f) continue;
+                    var m = new Rect(x - 3f, vs.y + 2f, 6f, vs.height - 4f);
+                    if (_voiceSel.Contains(k)) EditorGUI.DrawRect(new Rect(m.x - 2f, m.y - 2f, m.width + 4f, m.height + 4f), Color.white);
+                    EditorGUI.DrawRect(m, VoiceColor);
+                    GUI.Label(new Rect(m.x + 6f, vs.y + 2f, 90f, 14f), k.name, EditorStyles.miniLabel);
+                }
             }
 
             // playhead
@@ -573,6 +805,51 @@ namespace qp {
             _selection.RemoveAll(s => !_record.actions.Contains(s));   // drop stale refs
             _handSel.RemoveAll(k => !_record.handKeys.Contains(k));
             _spotSel.RemoveAll(k => !_record.spotKeys.Contains(k));
+            _voiceSel.RemoveAll(k => !_record.voiceKeys.Contains(k));
+
+            if (!live && _voiceSel.Count > 0) {
+                using (new EditorGUILayout.HorizontalScope()) {
+                    if (_voiceSel.Count == 1) {
+                        var sel = _voiceSel[0];
+                        GUILayout.Label("voice:", GUILayout.Width(38f));
+                        var v = Voices;
+                        var names = v != null ? v.lines.Select(l => l.name).ToArray() : System.Array.Empty<string>();
+                        EditorGUI.BeginChangeCheck();
+                        string name = sel.name;
+                        if (names.Length > 0) {
+                            int cur = System.Array.IndexOf(names, sel.name);
+                            int pick = EditorGUILayout.Popup(cur, names, GUILayout.Width(110f));
+                            if (pick >= 0) name = names[pick];
+                        } else {
+                            name = EditorGUILayout.TextField(sel.name, GUILayout.Width(110f));
+                        }
+                        GUILayout.Label("time", GUILayout.Width(32f));
+                        float vt = EditorGUILayout.FloatField(sel.time, GUILayout.Width(60f));
+                        if (EditorGUI.EndChangeCheck()) {
+                            sel.name = name;
+                            sel.time = Mathf.Max(0f, vt);
+                            _record.Sort();
+                        }
+                        var line = v?.Find(sel.name);
+                        if (line != null) {
+                            string wav = string.IsNullOrEmpty(line.path) ? null : Path.Combine(GPRecord.FolderOf(_path), line.path);
+                            using (new EditorGUI.DisabledScope(wav == null || !File.Exists(wav))) {
+                                if (GUILayout.Button("▶", GUILayout.Width(24f)))
+                                    Audition(wav);
+                            }
+                            GUILayout.Label($"\"{line.text}\"", EditorStyles.miniLabel);
+                        }
+                    } else {
+                        GUILayout.Label($"{_voiceSel.Count} voice keys selected — drag together, or:", GUILayout.Width(250f));
+                    }
+                    if (GUILayout.Button("Delete", GUILayout.Width(60))) {
+                        foreach (var k in _voiceSel) _record.voiceKeys.Remove(k);
+                        _voiceSel.Clear();
+                        _dragVoice = _voiceAnchor = null;
+                    }
+                }
+                return;
+            }
 
             if (!live && _spotSel.Count > 0) {
                 using (new EditorGUILayout.HorizontalScope()) {
@@ -687,6 +964,11 @@ namespace qp {
                     EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), SpotColorOf(k));
                     GUILayout.Label("SPOT " + k, EditorStyles.miniLabel, GUILayout.Width(74f));
                 }
+                {
+                    var sw = GUILayoutUtility.GetRect(10f, 10f, GUILayout.Width(10f));
+                    EditorGUI.DrawRect(new Rect(sw.x, sw.y + 3f, 10f, 10f), VoiceColor);
+                    GUILayout.Label("VOICE", EditorStyles.miniLabel, GUILayout.Width(44f));
+                }
                 GUILayout.FlexibleSpace();
                 GUILayout.Label("wheel zoom · alt-drag pan · click playhead · ctrl-click toggle · shift-click range · drag = retime · Del", EditorStyles.miniLabel);
             }
@@ -769,8 +1051,9 @@ namespace qp {
             public bool clusterFirst;   // draw the ×N count once per cluster
         }
 
-        Rect HandStrip(Rect r) => new Rect(r.x, r.yMax - SpotH - HandH - 8f, r.width, HandH);
-        Rect SpotStrip(Rect r) => new Rect(r.x, r.yMax - SpotH - 4f, r.width, SpotH);
+        Rect HandStrip(Rect r) => new Rect(r.x, r.yMax - VoiceH - SpotH - HandH - 12f, r.width, HandH);
+        Rect SpotStrip(Rect r) => new Rect(r.x, r.yMax - VoiceH - SpotH - 8f, r.width, SpotH);
+        Rect VoiceStrip(Rect r) => new Rect(r.x, r.yMax - VoiceH - 4f, r.width, VoiceH);
 
         GPHandKey HitHandKey(Rect r, Vector2 mouse) {
             if (!HandStrip(r).Contains(mouse)) return null;
@@ -796,6 +1079,30 @@ namespace qp {
 
         static Color SpotColorOf(GPSpotKey.EKind kind) =>
             kind == GPSpotKey.EKind.SHOW ? new Color(0.72f, 0.50f, 1f) : new Color(0.50f, 0.50f, 0.55f);
+
+        static readonly Color VoiceColor = new Color(1f, 0.58f, 0.25f);
+
+        GPVoiceKey HitVoiceKey(Rect r, Vector2 mouse) {
+            if (!VoiceStrip(r).Contains(mouse)) return null;
+            GPVoiceKey best = null;
+            float bestDx = 6f;   // hit slop in px
+            foreach (var k in _record.voiceKeys) {
+                float dx = Mathf.Abs(TimeToX(r, k.time) - mouse.x);
+                if (dx < bestDx) { bestDx = dx; best = k; }
+            }
+            return best;
+        }
+
+        // A voice key lands at the playhead; the line starts as the active set's first line and
+        // is switched in the selected-key row.
+        void AddVoiceKey() {
+            var v = Voices;
+            var key = new GPVoiceKey { time = _playhead, name = v != null && v.lines.Count > 0 ? v.lines[0].name : "" };
+            _record.voiceKeys.Add(key);
+            _record.Sort();
+            ClearSelection();
+            _voiceSel.Add(key);
+        }
 
         // A spot key starts from the selected board keys: their cells become the SHOW list, its
         // time the earliest of them (spotlight up as the first mark appears). With no selection:
@@ -841,7 +1148,7 @@ namespace qp {
         System.Collections.Generic.List<MarkerRect> LayoutMarkers(Rect r) {
             var result = new System.Collections.Generic.List<MarkerRect>();
             float bandY = r.y + RulerH + 4f;
-            float bandH = r.height - RulerH - HandH - SpotH - 18f;   // room for the hand + spot strips
+            float bandH = r.height - RulerH - HandH - SpotH - VoiceH - 22f;   // room for hand + spot + voice strips
             var acts = _record.actions;
             int i = 0;
             while (i < acts.Count) {

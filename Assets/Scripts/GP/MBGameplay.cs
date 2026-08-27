@@ -710,7 +710,13 @@ namespace qp {
                 int placed = CountQueens();
                 _topBar?.SetProgress(placed);
                 MaybePrepareReview(placed);
-                if (placed == _n) Win();
+                bool win = placed == _n;
+#if UNITY_EDITOR
+                // GPRecorder NoWin: the board completes but the win flow (popup, level++) doesn't
+                // run — the ad-editing session stays alive for scrubbing and re-records
+                if (win && GPRecorder.NoWin && (GPRecorder.IsRecording || GPReplayer.IsReplaying)) win = false;
+#endif
+                if (win) Win();
                 else {
                     Haptics.Play(GameHaptic.Happy);
                     CommonSFX.Play(GPSFX.Instance.PlaceQueen);

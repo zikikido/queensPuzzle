@@ -24,6 +24,7 @@ namespace qp {
 
         public static bool IsReplaying { get; private set; }
         public static float PlayheadTime { get; private set; }   // current replay clock, for the window
+        public static string RecordFolder;   // where the record's voices/wavs live — window keeps it fresh
 
         static Coroutine _run;
 
@@ -40,6 +41,7 @@ namespace qp {
         public static LevelPack.Level LoadPendingLevel() {
             string path = UnityEditor.SessionState.GetString(ReplayRecordKey, "");
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            RecordFolder = Path.GetDirectoryName(path);
             try { return GPRecord.Load(path)?.level?.ToLevel(); }
             catch (System.Exception e) {
                 Common.CDebug.LogError("[GPReplayer] record unreadable: " + e.Message);
@@ -60,11 +62,13 @@ namespace qp {
         public static void Seek(GPRecord record, float t) {
             var gp = MBGameplay.instance;
             if (gp == null || !gp.Ready) return;
-            // hand and spotlight show whenever their tracks have keys; both follow PlayheadTime
+            // hand, spotlight and voices run whenever their tracks have keys; all follow PlayheadTime
             if (record.handKeys.Count > 0) GPHand.Ensure(record);
             else GPHand.Remove();
             if (record.spotKeys.Count > 0) GPSpotlight.Ensure(record);
             else GPSpotlight.Remove();
+            if (record.voiceKeys.Count > 0 && !string.IsNullOrEmpty(RecordFolder)) GPVoicePlayer.Ensure(record, RecordFolder);
+            else GPVoicePlayer.Remove();
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -214,6 +218,77 @@ namespace qp {
                 tut.SetHandVisible(false);   // the scene leaves $Hand active-self — waking the tutorial would show it
                 SetTextContainerVisible(tut, false);
             }
+        }
+    }
+
+    /// <summary>
+    /// Plays the record's voice lines during replay: loads the active set's wavs from the record
+    /// folder and fires each key as the playhead crosses it. Scrub jumps stay silent — only
+    /// smooth forward motion plays, so replay (and video capture) get the audio, editing doesn't.
+    /// </summary>
+    public class GPVoicePlayer : MonoBehaviour {
+
+        public static GPVoicePlayer Instance { get; private set; }
+
+        public static void Ensure(GPRecord record, string folder) {
+            if (Instance == null) {
+                Instance = new GameObject("$GPVoicePlayer").AddComponent<GPVoicePlayer>();
+                Instance._source = Instance.gameObject.AddComponent<AudioSource>();
+                Instance._source.spatialBlend = 0f;
+            }
+            if (Instance._record != record || Instance._folder != folder) {
+                Instance._record = record;
+                Instance._folder = folder;
+                Instance.ReloadClips();
+            }
+        }
+
+        public static void Remove() {
+            if (Instance != null) Destroy(Instance.gameObject);
+            Instance = null;
+        }
+
+        GPRecord _record;
+        string _folder, _voicesFile;
+        readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
+        AudioSource _source;
+        float _lastT;
+
+        void ReloadClips() {
+            _clips.Clear();
+            _voicesFile = _record.voicesFile;
+            var voices = GPVoices.Load(Path.Combine(_folder, _record.voicesFile));
+            foreach (var l in voices.lines) {
+                if (string.IsNullOrEmpty(l.path)) continue;
+                string p = Path.Combine(_folder, l.path);
+                if (File.Exists(p)) StartCoroutine(LoadClip(l.name, p));
+            }
+        }
+
+        IEnumerator LoadClip(string name, string path) {
+            var type = path.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase) ? AudioType.MPEG : AudioType.WAV;
+            using (var req = UnityEngine.Networking.UnityWebRequestMultimedia.GetAudioClip("file://" + path, type)) {
+                yield return req.SendWebRequest();
+                if (req.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                    _clips[name] = UnityEngine.Networking.DownloadHandlerAudioClip.GetContent(req);
+                else Common.CDebug.LogError($"[GPVoicePlayer] {name}: {req.error}");
+            }
+        }
+
+        void Update() {
+            if (_record == null) return;
+            if (_record.voicesFile != _voicesFile) ReloadClips();   // voice set switched mid-session
+            float t = GPReplayer.PlayheadTime;
+            if (t < _lastT || t - _lastT > 0.5f) { _lastT = t; return; }   // a jump — scrubbing, not playing
+            foreach (var k in _record.voiceKeys) {
+                if (k.time <= _lastT || k.time > t) continue;
+                if (_clips.TryGetValue(k.name, out var clip)) _source.PlayOneShot(clip);
+            }
+            _lastT = t;
+        }
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
         }
     }
 
