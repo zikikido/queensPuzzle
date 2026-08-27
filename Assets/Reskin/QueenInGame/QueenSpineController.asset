@@ -34,12 +34,12 @@ MonoBehaviour:
     mix: 0
     nextMix: -1
   - name: Cry
-    spineAnim: idle_thinking
+    spineAnim: cry_in
     speed: 1
     loop: 0
     loopDelay: 0
-    next: 
-    nextDelay: 3
+    next: _ceyIdle
+    nextDelay: 0
     mix: 0
     nextMix: -1
   - name: Disappointed
@@ -49,5 +49,14 @@ MonoBehaviour:
     loopDelay: 0
     next: Idle
     nextDelay: 4
+    mix: 0
+    nextMix: -1
+  - name: _ceyIdle
+    spineAnim: cry_loop
+    speed: 1
+    loop: 1
+    loopDelay: 0
+    next: Idle
+    nextDelay: 0
     mix: 0
     nextMix: -1
