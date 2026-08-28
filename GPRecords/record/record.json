@@ -226,6 +226,12 @@
     ],
     "handKeys": [
         {
+            "time": 4.368750095367432,
+            "x": 2,
+            "y": 0,
+            "kind": 1
+        },
+        {
             "time": 7.039806365966797,
             "x": 1,
             "y": 5,
@@ -255,40 +261,8 @@
             "time": 3.9000000953674318,
             "x": 3,
             "y": 0,
-            "xs": [
-                2,
-                1,
-                1,
-                2,
-                2,
-                3,
-                3,
-                4,
-                4,
-                4,
-                5,
-                5,
-                5,
-                2,
-                3
-            ],
-            "ys": [
-                0,
-                0,
-                1,
-                1,
-                2,
-                1,
-                2,
-                2,
-                1,
-                0,
-                2,
-                1,
-                0,
-                3,
-                3
-            ],
+            "xs": [],
+            "ys": [],
             "kind": 0
         },
         {
@@ -299,5 +273,29 @@
             "ys": [],
             "kind": 1
         }
-    ]
+    ],
+    "voiceKeys": [],
+    "voicesFile": "voices1.json",
+    "endTime": 0.0,
+    "noFail": true,
+    "noWin": true,
+    "hideTop": false,
+    "hideRules": false,
+    "hideBoosters": false,
+    "hideCounters": false,
+    "showAdText": false,
+    "adTextBg": {
+        "r": 0.0,
+        "g": 0.0,
+        "b": 0.0,
+        "a": 0.8500000238418579
+    },
+    "adTextColor": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+    },
+    "adTextHeight": 0.11999999731779099,
+    "adTextPos": 0.07999999821186066
 }

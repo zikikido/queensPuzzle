@@ -287,10 +287,12 @@ namespace qp {
             _path = target;
             _record.Save(_path);
             _recordStamp = File.GetLastWriteTimeUtc(_path);   // our own write is not a "change"
+            _savedJson = JsonUtility.ToJson(_record);         // baseline for the dirty dot
             return true;
         }
 
         System.DateTime _recordStamp;
+        [SerializeField] string _savedJson = "";   // the record as last written/loaded — drives the dirty dot
 
         void LoadRecord(string path) {
             if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
@@ -298,6 +300,7 @@ namespace qp {
             _record = GPRecord.Load(path);
             _path = Path.GetFullPath(path);
             _recordStamp = File.GetLastWriteTimeUtc(_path);
+            _savedJson = JsonUtility.ToJson(_record);
             _saveName = GPRecord.NameOf(path);
             _voices = null;
             ClearSelection();
@@ -459,7 +462,16 @@ namespace qp {
                 if (pick != cur && pick >= 0) LoadRecord(paths[pick]);
 
                 using (new EditorGUI.DisabledScope(!_record.IsValid)) {
-                    if (GUILayout.Button("Save", EditorStyles.toolbarButton, GUILayout.Width(44f))) SaveRecord();
+                    // unsaved edits get a red dot — the record json is the source of truth for
+                    // replay runs, so knowing when it's stale matters
+                    bool dirty = _record.IsValid && JsonUtility.ToJson(_record) != _savedJson;
+                    var save = GUILayoutUtility.GetRect(new GUIContent(dirty ? "Save •" : "Save"),
+                        EditorStyles.toolbarButton, GUILayout.Width(52f));
+                    if (GUI.Button(save, "Save", EditorStyles.toolbarButton)) SaveRecord();
+                    if (dirty) {
+                        var style = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = new Color(1f, 0.35f, 0.35f) } };
+                        GUI.Label(new Rect(save.xMax - 13f, save.y - 1f, 12f, save.height), "•", style);
+                    }
                 }
                 if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(40f))) {
                     if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }   // ✎ Edit may still be on
