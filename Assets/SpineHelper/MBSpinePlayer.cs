@@ -28,7 +28,9 @@ namespace qp {
 
         void Awake() {
             _skeleton = GetComponent<SkeletonAnimation>();
-            if (_skeleton != null) _skeleton.UnscaledTime = true;   // match the flipbook's unscaled clock
+            // scaled (normal) time: the game never touches timeScale, and the unscaled clock is
+            // real wall-clock — which the Unity Recorder's stepped playback renders fast-forwarded
+            if (_skeleton != null) _skeleton.UnscaledTime = false;
 
             // the controller's dropdowns were picked from ITS data asset — if the renderer plays
             // a different one, the configured animation names may simply not exist there
@@ -119,7 +121,7 @@ namespace qp {
             if (_state == null || _done) return;
 
             if (_wait > 0f) {   // resting on the last pose
-                _wait -= Time.unscaledDeltaTime;
+                _wait -= Time.deltaTime;
                 if (_wait > 0f) return;
                 if (_restart) { var s = _state; _state = null; Play(s); }   // loop cycle rest served
                 else _PlayNext();                                           // next-delay served — chain
