@@ -30,7 +30,8 @@ All times are seconds from replay start (board bloom ≈ first 1.5s). All lists 
 | `voiceKeys` | `{time, name}` | play the line `name` from the active voice set; subtitles type with it |
 
 Settings: `level` (embedded puzzle — copy from an existing record), `voicesFile`, `endTime`
-(replay runs at least to here), `noFail`, `noWin`, `hideTop/Rules/Boosters/Counters`,
-`showAdText` + `adTextBg/Color/Height/Pos` (subtitles overlay).
+(replay runs at least to here), `failMode`, `noWin`, `hideTop/Rules/Boosters/Counters`,
+`showAdText` + `adTextBg/Color/Height/Pos` (subtitles overlay),
+`adImages` (image overlays: `{name, height, pos, bg}`, sprites from the AdsImagePortrait scene).
 
 Audio generation and screen capture happen in the Unity window — the JSON is the whole job.
