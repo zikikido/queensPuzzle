@@ -8,6 +8,7 @@ inlines everything as base64, and writes playable/dist/pawdoku-playable.html.
 import base64
 import glob
 import io
+import json
 import os
 import re
 import zipfile
@@ -16,7 +17,7 @@ import sys
 import tempfile
 
 
-from PIL import Image, ImageSequence
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RESKIN = os.path.normpath(os.path.join(ROOT, "..", "Assets", "Reskin"))
@@ -28,8 +29,48 @@ DISTDIR = os.path.join(ROOT, "dist")
 LIMIT = 5 * 1024 * 1024
 
 
-def frames(state):
-    return sorted(glob.glob(os.path.join(RESKIN, "Animations", "Queens", state, "Images", "*.png")))
+# Frames pre-rendered from the game's Spine puppy (Unity menu:
+# QueensPuzzle/Bake Playable Spine Frames). Re-run the bake whenever the rig changes.
+SPINE = os.path.join(ROOT, "src", "spine_frames")
+
+
+def spine_frames(anim):
+    return sorted(glob.glob(os.path.join(SPINE, anim, "*.png")))
+
+
+def spine_meta():
+    return json.load(open(os.path.join(SPINE, "bake.json")))
+
+
+def content_box(anim):
+    """Union alpha bbox over one animation's baked frames."""
+    box = None
+    paths = spine_frames(anim)
+    if not paths:
+        sys.exit("no baked frames for %s - run Unity menu QueensPuzzle/Bake Playable Spine Frames" % anim)
+    for p in paths:
+        b = Image.open(p).convert("RGBA").getbbox()
+        if b is None:
+            continue
+        box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]),
+                                     max(box[2], b[2]), max(box[3], b[3]))
+    return box
+
+
+def framing(anims, center_on, pad=2):
+    """Crop box covering every frame of `anims`, symmetric around the center of
+    `center_on`'s content - the character lands dead-center of the window and wide
+    effects (celebrate stars, flying tears) get equal room on both sides. The box
+    may extend past the bake canvas; PIL pads that with transparency.
+
+    Returns (box, character_box): the second is `center_on`'s own bbox, so callers
+    can size the CSS window from the character rather than the effects padding."""
+    boxes = {a: content_box(a) for a in anims}
+    c = boxes[center_on]
+    cx, cy = (c[0] + c[2]) / 2.0, (c[1] + c[3]) / 2.0
+    hw = max(max(cx - b[0], b[2] - cx) for b in boxes.values()) + pad
+    hh = max(max(cy - b[1], b[3] - cy) for b in boxes.values()) + pad
+    return (round(cx - hw), round(cy - hh), round(cx + hw), round(cy + hh)), c
 
 
 def pic(name):
@@ -52,31 +93,15 @@ def audio_sources():
     }
 
 
-def encode_gif_anim(state, width, colors=64):
-    """Rebuild a GIF's animation exactly: dedupe to unique frames, lay them in one
-    strip, and emit CSS keyframes carrying the GIF's own per-frame durations.
+# The rests QueenSpineController puts on end poses: Idle's loopDelay between
+# idle_thinking cycles, and Happy's nextDelay before celebrate hands back to Idle.
+IDLE_REST = 4.0
+CELEB_REST = 2.0
 
-    The timing matters. Idle is 15 steps over 2.77s but two of them are 1s holds
-    with 30ms flicks between - a flat steps() loop turns a puppy that sits still
-    and blinks into one that morphs continuously.
-    """
-    path = os.path.join(RESKIN, "Animations", "Queens", state, "%s.gif" % state)
-    if not os.path.exists(path):
-        sys.exit("missing animation gif: %s" % path)
 
-    gif = Image.open(path)
-    uniq, seq, durs = [], [], []
-    for frame in ImageSequence.Iterator(gif):
-        rgba = frame.convert("RGBA")
-        key = rgba.tobytes()
-        idx = next((i for i, u in enumerate(uniq) if u[0] == key), None)
-        if idx is None:
-            uniq.append((key, rgba.copy()))
-            idx = len(uniq) - 1
-        seq.append(idx)
-        durs.append(frame.info.get("duration", 100))
-
-    ims = [im for _, im in uniq]
+def _pack_strip(paths, width, box, colors):
+    """Crop, resize and lay a frame list into one quantized PNG strip."""
+    ims = [Image.open(p).convert("RGBA").crop(box) for p in paths]
     h = round(ims[0].height * width / ims[0].width)
     ims = [i.resize((width, h), Image.LANCZOS) for i in ims]
     strip = Image.new("RGBA", (width * len(ims), h))
@@ -85,22 +110,83 @@ def encode_gif_anim(state, width, colors=64):
     buf = io.BytesIO()
     strip.quantize(colors=colors, method=Image.Quantize.FASTOCTREE).save(buf, "PNG", optimize=True)
     raw = buf.getvalue()
+    return base64.b64encode(raw).decode(), len(raw), h
 
-    # step-end holds each value until the next stop, so one stop per sequence entry
-    total = sum(durs)
-    stops, t = [], 0
-    for frame_idx, d in zip(seq, durs):
-        pct = t / total * 100.0
-        stops.append("%.3f%%{transform:translateX(-%.4f%%)}" % (pct, frame_idx * 100.0 / len(ims)))
-        t += d
-    stops.append("100%%{transform:translateX(-%.4f%%)}" % (seq[0] * 100.0 / len(ims)))
-    css = "@keyframes %s{%s}" % (state.lower(), "".join(stops))
 
+def _kf(name, base, count, n, cycle, fps, end):
+    """@keyframes for one clip inside a combined strip: step-end stops at 1/fps
+    intervals over `cycle` seconds, holding `end` at the 100% mark."""
+    ss = "".join("%.3f%%{transform:translateX(-%.4f%%)}" % ((i / fps) / cycle * 100.0, (base + i) * 100.0 / n)
+                 for i in range(count))
+    ss += "100%%{transform:translateX(-%.4f%%)}" % (end * 100.0 / n)
+    return "@keyframes %s{%s}" % (name, ss)
+
+
+CELL_ANIMS = ["idle_thinking", "celebrate", "disappointed"]
+
+# how much of the cell's width the dog itself spans (effects overflow around it)
+DOG_FILL = 100.0
+
+
+def encode_cell_anim(width, colors=64):
+    """One strip carrying the three in-cell clips, each addressed by its own
+    keyframes: idle (loop + the game's 4s rest), celeb (place a puppy / win),
+    disap (a wrong puppy in fail mode). Framed symmetric around the idle dog, so
+    the dog sits dead-center; PUP_WIDTH scales the CSS window so the DOG - not
+    the box with its effects padding - fills DOG_FILL of the cell."""
+    fps = float(spine_meta()["fps"])
+    box, dog = framing(CELL_ANIMS, "idle_thinking")
+    seqs = [spine_frames(a) for a in CELL_ANIMS]
+    counts = [len(s) for s in seqs]
+    n = sum(counts)
+    b64, raw, h = _pack_strip(sum(seqs, []), width, box, colors)
+
+    idle_cycle = counts[0] / fps + IDLE_REST
+    celeb_dur = counts[1] / fps
+    disap_dur = counts[2] / fps
+    css = (_kf("idle", 0, counts[0], n, idle_cycle, fps, end=0) +
+           _kf("celeb", counts[0], counts[1], n, celeb_dur, fps, end=counts[0] + counts[1] - 1) +
+           _kf("disap", counts[0] + counts[1], counts[2], n, disap_dur, fps, end=n - 1))
+
+    pup_w = DOG_FILL * (box[2] - box[0]) / (dog[2] - dog[0])
     return {
-        "b64": base64.b64encode(raw).decode(), "raw": len(raw),
-        "css": css, "aspect": "%d/%d" % (width, h),
-        "duration": "%.3fs" % (total / 1000.0),
-        "unique": len(ims), "steps": len(seq),
+        "b64": b64, "raw": raw, "box": box,
+        "pup_width": "%.1f%%" % pup_w,
+        # both percentages resolve against the (square) cell, so width-relative is fine
+        "pup_height": "%.1f%%" % (pup_w * h / width),
+        "css": css, "frames": n,
+        "idle_duration": "%.3fs" % idle_cycle,
+        "celeb_duration": "%.3fs" % celeb_dur,
+        # celebrate holds its end pose CELEB_REST before the idle loop takes over
+        "celeb_total": "%.3fs" % (celeb_dur + CELEB_REST),
+        "disap_duration": "%.3fs" % disap_dur,
+    }
+
+
+def encode_cry_anim(width, colors=64):
+    """The lose card's cry: cry_in plays once, then cry_loop loops - the same
+    Cry -> _ceyIdle chain QueenSpineController plays in game. One strip holds both
+    clips; two keyframe sets index into their halves. CRY_WIDTH blows the CSS
+    window up so the dog itself keeps the old still's on-card size even though
+    the flying tears widen the box."""
+    fps = float(spine_meta()["fps"])
+    box, dog = framing(["cry_in", "cry_loop"], "cry_in")
+    pin, ploop = spine_frames("cry_in"), spine_frames("cry_loop")
+    nin, nloop = len(pin), len(ploop)
+    n = nin + nloop
+    b64, raw, h = _pack_strip(pin + ploop, width, box, colors)
+
+    css = (_kf("cryin", 0, nin, n, nin / fps, fps, end=nin - 1) +
+           _kf("cryloop", nin, nloop, n, nloop / fps, fps, end=nin))
+    scale = (box[2] - box[0]) / float(dog[2] - dog[0])
+    return {
+        "b64": b64, "raw": raw,
+        "aspect": "%d/%d" % (width, h),
+        # the old still was width:clamp(84px,15vh,124px) - same dog size, wider box
+        "width": "width:clamp(%dpx,%.1fvh,%dpx)" % (round(84 * scale), 15 * scale, round(124 * scale)),
+        "css": css, "frames": n,
+        "in_duration": "%.3fs" % (nin / fps),
+        "loop_duration": "%.3fs" % (nloop / fps),
     }
 
 
@@ -120,15 +206,13 @@ def encode_audio(path, bitrate):
     return base64.b64encode(raw).decode(), len(raw)
 
 
+# the win card's still: celebrate's winking grin (the lose card animates instead)
+STILLS = {"HAPPY": ("celebrate", 12, 96)}
+
+
 # key -> (source path, target width, palette size)
 def sources():
-    idle = frames("Idle")
-    happy = frames("Happy")
-    if not idle or not happy:
-        sys.exit("no puppy frames found under %s" % RESKIN)
     return {
-        "HAPPY": (happy[4], 104, 96),   # still frame for the win card
-        "CRY": (frames("Cry")[4], 104, 96),   # ...and for the lose card
         # the real wordmark lives outside the reskin folder
         "LOGO": (os.path.join(ROOT, "..", "Assets", "Pictures", "Lobby", "Logo.png"), 248, 64),
         "ICON": (os.path.join(RESKIN, "Icons", "Icon.png"), 96, 96),   # the real store icon, beside the CTA
@@ -142,8 +226,10 @@ def sources():
     }
 
 
-def encode(path, width, colors, tint=None):
+def encode(path, width, colors, tint=None, crop=None):
     im = Image.open(path).convert("RGBA")
+    if crop:
+        im = im.crop(crop)
     if tint:
         # the game tints $RedX by multiplying the white X sprite; do the same here
         # rather than fight CSS filters, which can't multiply
@@ -234,14 +320,38 @@ def main():
         art[key] = b64
         print("  %-12s %6.1f KB png -> %6.1f KB base64" % (key.lower(), raw / 1024, len(b64) / 1024))
 
-    idle = encode_gif_anim("Idle", 104)
-    art["IDLE_SHEET"] = idle["b64"]
-    art["IDLE_KEYFRAMES"] = idle["css"]
-    art["IDLE_ASPECT"] = idle["aspect"]
-    art["IDLE_DURATION"] = idle["duration"]
-    print("  %-12s %d frames / %d steps over %s  %6.1f KB png -> %6.1f KB base64" %
-          ("idle_anim", idle["unique"], idle["steps"], idle["duration"],
-           idle["raw"] / 1024, len(idle["b64"]) / 1024))
+    # 160/frame keeps the now-bigger cell dog crisp on high-DPI screens
+    cell = encode_cell_anim(160)
+    art["IDLE_SHEET"] = cell["b64"]
+    art["IDLE_KEYFRAMES"] = cell["css"]
+    art["IDLE_DURATION"] = cell["idle_duration"]
+    art["PUP_WIDTH"] = cell["pup_width"]
+    art["PUP_HEIGHT"] = cell["pup_height"]
+    art["CELEB_DURATION"] = cell["celeb_duration"]
+    art["CELEB_TOTAL"] = cell["celeb_total"]
+    art["DISAP_DURATION"] = cell["disap_duration"]
+    print("  %-12s %d frames (pup %s)  %6.1f KB png -> %6.1f KB base64" %
+          ("cell_anim", cell["frames"], cell["pup_width"],
+           cell["raw"] / 1024, len(cell["b64"]) / 1024))
+
+    # 432/frame, not the cell strip's 104: the card window shows the dog at ~200
+    # CSS px and the tears eat 40% of the frame width, so anything less pixelates
+    cry = encode_cry_anim(432, colors=128)
+    art["CRY_SHEET"] = cry["b64"]
+    art["CRY_KEYFRAMES"] = cry["css"]
+    art["CRY_ASPECT"] = cry["aspect"]
+    art["CRY_WIDTH"] = cry["width"]
+    art["CRY_IN_DURATION"] = cry["in_duration"]
+    art["CRY_LOOP_DURATION"] = cry["loop_duration"]
+    print("  %-12s %d frames  %6.1f KB png -> %6.1f KB base64" %
+          ("cry_anim", cry["frames"], cry["raw"] / 1024, len(cry["b64"]) / 1024))
+
+    for key, (anim, frame, colors) in STILLS.items():
+        # 256 wide for the same reason as the cry strip: the win card shows it big
+        b64, raw = encode(spine_frames(anim)[frame], 256, colors, crop=cell["box"])
+        art[key] = b64
+        print("  %-12s %s[%d]  %6.1f KB png -> %6.1f KB base64" %
+              (key.lower(), anim, frame, raw / 1024, len(b64) / 1024))
 
     for key, (path, bitrate) in audio_sources().items():
         if not os.path.exists(path):
