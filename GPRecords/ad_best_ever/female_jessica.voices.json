@@ -1,0 +1,77 @@
+{
+    "voiceId": "cgSgspJ2msm6clMCkdW9",
+    "lines": [
+        {
+            "name": "hook",
+            "text": "Learn the rules before you tap.",
+            "speed": 0.98,
+            "stability": 0.42,
+            "style": 0.42,
+            "path": ""
+        },
+        {
+            "name": "color",
+            "text": "Rule one: each color gets one puppy.",
+            "speed": 1.0,
+            "stability": 0.46,
+            "style": 0.32,
+            "path": ""
+        },
+        {
+            "name": "touch",
+            "text": "Rule two: puppies cannot touch.",
+            "speed": 1.0,
+            "stability": 0.46,
+            "style": 0.32,
+            "path": ""
+        },
+        {
+            "name": "rowcol",
+            "text": "Rule three: one per row and column.",
+            "speed": 1.0,
+            "stability": 0.46,
+            "style": 0.32,
+            "path": ""
+        },
+        {
+            "name": "yourturn",
+            "text": "Now your turn. Be careful.",
+            "speed": 0.98,
+            "stability": 0.38,
+            "style": 0.42,
+            "path": ""
+        },
+        {
+            "name": "mistake1",
+            "text": "That one costs a bone.",
+            "speed": 1.0,
+            "stability": 0.34,
+            "style": 0.52,
+            "path": ""
+        },
+        {
+            "name": "mistake2",
+            "text": "Another mistake. One bone left.",
+            "speed": 0.98,
+            "stability": 0.32,
+            "style": 0.58,
+            "path": ""
+        },
+        {
+            "name": "lose",
+            "text": "Game over. Can you solve it?",
+            "speed": 0.95,
+            "stability": 0.3,
+            "style": 0.62,
+            "path": ""
+        },
+        {
+            "name": "cta",
+            "text": "Play Pawdoku now. Free!",
+            "speed": 0.95,
+            "stability": 0.34,
+            "style": 0.58,
+            "path": ""
+        }
+    ]
+}

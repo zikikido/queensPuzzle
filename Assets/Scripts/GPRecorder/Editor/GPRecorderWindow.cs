@@ -630,6 +630,22 @@ namespace qp {
                     m.AddItem(new GUIContent("Hide UI/Counters (puppies, bones)"), _record.hideCounters, () => _record.hideCounters = !_record.hideCounters);
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Subtitles overlay"), _record.showAdText, () => _record.showAdText = !_record.showAdText);
+                    m.AddItem(new GUIContent("End card"), _record.showEndCard, () => {
+                        _record.showEndCard = !_record.showEndCard;
+                        // first time on: its key lands at the current end, and the record's end
+                        // then follows it (Duration keeps EndCardHold seconds after the card)
+                        if (_record.showEndCard && _record.endCardTime <= 0f)
+                            _record.endCardTime = _record.Duration;
+                    });
+                    // BG music: off, or one of the game's playlist tracks (volume in the row below)
+                    m.AddItem(new GUIContent("Music/Off"), !_record.music, () => _record.music = false);
+                    var tracks = GPMusic.Tracks();
+                    for (int ti = 0; ti < tracks.Length; ti++) {
+                        int idx = ti;
+                        m.AddItem(new GUIContent("Music/" + tracks[ti]),
+                            _record.music && _record.musicTrack == idx,
+                            () => { _record.music = true; _record.musicTrack = idx; });
+                    }
                     // an overlay is added empty-ish: image, height and position are all params,
                     // picked in its own row below (nothing about the available list is stored)
                     m.AddItem(new GUIContent("Add image overlay"), false, () => {
@@ -675,6 +691,37 @@ namespace qp {
                     GUILayout.Space(10f);
                     GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(24f));
                     _record.adTextPos = GUILayout.HorizontalSlider(_record.adTextPos, 0f, 1f, GUILayout.Width(90f));
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            // end card settings, present only while it is on
+            if (_record.showEndCard && _record.IsValid) {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    GUILayout.Label("End card", EditorStyles.miniBoldLabel, GUILayout.Width(54f));
+                    GUILayout.Label("BG", EditorStyles.miniLabel, GUILayout.Width(20f));
+                    _record.endCardBg = EditorGUILayout.ColorField(_record.endCardBg, GUILayout.Width(44f));
+                    GUILayout.Space(8f);
+                    GUILayout.Label($"at {_record.endCardTime:0.00}s (drag its marker)", EditorStyles.miniLabel, GUILayout.Width(150f));
+                    GUILayout.Space(8f);
+                    _record.endCardAnim = (GPRecord.EEndCardAnim)EditorGUILayout.EnumPopup(
+                        _record.endCardAnim, EditorStyles.toolbarPopup, GUILayout.Width(84f));
+                    GUILayout.Label($"{_record.endCardAnimTime:0.00}s", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    _record.endCardAnimTime = GUILayout.HorizontalSlider(_record.endCardAnimTime, 0.05f, 2f, GUILayout.Width(90f));
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            // music volume, present only while a track is picked
+            if (_record.music && _record.IsValid) {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    var tracks = GPMusic.Tracks();
+                    string name = _record.musicTrack < tracks.Length ? tracks[_record.musicTrack] : "?";
+                    GUILayout.Label("Music", EditorStyles.miniBoldLabel, GUILayout.Width(40f));
+                    GUILayout.Label(name, EditorStyles.miniLabel, GUILayout.Width(120f));
+                    GUILayout.Label("Volume", EditorStyles.miniLabel, GUILayout.Width(46f));
+                    _record.musicVolume = GUILayout.HorizontalSlider(_record.musicVolume, 0f, 1f, GUILayout.Width(120f));
+                    GUILayout.Label(_record.musicVolume.ToString("0.00"), EditorStyles.miniLabel, GUILayout.Width(34f));
                     GUILayout.FlexibleSpace();
                 }
             }
@@ -750,8 +797,15 @@ namespace qp {
 
             if (!live && _record.IsValid) {
                 bool multiKey = e.control || e.command || e.shift;
-                if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && r.Contains(e.mousePosition)
-                    && e.mousePosition.y < r.y + RulerH
+                bool onRuler = r.Contains(e.mousePosition) && e.mousePosition.y < r.y + RulerH;
+                if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && onRuler
+                    && _record.showEndCard
+                    && Mathf.Abs(TimeToX(r, _record.endCardTime) - e.mousePosition.x) < 7f) {
+                    PushUndo();
+                    _dragEndCardKey = true;   // the END CARD key also lives on the ruler
+                    GUI.FocusControl(null);
+                    e.Use();
+                } else if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && onRuler
                     && Mathf.Abs(TimeToX(r, _record.Duration) - e.mousePosition.x) < 7f) {
                     PushUndo();
                     _dragEndKey = true;   // the END marker lives on the ruler
@@ -845,7 +899,10 @@ namespace qp {
                     GUI.FocusControl(null);
                     e.Use();
                 } else if (e.type == EventType.MouseDrag && e.button == 0) {
-                    if (_dragEndKey) {
+                    if (_dragEndCardKey) {
+                        _record.endCardTime = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
+                        e.Use();
+                    } else if (_dragEndKey) {
                         _record.endTime = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
                         e.Use();
                     } else if (_dragging != null) {
@@ -872,7 +929,7 @@ namespace qp {
                         e.Use();
                     } else if (_scrubbing) { _playhead = Mathf.Max(0f, XToTime(r, e.mousePosition.x)); ScrubPreview(); e.Use(); }
                 } else if (e.type == EventType.MouseUp && e.button == 0) {
-                    _dragEndKey = false;
+                    _dragEndKey = _dragEndCardKey = false;
                     if (_dragging != null) { _record.Sort(); _dragging = null; e.Use(); }
                     if (_dragHand != null) { _record.Sort(); _dragHand = null; ScrubPreview(); e.Use(); }
                     if (_dragSpot != null) { _record.Sort(); _dragSpot = null; ScrubPreview(); e.Use(); }
@@ -993,8 +1050,15 @@ namespace qp {
                 }
             }
 
-            // END marker on the ruler — drag it right to hold the ending longer
+            // ruler markers: the END, and the end card's own key when it is on
             if (_record.IsValid) {
+                if (_record.showEndCard) {
+                    float cx = TimeToX(r, _record.endCardTime);
+                    if (cx >= r.x && cx <= r.xMax) {
+                        EditorGUI.DrawRect(new Rect(cx - 1f, r.y, 2f, RulerH), new Color(0.45f, 0.85f, 1f));
+                        GUI.Label(new Rect(cx + 3f, r.y + 1f, 64f, 14f), "END CARD", EditorStyles.miniLabel);
+                    }
+                }
                 float ex = TimeToX(r, _record.Duration);
                 if (ex >= r.x && ex <= r.xMax) {
                     EditorGUI.DrawRect(new Rect(ex - 1f, r.y, 2f, RulerH), new Color(1f, 1f, 1f, 0.85f));
@@ -1008,7 +1072,7 @@ namespace qp {
                 EditorGUI.DrawRect(new Rect(px2, r.y, 2f, r.height), new Color(1f, 0.25f, 0.25f));
         }
 
-        bool _dragEndKey;
+        bool _dragEndKey, _dragEndCardKey;
         bool _captureWaiting;
         double _replayDoneAt;
         string _captureOutput;   // capture target, extensionless — uniquified per take

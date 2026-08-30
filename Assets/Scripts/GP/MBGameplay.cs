@@ -758,7 +758,17 @@ namespace qp {
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
                 if (!countBones) return;
-                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) { if (allowFail) Fail(); }   // last bone gone
+                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) {   // last bone gone
+                    if (allowFail) Fail();
+#if UNITY_EDITOR
+                    else {
+                        // recorder take without the popup: the board still mourns — CRY holds its
+                        // last frame, so every puppy stays crying to the end of the video
+                        PlayQueens(MBCell.QueenState.CRY);
+                        CommonSFX.Play(GPSFX.Instance.Fail);
+                    }
+#endif
+                }
                 else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
                     MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
             }

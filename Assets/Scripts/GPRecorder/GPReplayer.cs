@@ -73,6 +73,10 @@ namespace qp {
             else GPAdText.Remove();
             if (record.adImages.Count > 0) GPAdImages.Ensure(record);
             else GPAdImages.Remove();
+            if (record.music) GPMusic.Ensure(record);
+            else GPMusic.Remove();
+            if (record.showEndCard) GPEndCard.Ensure(record);
+            else GPEndCard.Remove();
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -264,10 +268,14 @@ namespace qp {
         AudioSource _source;
         float _lastT;
 
+        System.DateTime _voicesStamp;
+
         void ReloadClips() {
             _clips.Clear();
             _voicesFile = _record.voicesFile;
-            var voices = GPVoices.Load(Path.Combine(_folder, _record.voicesFile));
+            string vp = Path.Combine(_folder, _record.voicesFile);
+            _voicesStamp = File.Exists(vp) ? File.GetLastWriteTimeUtc(vp) : System.DateTime.MinValue;
+            var voices = GPVoices.Load(vp);
             foreach (var l in voices.lines) {
                 if (string.IsNullOrEmpty(l.path)) continue;
                 string p = Path.Combine(_folder, l.path);
@@ -287,7 +295,11 @@ namespace qp {
 
         void Update() {
             if (_record == null) return;
-            if (_record.voicesFile != _voicesFile) ReloadClips();   // voice set switched mid-session
+            // voice set switched, or its file changed on disk (regenerated lines / new audio)
+            string vpath = Path.Combine(_folder, _record.voicesFile);
+            if (_record.voicesFile != _voicesFile ||
+                (File.Exists(vpath) && File.GetLastWriteTimeUtc(vpath) != _voicesStamp))
+                ReloadClips();
             float t = GPReplayer.PlayheadTime;
             if (t < _lastT || t - _lastT > 0.5f) { _lastT = t; return; }   // a jump — scrubbing, not playing
             foreach (var k in _record.voiceKeys) {
@@ -347,6 +359,7 @@ namespace qp {
 
         GPRecord _record;
         string _folder, _voicesFile;
+        System.DateTime _voicesStamp;
         GPVoices _voices;
         TMPro.TMP_Text _text;
         UnityEngine.UI.Image _bg;
@@ -355,9 +368,14 @@ namespace qp {
         void Update() {
             if (_record == null) return;
             if (_text == null) { EnsureScene(); return; }
-            if (_voices == null || _voicesFile != _record.voicesFile) {
+            // reload when the set is swapped OR its file changed on disk — a stale in-memory copy
+            // silently drops lines whose names were edited (they'd render as empty subtitles)
+            string vp = Path.Combine(_folder, _record.voicesFile);
+            var stamp = File.Exists(vp) ? File.GetLastWriteTimeUtc(vp) : System.DateTime.MinValue;
+            if (_voices == null || _voicesFile != _record.voicesFile || stamp != _voicesStamp) {
                 _voicesFile = _record.voicesFile;
-                _voices = GPVoices.Load(Path.Combine(_folder, _record.voicesFile));
+                _voicesStamp = stamp;
+                _voices = GPVoices.Load(vp);
             }
 
             if (_bg != null) {
@@ -430,6 +448,173 @@ namespace qp {
     }
 
     /// <summary>
+    /// The end card (AdsEndCardPortrait scene): appears around the record's end — offset from it
+    /// by −3…+3s — with a chosen entrance animation. Purely a function of the playhead, so
+    /// scrubbing across the end shows it exactly as the video will.
+    /// </summary>
+    public class GPEndCard : MonoBehaviour {
+
+        public static GPEndCard Instance { get; private set; }
+        const string SceneName = "AdsEndCardPortrait";
+
+        static string _scenePath;
+        static string FindScene() {
+            if (!string.IsNullOrEmpty(_scenePath) && File.Exists(_scenePath)) return _scenePath;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Scene " + SceneName)) {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(p) == SceneName) return _scenePath = p;
+            }
+            Common.CDebug.LogError($"[GPEndCard] scene '{SceneName}' not found");
+            return null;
+        }
+
+        public static void Ensure(GPRecord record) {
+            if (Instance == null) Instance = new GameObject("$GPEndCard").AddComponent<GPEndCard>();
+            Instance._record = record;
+        }
+
+        public static void Remove() {
+            if (Instance != null) {
+                Instance.UnloadScene();
+                Destroy(Instance.gameObject);
+            }
+            Instance = null;
+        }
+
+        GPRecord _record;
+        RectTransform _card;
+        CanvasGroup _cg;
+        UnityEngine.UI.Image _bg;
+        Vector2 _homeMin, _homeMax;   // the card's authored placement — slides return to it
+        bool _loading;
+
+        void Update() {
+            if (_record == null) return;
+            if (_card == null) { EnsureScene(); return; }
+
+            if (_bg != null) _bg.color = _record.endCardBg;
+
+            // it enters at its own key on the timeline
+            float start = _record.endCardTime;
+            float k = Mathf.Clamp01((GPReplayer.PlayheadTime - start) / Mathf.Max(0.05f, _record.endCardAnimTime));
+            float e = k < 0.5f ? 2f * k * k : 1f - Mathf.Pow(-2f * k + 2f, 2f) * 0.5f;   // ease in-out
+
+            bool visible = GPReplayer.PlayheadTime >= start;
+            _cg.alpha = visible ? (_record.endCardAnim == GPRecord.EEndCardAnim.Fade ? e : 1f) : 0f;
+            _card.localScale = Vector3.one * (visible && _record.endCardAnim == GPRecord.EEndCardAnim.ScaleUp
+                ? Mathf.Lerp(0.75f, 1f, e) : 1f);
+
+            float slide = 0f;
+            if (visible && _record.endCardAnim == GPRecord.EEndCardAnim.SlideUp) slide = Mathf.Lerp(-1f, 0f, e);
+            else if (visible && _record.endCardAnim == GPRecord.EEndCardAnim.SlideDown) slide = Mathf.Lerp(1f, 0f, e);
+            _card.anchorMin = new Vector2(_homeMin.x, _homeMin.y + slide);
+            _card.anchorMax = new Vector2(_homeMax.x, _homeMax.y + slide);
+        }
+
+        void EnsureScene() {
+            string path = FindScene();
+            if (string.IsNullOrEmpty(path)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
+            if (!scene.isLoaded) {
+                if (!_loading) {
+                    _loading = true;
+                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(path,
+                        new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Additive));
+                }
+                return;
+            }
+            _loading = false;
+            foreach (var root in scene.GetRootGameObjects()) {
+                var bg = root.transform.RecursiveFindChild("$BG");
+                if (bg == null) continue;
+                _card = bg as RectTransform;
+                _bg = bg.GetComponent<UnityEngine.UI.Image>();
+                _cg = bg.GetComponent<CanvasGroup>() ?? bg.gameObject.AddComponent<CanvasGroup>();
+                _cg.blocksRaycasts = false;
+                _cg.alpha = 0f;   // hidden until its moment
+                _homeMin = _card.anchorMin;
+                _homeMax = _card.anchorMax;
+                break;
+            }
+        }
+
+        void UnloadScene() {
+            if (string.IsNullOrEmpty(_scenePath)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(_scenePath);
+            if (scene.isLoaded) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(scene);
+        }
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+        }
+    }
+
+    /// <summary>
+    /// The game's BG music under a take. The real player (MBMusic) lives in the Loading scene,
+    /// which a recorder session never goes through — so this plays a playlist track itself,
+    /// looped, at the record's volume.
+    /// </summary>
+    public class GPMusic : MonoBehaviour {
+
+        public static GPMusic Instance { get; private set; }
+
+        /// <summary>Track names from the project's BGMusicPlaylist (for the window's menu).</summary>
+        public static string[] Tracks() {
+            var pl = Playlist();
+            if (pl == null) return new string[0];
+            var names = new string[pl.ResourcePaths.Length];
+            for (int i = 0; i < names.Length; i++) names[i] = Path.GetFileName(pl.ResourcePaths[i]);
+            return names;
+        }
+
+        static Common.BGMusicPlaylist Playlist() {
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:BGMusicPlaylist")) {
+                var pl = UnityEditor.AssetDatabase.LoadAssetAtPath<Common.BGMusicPlaylist>(
+                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (pl != null && pl.ResourcePaths.Length > 0) return pl;
+            }
+            return null;
+        }
+
+        public static void Ensure(GPRecord record) {
+            if (Instance == null) {
+                Instance = new GameObject("$GPMusic").AddComponent<GPMusic>();
+                Instance._source = Instance.gameObject.AddComponent<AudioSource>();
+                Instance._source.loop = true;
+                Instance._source.spatialBlend = 0f;
+            }
+            Instance._record = record;
+        }
+
+        public static void Remove() {
+            if (Instance != null) Destroy(Instance.gameObject);
+            Instance = null;
+        }
+
+        GPRecord _record;
+        AudioSource _source;
+        int _track = -1;
+
+        void Update() {
+            if (_record == null || _source == null) return;
+            _source.volume = _record.musicVolume;
+            if (_track == _record.musicTrack && _source.isPlaying) return;
+
+            var pl = Playlist();
+            if (pl == null || pl.ResourcePaths.Length == 0) return;
+            _track = Mathf.Clamp(_record.musicTrack, 0, pl.ResourcePaths.Length - 1);
+            var clip = Resources.Load<AudioClip>(pl.ResourcePaths[_track]);
+            if (clip == null) { Common.CDebug.LogError("[GPMusic] missing " + pl.ResourcePaths[_track]); return; }
+            _source.clip = clip;
+            _source.Play();
+        }
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+        }
+    }
+
+    /// <summary>
     /// Image overlays: loads the AdsImagePortrait scene and shows one copy of its $BG/$Image
     /// strip per picked image, each at its own height/position. Shown for the whole session.
     /// </summary>
@@ -438,12 +623,18 @@ namespace qp {
         public static GPAdImages Instance { get; private set; }
         const string SceneName = "AdsImagePortrait";
 
-        /// <summary>Sprites available to pick — everything next to the overlay scene.</summary>
+        /// <summary>The overlay scene's own folder, in AssetDatabase form (forward slashes).</summary>
+        static string Dir() {
+            string path = FindScene();
+            return string.IsNullOrEmpty(path) ? null : Path.GetDirectoryName(path).Replace('\\', '/');
+        }
+
+        /// <summary>Images available to pick — every texture next to the overlay scene.</summary>
         public static List<string> AvailableImages() {
             var result = new List<string>();
-            string path = FindScene();
-            if (string.IsNullOrEmpty(path)) return result;
-            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { Path.GetDirectoryName(path) }))
+            string dir = Dir();
+            if (dir == null) return result;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Texture", new[] { dir }))
                 result.Add(Path.GetFileNameWithoutExtension(UnityEditor.AssetDatabase.GUIDToAssetPath(guid)));
             result.Sort();
             return result;
@@ -523,16 +714,21 @@ namespace qp {
 
         static Sprite LoadSprite(string name) {
             if (string.IsNullOrEmpty(name)) return null;
-            if (_sprites.TryGetValue(name, out var cached)) return cached;   // Update runs every frame
+            if (_sprites.TryGetValue(name, out var cached) && cached != null) return cached;   // Update runs every frame
+
             Sprite found = null;
-            string dir = Path.GetDirectoryName(FindScene());
-            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Sprite " + name, new[] { dir })) {
-                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-                if (Path.GetFileNameWithoutExtension(p) != name) continue;
-                found = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
-                break;
-            }
-            if (found == null) Common.CDebug.LogError($"[GPAdImages] sprite '{name}' not found");
+            string dir = Dir();
+            if (dir != null)
+                foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Texture " + name, new[] { dir })) {
+                    string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                    if (Path.GetFileNameWithoutExtension(p) != name) continue;
+                    // "Sprite Mode: Multiple" textures keep their sprites as SUB-assets, so the
+                    // main asset is a Texture2D — take the first sprite in the file either way
+                    foreach (var asset in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(p))
+                        if (asset is Sprite s) { found = s; break; }
+                    break;
+                }
+            if (found == null) Common.CDebug.LogError($"[GPAdImages] no sprite in '{name}' (check its Texture Type)");
             _sprites[name] = found;
             return found;
         }

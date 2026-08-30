@@ -168,6 +168,25 @@ namespace qp {
         public float adTextHeight = 0.12f;
         public float adTextPos = 0.08f;
 
+        /// <summary>How the end card enters.</summary>
+        public enum EEndCardAnim { Fade, ScaleUp, SlideUp, SlideDown }
+
+        // the AdsEndCardPortrait scene — its own key on the timeline; the replay always runs on
+        // past it (see EndCardHold), so the card is never cut off
+        public bool showEndCard;
+        public Color endCardBg = Color.white;
+        public float endCardTime;                // when the card enters (its marker on the ruler)
+        public EEndCardAnim endCardAnim = EEndCardAnim.Fade;
+        public float endCardAnimTime = 0.5f;     // how long the entrance takes
+
+        public const float EndCardHold = 3f;     // seconds of card kept after it enters
+
+        // the game's BG music under the take (recorder sessions start in Gameplay, where the
+        // Loading scene's music player never exists)
+        public bool music;
+        public int musicTrack;              // index into the BGMusicPlaylist
+        public float musicVolume = 0.35f;   // under the voice, so the lines stay clear
+
         // image overlays (AdsImagePortrait scene) — one entry per picked image
         public List<GPAdImage> adImages = new List<GPAdImage>();
         // last placement used for each image name — switching a row's image restores its own
@@ -204,7 +223,9 @@ namespace qp {
                 if (handKeys.Count > 0) d = Mathf.Max(d, handKeys[handKeys.Count - 1].time);
                 if (spotKeys.Count > 0) d = Mathf.Max(d, spotKeys[spotKeys.Count - 1].time);
                 if (voiceKeys.Count > 0) d = Mathf.Max(d, voiceKeys[voiceKeys.Count - 1].time);
-                return Mathf.Max(d, endTime);
+                d = Mathf.Max(d, endTime);
+                if (showEndCard) d = Mathf.Max(d, endCardTime + EndCardHold);   // the end follows the card
+                return d;
             }
         }
 
