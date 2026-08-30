@@ -484,7 +484,7 @@
             "name": "cta"
         }
     ],
-    "voicesFile": "male_will.voices.json",
+    "voicesFile": "female_jessica.voices.json",
     "endTime": 46.63505172729492,
     "failMode": 0,
     "noWin": true,
@@ -517,8 +517,8 @@
     "endCardTime": 46.63505172729492,
     "endCardAnim": 3,
     "endCardAnimTime": 0.5,
-    "music": false,
-    "musicTrack": 0,
+    "music": true,
+    "musicTrack": 1,
     "musicVolume": 0.3499999940395355,
     "adImages": [
         {

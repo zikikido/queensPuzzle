@@ -1,0 +1,117 @@
+{
+    "voiceId": "bIHbv24MWmeRgasZH58o",
+    "lines": [
+        {
+            "name": "hook",
+            "text": "Looks easy. It is not.",
+            "speed": 0.9800000190734863,
+            "stability": 0.4000000059604645,
+            "style": 0.44999998807907107,
+            "path": "Voices/male_will/hook.mp3"
+        },
+        {
+            "name": "colorone",
+            "text": "This color has just one cell left.",
+            "speed": 1.0,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/male_will/colorone.mp3"
+        },
+        {
+            "name": "rowcol",
+            "text": "So no other puppy in this row or column.",
+            "speed": 1.0199999809265137,
+            "stability": 0.46000000834465029,
+            "style": 0.30000001192092898,
+            "path": "Voices/male_will/rowcol.mp3"
+        },
+        {
+            "name": "touch",
+            "text": "And nothing may touch it.",
+            "speed": 1.0199999809265137,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/male_will/touch.mp3"
+        },
+        {
+            "name": "rowone",
+            "text": "This row is down to one cell.",
+            "speed": 1.0,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/male_will/rowone.mp3"
+        },
+        {
+            "name": "colone",
+            "text": "One cell left in this column.",
+            "speed": 1.0,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/male_will/colone.mp3"
+        },
+        {
+            "name": "try1",
+            "text": "This color is nearly decided…",
+            "speed": 0.9800000190734863,
+            "stability": 0.4000000059604645,
+            "style": 0.41999998688697817,
+            "path": "Voices/male_will/try1.mp3"
+        },
+        {
+            "name": "wrong1",
+            "text": "It looked safe. It was not.",
+            "speed": 0.9800000190734863,
+            "stability": 0.3199999928474426,
+            "style": 0.5199999809265137,
+            "path": "Voices/male_will/wrong1.mp3"
+        },
+        {
+            "name": "try2",
+            "text": "This one, then…",
+            "speed": 0.9800000190734863,
+            "stability": 0.3799999952316284,
+            "style": 0.4399999976158142,
+            "path": "Voices/male_will/try2.mp3"
+        },
+        {
+            "name": "wrong2",
+            "text": "Wrong again. One bone left.",
+            "speed": 0.9800000190734863,
+            "stability": 0.3199999928474426,
+            "style": 0.5199999809265137,
+            "path": "Voices/male_will/wrong2.mp3"
+        },
+        {
+            "name": "try3",
+            "text": "It has to be here…",
+            "speed": 0.9599999785423279,
+            "stability": 0.36000001430511477,
+            "style": 0.47999998927116396,
+            "path": "Voices/male_will/try3.mp3"
+        },
+        {
+            "name": "wrong3",
+            "text": "No bones left.",
+            "speed": 0.9599999785423279,
+            "stability": 0.30000001192092898,
+            "style": 0.550000011920929,
+            "path": "Voices/male_will/wrong3.mp3"
+        },
+        {
+            "name": "deeper",
+            "text": "That needed deeper logic.",
+            "speed": 0.9599999785423279,
+            "stability": 0.3400000035762787,
+            "style": 0.47999998927116396,
+            "path": "Voices/male_will/deeper.mp3"
+        },
+        {
+            "name": "cta",
+            "text": "Think you can do better?",
+            "speed": 0.9599999785423279,
+            "stability": 0.3400000035762787,
+            "style": 0.5,
+            "path": "Voices/male_will/cta.mp3"
+        }
+    ]
+}
