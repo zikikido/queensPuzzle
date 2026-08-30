@@ -486,7 +486,7 @@
     ],
     "voicesFile": "female_jessica.voices.json",
     "endTime": 46.63505172729492,
-    "noFail": true,
+    "failMode": 0,
     "noWin": true,
     "hideTop": true,
     "hideRules": true,
@@ -507,6 +507,19 @@
     },
     "adTextHeight": 0.18042856454849244,
     "adTextPos": 0.04428571090102196,
+    "showEndCard": true,
+    "endCardBg": {
+        "r": 0.874509871006012,
+        "g": 0.9411765336990356,
+        "b": 0.960784375667572,
+        "a": 1.0
+    },
+    "endCardTime": 46.63505172729492,
+    "endCardAnim": 3,
+    "endCardAnimTime": 0.5,
+    "music": false,
+    "musicTrack": 0,
+    "musicVolume": 0.3499999940395355,
     "adImages": [
         {
             "name": "onlyIQ",
