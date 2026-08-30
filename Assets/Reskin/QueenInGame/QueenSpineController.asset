@@ -39,7 +39,7 @@ MonoBehaviour:
     loop: 0
     loopDelay: 0
     next: _ceyIdle
-    nextDelay: 3
+    nextDelay: 0
     mix: 0
     nextMix: -1
   - name: Disappointed

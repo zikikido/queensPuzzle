@@ -310,7 +310,7 @@ namespace qp {
         // ---- GUI -----------------------------------------------------------------------
 
         void OnGUI() {
-            GPRecorder.NoFail = _record.noFail;   // statics reset on domain reload — the record is the source
+            GPRecorder.FailMode = _record.failMode;   // statics reset on domain reload — the record is the source
             GPRecorder.NoWin = _record.noWin;
             // ✎ Edit (insert) keeps the timeline fully editable — only a running record/replay locks it
             bool live = GPReplayer.IsReplaying || (GPRecorder.IsRecording && !GPRecorder.IsInserting);
@@ -616,7 +616,12 @@ namespace qp {
                         "Session flags: fail/win behavior, hidden game UI, subtitles overlay \u2014 all saved in the record"),
                         EditorStyles.toolbarDropDown, GUILayout.Width(76f))) {
                     var m = new GenericMenu();
-                    m.AddItem(new GUIContent("No Fail \u2014 unlimited wrong tries"), _record.noFail, () => _record.noFail = !_record.noFail);
+                    m.AddItem(new GUIContent("Wrong move/No cost \u2014 unlimited wrong tries"),
+                        _record.failMode == GPRecord.EFailMode.NoCost, () => _record.failMode = GPRecord.EFailMode.NoCost);
+                    m.AddItem(new GUIContent("Wrong move/Loses bones, no fail popup"),
+                        _record.failMode == GPRecord.EFailMode.NoPopup, () => _record.failMode = GPRecord.EFailMode.NoPopup);
+                    m.AddItem(new GUIContent("Wrong move/Normal \u2014 bones and fail popup"),
+                        _record.failMode == GPRecord.EFailMode.Normal, () => _record.failMode = GPRecord.EFailMode.Normal);
                     m.AddItem(new GUIContent("No Win popups \u2014 session stays alive"), _record.noWin, () => _record.noWin = !_record.noWin);
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Hide UI/Top (back, title, settings)"), _record.hideTop, () => _record.hideTop = !_record.hideTop);
@@ -625,6 +630,13 @@ namespace qp {
                     m.AddItem(new GUIContent("Hide UI/Counters (puppies, bones)"), _record.hideCounters, () => _record.hideCounters = !_record.hideCounters);
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Subtitles overlay"), _record.showAdText, () => _record.showAdText = !_record.showAdText);
+                    // an overlay is added empty-ish: image, height and position are all params,
+                    // picked in its own row below (nothing about the available list is stored)
+                    m.AddItem(new GUIContent("Add image overlay"), false, () => {
+                        PushUndo();
+                        var names = GPAdImages.AvailableImages();
+                        _record.adImages.Add(new GPAdImage { name = names.Count > 0 ? names[0] : "" });
+                    });
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Capture/Quality: Low"), GPVideoCapture.Quality == 0, () => GPVideoCapture.Quality = 0);
                     m.AddItem(new GUIContent("Capture/Quality: Medium"), GPVideoCapture.Quality == 1, () => GPVideoCapture.Quality = 1);
@@ -663,6 +675,40 @@ namespace qp {
                     GUILayout.Space(10f);
                     GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(24f));
                     _record.adTextPos = GUILayout.HorizontalSlider(_record.adTextPos, 0f, 1f, GUILayout.Width(90f));
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            // one row per picked image overlay — its own height/position
+            for (int i = 0; i < _record.adImages.Count; i++) {
+                var img = _record.adImages[i];
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    GUILayout.Label("Image", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    // which image is a param like the others — swap it without losing the placement
+                    var names = GPAdImages.AvailableImages().ToArray();
+                    int cur = System.Array.IndexOf(names, img.name);
+                    int pick = EditorGUILayout.Popup(cur, names, EditorStyles.toolbarPopup, GUILayout.Width(110f));
+                    if (pick != cur && pick >= 0) {
+                        PushUndo();
+                        _record.StoreImagePreset(img);                 // keep this image's placement
+                        _record.ApplyImagePreset(img, names[pick]);    // and load the new one's
+                    }
+                    GUILayout.Label("BG", EditorStyles.miniLabel, GUILayout.Width(20f));
+                    EditorGUI.BeginChangeCheck();
+                    img.bg = EditorGUILayout.ColorField(img.bg, GUILayout.Width(44f));
+                    GUILayout.Space(10f);
+                    GUILayout.Label("Height", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    img.height = GUILayout.HorizontalSlider(img.height, 0.02f, 1f, GUILayout.Width(90f));
+                    GUILayout.Space(10f);
+                    GUILayout.Label("Pos", EditorStyles.miniLabel, GUILayout.Width(24f));
+                    img.pos = GUILayout.HorizontalSlider(img.pos, 0f, 1f, GUILayout.Width(90f));
+                    if (EditorGUI.EndChangeCheck()) _record.StoreImagePreset(img);   // tuned → remember
+                    GUILayout.Space(10f);
+                    if (GUILayout.Button("✖", EditorStyles.toolbarButton, GUILayout.Width(24f))) {
+                        PushUndo();
+                        _record.adImages.RemoveAt(i);
+                        break;
+                    }
                     GUILayout.FlexibleSpace();
                 }
             }

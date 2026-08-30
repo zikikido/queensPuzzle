@@ -97,6 +97,16 @@ namespace qp {
         public void Save(string path) => File.WriteAllText(path, JsonUtility.ToJson(this, true));
     }
 
+    /// <summary>One image overlay shown for the whole video (logo, claim, end-card badge…).
+    /// Only the images the user picked are stored — each with its own height/position.</summary>
+    [Serializable]
+    public class GPAdImage {
+        public string name;            // sprite asset name, from the AdsImagePortrait folder
+        public float height = 0.12f;   // fraction of screen height
+        public float pos = 0.85f;      // 0 = bottom … 1 = top
+        public Color bg = new Color(0f, 0f, 0f, 0f);   // the strip behind the image (clear = none)
+    }
+
     /// <summary>
     /// A recorded play session for UA ad capture: the level it was played on (embedded, so the
     /// replay survives level-pack changes) plus the timed cell changes. New layout: each record
@@ -135,8 +145,15 @@ namespace qp {
         public string voicesFile = "voices1.json";   // the active voice set in the record's folder
         public float endTime;   // replay runs at least to here (END marker on the ruler) — 0 = last key
 
+        /// <summary>What a wrong queen costs during a recorder session.</summary>
+        public enum EFailMode {
+            NoCost,      // no bone lost, never fails — unlimited wrong tries (default)
+            NoPopup,     // bones drop and the puppies cry, but the fail popup never shows
+            Normal       // the real game: bones drop, running out fails the board
+        }
+
         // per-record session flags (all applied by the window while the session runs)
-        public bool noFail = true;       // wrong queens lose no bones, board can't fail
+        public EFailMode failMode = EFailMode.NoCost;
         public bool noWin = true;        // finishing plays the win sound but no popups — session stays alive
         public bool hideTop;             // back arrow + level title + settings gear
         public bool hideRules;           // the three rule cards
@@ -150,6 +167,32 @@ namespace qp {
         public Color adTextColor = Color.white;
         public float adTextHeight = 0.12f;
         public float adTextPos = 0.08f;
+
+        // image overlays (AdsImagePortrait scene) — one entry per picked image
+        public List<GPAdImage> adImages = new List<GPAdImage>();
+        // last placement used for each image name — switching a row's image restores its own
+        // height/pos/bg instead of keeping the previous image's
+        public List<GPAdImage> adImagePresets = new List<GPAdImage>();
+
+        /// <summary>Remember this overlay's placement under its image name.</summary>
+        public void StoreImagePreset(GPAdImage img) {
+            if (img == null || string.IsNullOrEmpty(img.name)) return;
+            var p = adImagePresets.Find(a => a.name == img.name);
+            if (p == null) { p = new GPAdImage { name = img.name }; adImagePresets.Add(p); }
+            p.height = img.height;
+            p.pos = img.pos;
+            p.bg = img.bg;
+        }
+
+        /// <summary>Apply the placement remembered for <paramref name="name"/> (defaults if new).</summary>
+        public void ApplyImagePreset(GPAdImage img, string name) {
+            img.name = name;
+            var p = adImagePresets.Find(a => a.name == name);
+            var src = p ?? new GPAdImage();
+            img.height = src.height;
+            img.pos = src.pos;
+            img.bg = src.bg;
+        }
 
         /// <summary>True once a level was captured — a default-constructed (or Unity-deserialized
         /// empty) instance has size 0 and means "no record loaded".</summary>

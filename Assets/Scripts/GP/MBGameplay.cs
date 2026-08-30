@@ -739,11 +739,14 @@ namespace qp {
             } else {
                 PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
 #if UNITY_EDITOR
-                // GPRecorder sessions: shake, flash and sound still sell the mistake, but no bone
-                // is lost and the board can't fail mid-take — ad recordings need unlimited tries
-                bool countBones = !(GPRecorder.NoFail && (GPRecorder.IsRecording || GPReplayer.IsReplaying));
+                // GPRecorder sessions: the mistake always shakes, flashes and cries; what it COSTS
+                // is the record's fail mode (no cost / bones but no popup / the real game)
+                bool gpSession = GPRecorder.SessionActive;
+                bool countBones = !(gpSession && GPRecorder.FailMode == GPRecord.EFailMode.NoCost);
+                bool allowFail = !gpSession || GPRecorder.FailMode == GPRecord.EFailMode.Normal;
 #else
                 const bool countBones = true;
+                const bool allowFail = true;
 #endif
                 if (countBones) {
                     AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
@@ -755,7 +758,7 @@ namespace qp {
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
                 if (!countBones) return;
-                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
+                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) { if (allowFail) Fail(); }   // last bone gone
                 else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
                     MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
             }

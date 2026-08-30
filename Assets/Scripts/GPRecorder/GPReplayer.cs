@@ -71,6 +71,8 @@ namespace qp {
             else GPVoicePlayer.Remove();
             if (record.showAdText && !string.IsNullOrEmpty(RecordFolder)) GPAdText.Ensure(record, RecordFolder);
             else GPAdText.Remove();
+            if (record.adImages.Count > 0) GPAdImages.Ensure(record);
+            else GPAdImages.Remove();
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -313,7 +315,21 @@ namespace qp {
     public class GPAdText : MonoBehaviour {
 
         public static GPAdText Instance { get; private set; }
-        const string ScenePath = "Assets/Scenes/AdsVoiceTextPortrait.unity";
+        const string SceneName = "AdsVoiceTextPortrait";
+
+        // found by name, so moving the scene inside Assets/ never breaks the overlay
+        static string _scenePath;
+        static string ScenePath {
+            get {
+                if (!string.IsNullOrEmpty(_scenePath) && File.Exists(_scenePath)) return _scenePath;
+                foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Scene " + SceneName)) {
+                    string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                    if (Path.GetFileNameWithoutExtension(p) == SceneName) return _scenePath = p;
+                }
+                Common.CDebug.LogError($"[GPAdText] scene '{SceneName}' not found in the project");
+                return null;
+            }
+        }
 
         public static void Ensure(GPRecord record, string folder) {
             if (Instance == null) Instance = new GameObject("$GPAdText").AddComponent<GPAdText>();
@@ -379,12 +395,15 @@ namespace qp {
         }
 
         void EnsureScene() {
-            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(ScenePath);
+            string path = ScenePath;
+            if (string.IsNullOrEmpty(path)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
             if (!scene.isLoaded) {
                 if (!_loading) {
                     _loading = true;
-                    // editor-only load — the scene doesn't need to be in Build Settings
-                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(ScenePath,
+                    // editor-only load — the scene lives under an Editor/ folder and needs no
+                    // Build Settings entry
+                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(path,
                         new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Additive));
                 }
                 return;
@@ -400,7 +419,148 @@ namespace qp {
         }
 
         void UnloadScene() {
-            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(ScenePath);
+            if (string.IsNullOrEmpty(_scenePath)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(_scenePath);
+            if (scene.isLoaded) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(scene);
+        }
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+        }
+    }
+
+    /// <summary>
+    /// Image overlays: loads the AdsImagePortrait scene and shows one copy of its $BG/$Image
+    /// strip per picked image, each at its own height/position. Shown for the whole session.
+    /// </summary>
+    public class GPAdImages : MonoBehaviour {
+
+        public static GPAdImages Instance { get; private set; }
+        const string SceneName = "AdsImagePortrait";
+
+        /// <summary>Sprites available to pick — everything next to the overlay scene.</summary>
+        public static List<string> AvailableImages() {
+            var result = new List<string>();
+            string path = FindScene();
+            if (string.IsNullOrEmpty(path)) return result;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { Path.GetDirectoryName(path) }))
+                result.Add(Path.GetFileNameWithoutExtension(UnityEditor.AssetDatabase.GUIDToAssetPath(guid)));
+            result.Sort();
+            return result;
+        }
+
+        static string _scenePath;
+        static string FindScene() {
+            if (!string.IsNullOrEmpty(_scenePath) && File.Exists(_scenePath)) return _scenePath;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Scene " + SceneName)) {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(p) == SceneName) return _scenePath = p;
+            }
+            return null;
+        }
+
+        public static void Ensure(GPRecord record) {
+            if (Instance == null) Instance = new GameObject("$GPAdImages").AddComponent<GPAdImages>();
+            Instance._record = record;
+        }
+
+        public static void Remove() {
+            if (Instance != null) {
+                Instance.UnloadScene();
+                Destroy(Instance.gameObject);
+            }
+            Instance = null;
+        }
+
+        GPRecord _record;
+        Transform _strip;    // the scene's own $BG — the first overlay uses it directly
+        bool _loading;
+        readonly List<Transform> _live = new List<Transform>();   // [0] is _strip, extras are copies
+
+        void Update() {
+            if (_record == null) return;
+            if (_strip == null) { EnsureScene(); return; }
+
+            // one strip per overlay row: the scene's own first, copies only for extra rows
+            while (_live.Count > _record.adImages.Count) {
+                var last = _live[_live.Count - 1];
+                _live.RemoveAt(_live.Count - 1);
+                if (last == _strip) last.gameObject.SetActive(false);   // never destroy the scene's own
+                else if (last != null) Destroy(last.gameObject);
+            }
+            while (_live.Count < _record.adImages.Count) {
+                var t = _live.Count == 0 ? _strip : Instantiate(_strip.gameObject, _strip.parent).transform;
+                t.gameObject.SetActive(true);
+                _live.Add(t);
+            }
+
+            for (int i = 0; i < _record.adImages.Count; i++) {
+                var img = _record.adImages[i];
+                var strip = _live[i];
+                if (strip == null) continue;
+
+                var bgImage = strip.GetComponent<UnityEngine.UI.Image>();
+                if (bgImage != null) bgImage.color = img.bg;
+
+                var im = strip.RecursiveFindChild("$Image")?.GetComponent<UnityEngine.UI.Image>();
+                if (im != null) {
+                    var want = LoadSprite(img.name);
+                    if (im.sprite != want) im.sprite = want;
+                    im.preserveAspect = true;
+                }
+
+                var rt = strip as RectTransform;
+                float h = Mathf.Clamp(img.height, 0.02f, 1f);
+                float y0 = Mathf.Clamp01(img.pos) * (1f - h);
+                rt.anchorMin = new Vector2(0f, y0);
+                rt.anchorMax = new Vector2(1f, y0 + h);
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+        }
+
+        static readonly Dictionary<string, Sprite> _sprites = new Dictionary<string, Sprite>();
+
+        static Sprite LoadSprite(string name) {
+            if (string.IsNullOrEmpty(name)) return null;
+            if (_sprites.TryGetValue(name, out var cached)) return cached;   // Update runs every frame
+            Sprite found = null;
+            string dir = Path.GetDirectoryName(FindScene());
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Sprite " + name, new[] { dir })) {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(p) != name) continue;
+                found = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+                break;
+            }
+            if (found == null) Common.CDebug.LogError($"[GPAdImages] sprite '{name}' not found");
+            _sprites[name] = found;
+            return found;
+        }
+
+        void EnsureScene() {
+            string path = FindScene();
+            if (string.IsNullOrEmpty(path)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
+            if (!scene.isLoaded) {
+                if (!_loading) {
+                    _loading = true;
+                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(path,
+                        new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Additive));
+                }
+                return;
+            }
+            _loading = false;
+            foreach (var root in scene.GetRootGameObjects()) {
+                var bg = root.transform.RecursiveFindChild("$BG");
+                if (bg == null) continue;
+                _strip = bg;   // the scene's own strip drives the first overlay row
+                break;
+            }
+        }
+
+        void UnloadScene() {
+            if (string.IsNullOrEmpty(_scenePath)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(_scenePath);
             if (scene.isLoaded) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(scene);
         }
 
