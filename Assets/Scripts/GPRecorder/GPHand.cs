@@ -155,7 +155,10 @@ namespace qp {
                 if (t < s.t0 || t > s.t1) continue;
                 visible = true;
                 float u = Mathf.InverseLerp(s.t0, s.t1, t);
-                u = u < 0.5f ? 2f * u * u : 1f - Mathf.Pow(-2f * u + 2f, 2f) * 0.5f;   // ease in-out
+                // a pressed drag moves at CONSTANT speed — the marks it leaves appear at a
+                // constant rate, and an eased hand would drift ahead of them mid-sweep
+                if (s.doubleClick)
+                    u = u < 0.5f ? 2f * u * u : 1f - Mathf.Pow(-2f * u + 2f, 2f) * 0.5f;   // ease in-out
                 pos = Vector3.Lerp(s.a, s.b, u);
                 if (s.doubleClick)
                     press = SampleEased(DoubleKeys, DoubleVals, Mathf.Clamp01((t - s.t0) / TapCycle));

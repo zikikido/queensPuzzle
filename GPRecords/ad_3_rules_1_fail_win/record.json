@@ -484,7 +484,7 @@
             "name": "cta"
         }
     ],
-    "voicesFile": "female_jessica.voices.json",
+    "voicesFile": "male_will.voices.json",
     "endTime": 46.63505172729492,
     "failMode": 0,
     "noWin": true,
