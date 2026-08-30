@@ -1,0 +1,61 @@
+{
+    "voiceId": "cgSgspJ2msm6clMCkdW9",
+    "lines": [
+        {
+            "name": "hook",
+            "text": "Only five percent can solve this.",
+            "speed": 0.9800000190734863,
+            "stability": 0.4000000059604645,
+            "style": 0.44999998807907107,
+            "path": "Voices/female_jessica/hook.mp3"
+        },
+        {
+            "name": "colorone",
+            "text": "This color has one cell left.",
+            "speed": 1.0199999809265137,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/female_jessica/colorone.mp3"
+        },
+        {
+            "name": "rowcol",
+            "text": "So none in this row or column.",
+            "speed": 1.0399999618530274,
+            "stability": 0.46000000834465029,
+            "style": 0.30000001192092898,
+            "path": "Voices/female_jessica/rowcol.mp3"
+        },
+        {
+            "name": "touch",
+            "text": "And nothing may touch it.",
+            "speed": 1.0399999618530274,
+            "stability": 0.4399999976158142,
+            "style": 0.3400000035762787,
+            "path": "Voices/female_jessica/touch.mp3"
+        },
+        {
+            "name": "find",
+            "text": "Can you find the next one?",
+            "speed": 0.9599999785423279,
+            "stability": 0.36000001430511477,
+            "style": 0.46000000834465029,
+            "path": "Voices/female_jessica/find.mp3"
+        },
+        {
+            "name": "hard",
+            "text": "Now it gets hard.",
+            "speed": 0.9800000190734863,
+            "stability": 0.3799999952316284,
+            "style": 0.4399999976158142,
+            "path": "Voices/female_jessica/hard.mp3"
+        },
+        {
+            "name": "cta",
+            "text": "Are you in the five percent?",
+            "speed": 0.9599999785423279,
+            "stability": 0.3400000035762787,
+            "style": 0.5,
+            "path": "Voices/female_jessica/cta.mp3"
+        }
+    ]
+}
