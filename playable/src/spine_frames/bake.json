@@ -1,0 +1,11 @@
+{
+  "fps": 12,
+  "size": 512,
+  "anims": {
+    "idle_thinking": {"frames": 40, "duration": 3.333},
+    "celebrate": {"frames": 16, "duration": 1.367},
+    "disappointed": {"frames": 21, "duration": 1.767},
+    "cry_in": {"frames": 14, "duration": 1.2},
+    "cry_loop": {"frames": 4, "duration": 0.367}
+  }
+}

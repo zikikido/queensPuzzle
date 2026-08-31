@@ -1,0 +1,109 @@
+{
+    "voiceId": "cgSgspJ2msm6clMCkdW9",
+    "lines": [
+        {
+            "name": "hook",
+            "text": "Can you find all the puppies?",
+            "speed": 0.9800000190734863,
+            "stability": 0.41999998688697817,
+            "style": 0.41999998688697817,
+            "path": "Voices/female_jessica/hook.mp3"
+        },
+        {
+            "name": "rules",
+            "text": "Three simple rules.",
+            "speed": 0.9800000190734863,
+            "stability": 0.41999998688697817,
+            "style": 0.4000000059604645,
+            "path": "Voices/female_jessica/rules.mp3"
+        },
+        {
+            "name": "rule1",
+            "text": "One puppy per color.",
+            "speed": 1.0,
+            "stability": 0.46000000834465029,
+            "style": 0.3199999928474426,
+            "path": "Voices/female_jessica/rule1.mp3"
+        },
+        {
+            "name": "rule2",
+            "text": "Puppies can never touch.",
+            "speed": 1.0,
+            "stability": 0.46000000834465029,
+            "style": 0.3199999928474426,
+            "path": "Voices/female_jessica/rule2.mp3"
+        },
+        {
+            "name": "rule3",
+            "text": "One per row and column.",
+            "speed": 1.0199999809265137,
+            "stability": 0.46000000834465029,
+            "style": 0.3199999928474426,
+            "path": "Voices/female_jessica/rule3.mp3"
+        },
+        {
+            "name": "find",
+            "text": "Only one green cell — puppy!",
+            "speed": 1.0,
+            "stability": 0.41999998688697817,
+            "style": 0.3799999952316284,
+            "path": "Voices/female_jessica/find.mp3"
+        },
+        {
+            "name": "oops1",
+            "text": "Oops — they are touching!",
+            "speed": 1.0,
+            "stability": 0.30000001192092898,
+            "style": 0.550000011920929,
+            "path": "Voices/female_jessica/oops1.mp3"
+        },
+        {
+            "name": "oops2",
+            "text": "Same column! One bone left.",
+            "speed": 1.0,
+            "stability": 0.3199999928474426,
+            "style": 0.5199999809265137,
+            "path": "Voices/female_jessica/oops2.mp3"
+        },
+        {
+            "name": "orange",
+            "text": "Orange still needs a puppy.",
+            "speed": 0.9800000190734863,
+            "stability": 0.4000000059604645,
+            "style": 0.41999998688697817,
+            "path": "Voices/female_jessica/orange.mp3"
+        },
+        {
+            "name": "which",
+            "text": "Which one?",
+            "speed": 0.9599999785423279,
+            "stability": 0.36000001430511477,
+            "style": 0.47999998927116396,
+            "path": "Voices/female_jessica/which.mp3"
+        },
+        {
+            "name": "oops3",
+            "text": "Same row… all bones gone!",
+            "speed": 0.9599999785423279,
+            "stability": 0.30000001192092898,
+            "style": 0.550000011920929,
+            "path": "Voices/female_jessica/oops3.mp3"
+        },
+        {
+            "name": "cta",
+            "text": "Can you do better?",
+            "speed": 0.9599999785423279,
+            "stability": 0.3499999940395355,
+            "style": 0.47999998927116396,
+            "path": "Voices/female_jessica/cta.mp3"
+        },
+        {
+            "name": "free",
+            "text": "Play free!",
+            "speed": 0.9399999976158142,
+            "stability": 0.3199999928474426,
+            "style": 0.5199999809265137,
+            "path": "Voices/female_jessica/free.mp3"
+        }
+    ]
+}

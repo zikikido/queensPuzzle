@@ -22,9 +22,18 @@ namespace qp {
         public static bool IsInserting => IsRecording && _mode == EMode.Insert;
         public static GPRecord Record { get; private set; }
 
-        /// <summary>While recording/replaying, wrong queens lose no bones and can't fail the
-        /// board — ad takes need unlimited wrong tries. Checked by MBGameplay.PlaceQueenAt.</summary>
-        public static bool NoFail = true;
+        /// <summary>What a wrong queen costs while recording/replaying — the window keeps it in
+        /// sync with the loaded record. Checked by MBGameplay.PlaceQueenAt.</summary>
+        public static GPRecord.EFailMode FailMode = GPRecord.EFailMode.NoCost;
+
+        /// <summary>True while a recorder session is driving the board.</summary>
+        public static bool SessionActive => IsRecording || GPReplayer.IsReplaying;
+
+        /// <summary>While recording/replaying, completing the board keeps the win's feel (win
+        /// sound, haptic, celebration) but skips the popups, analytics and level++ — the session
+        /// stays alive for scrubbing and re-records. Turn OFF to capture the real win ending.
+        /// Checked by MBGameplay.PlaceQueenAt.</summary>
+        public static bool NoWin = false;
 
         static EMode _mode;
         static float _t0;        // Record: Time.time that maps to record-time 0

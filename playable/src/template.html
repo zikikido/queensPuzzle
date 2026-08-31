@@ -67,11 +67,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#DFF0F5;font-family:
 
 /* Sprite-sheet puppy: a clipped window with the strip slid across it. translateX
    is compositor-driven, unlike background-position, which would repaint all six
-   puppies every frame. Keyframes are generated from Idle.gif's own per-frame
-   durations, so the holds and blinks land exactly as they do in game. */
-.pup{width:86%;aspect-ratio:__IDLE_ASPECT__;overflow:hidden;position:relative;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
+   puppies every frame. One strip carries the game's Spine idle_thinking, celebrate
+   and disappointed clips; each has its own keyframes into it. The window is wider
+   than the cell (PUP_WIDTH) because the strip's framing reserves room for the
+   celebrate stars - the dog itself is what fills 86% of the cell, centered. */
+/* absolutely positioned: the window is bigger than the cell, and as a normal child
+   its size would leak into the grid's min-content and stretch the 1fr tracks */
+.pup{position:absolute;left:50%;top:50%;width:__PUP_WIDTH__;height:__PUP_HEIGHT__;
+  margin-left:calc(__PUP_WIDTH__ / -2);margin-top:calc(__PUP_HEIGHT__ / -2);
+  overflow:hidden;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
 .pup img{position:absolute;top:0;left:0;height:100%;width:auto;max-width:none;display:block;
          animation:idle __IDLE_DURATION__ step-end infinite;will-change:transform}
+/* the game's Happy state: celebrate once, rest on the grin, then the idle loop
+   takes over (the delayed idle animation is listed last, so it wins once it starts) */
+.pup.celeb img{animation:celeb __CELEB_DURATION__ step-end forwards,idle __IDLE_DURATION__ step-end __CELEB_TOTAL__ infinite}
+/* fail mode's wrong puppy - one-shot; the red X replaces it before a chain matters */
+.pup.disap img{animation:disap __DISAP_DURATION__ step-end forwards}
 __IDLE_KEYFRAMES__
 /* fade toward the pale background rather than darkening — on a light theme,
    brightness() turns yellow to olive and pink to brown */
@@ -138,8 +149,15 @@ __IDLE_KEYFRAMES__
 #lose{position:absolute;inset:0;background:rgba(60,45,25,.62);display:none;align-items:center;justify-content:center;padding:6vw;z-index:9}
 #lose.on{display:flex;animation:fadein .3s}
 #loseCard{background:#F2FAFC;border-radius:22px;padding:5vh 7vw;text-align:center;max-width:400px;width:100%;animation:pop .42s cubic-bezier(.3,1.7,.6,1)}
-#loseCard img{width:clamp(84px,15vh,124px);height:auto;margin-bottom:1.4vh}
 #loseCard h2{font-size:clamp(21px,4vh,31px);font-weight:800;margin-bottom:.5vh}
+/* the animated cry: cry_in plays the moment the card appears (display:none holds
+   CSS animations until the element is shown), then cry_loop sobs forever - the
+   game's Cry -> _ceyIdle chain. Sized so the dog matches the old still; the box
+   is wider because the tears fly clear of the face. */
+#loseAnim{__CRY_WIDTH__;aspect-ratio:__CRY_ASPECT__;overflow:hidden;position:relative;margin:0 auto 1.4vh}
+#loseAnim img{position:absolute;top:0;left:0;height:100%;width:auto;max-width:none;display:block;
+  animation:cryin __CRY_IN_DURATION__ step-end forwards,cryloop __CRY_LOOP_DURATION__ step-end __CRY_IN_DURATION__ infinite}
+__CRY_KEYFRAMES__
 #loseCard p{font-size:clamp(13px,2.2vh,17px);color:#6FA8A8;margin-bottom:2.6vh;font-weight:700}
 #loseCta{width:100%;background:#F9A55F;border:none;border-radius:14px;box-shadow:0 4px 0 #D07C36;padding:clamp(13px,2.3vh,19px);font-family:inherit;font-size:clamp(17px,2.9vh,24px);font-weight:800;color:#5E3410;cursor:pointer;animation:breathe 2.4s ease-in-out infinite}
 #loseCta:active{transform:translateY(3px);box-shadow:0 1px 0 #D07C36}
@@ -193,7 +211,7 @@ __IDLE_KEYFRAMES__
 
 <div id="lose">
   <div id="loseCard">
-    <img id="loseImg" alt="">
+    <div id="loseAnim"><img id="loseSheet" alt=""></div>
     <h2>Out of bones!</h2>
     <p>Every puppy needs its own colour</p>
     <button id="loseCta">Try again</button>
@@ -201,9 +219,9 @@ __IDLE_KEYFRAMES__
 </div>
 
 <script>
-var ART={happy:"__HAPPY__",cry:"__CRY__",logo:"__LOGO__",icon:"__ICON__",paw:"__PAW__",xmark:"__XMARK__",
+var ART={happy:"__HAPPY__",logo:"__LOGO__",icon:"__ICON__",paw:"__PAW__",xmark:"__XMARK__",
          xmarkRed:"__XMARK_RED__",finger:"__FINGER__",
-         idleSheet:"__IDLE_SHEET__",bone:"__BONE__",boneEmpty:"__BONE_EMPTY__"};
+         idleSheet:"__IDLE_SHEET__",crySheet:"__CRY_SHEET__",bone:"__BONE__",boneEmpty:"__BONE_EMPTY__"};
 var STORE="https://play.google.com/store/apps/details?id=com.puzzby.pawdoku";
 
 /* ---- SFX ----------------------------------------------------------------
@@ -449,7 +467,9 @@ function build(){
   setTimeout(fitBoard,250);
 }
 
-function seat(i,what,animate){
+/* mood: '' = the idle loop, 'celeb' = celebrate then idle (a placed puppy, a win),
+   'disap' = the wrong-puppy sulk. Matches the game's Play("Happy"/"Disappointed"). */
+function seat(i,what,animate,mood){
   state[i]=what;
   var el=cells[i];
   while(el.firstChild) el.removeChild(el.firstChild);
@@ -464,24 +484,21 @@ function seat(i,what,animate){
   }
 
   var wrap=document.createElement('div');
-  wrap.className=animate?'pup pop':'pup';
+  wrap.className='pup'+(mood?' '+mood:'')+(animate?' pop':'');
   var img=document.createElement('img');
   img.src="data:image/png;base64,"+ART.idleSheet;
-  // stagger the loop so six puppies don't blink in unison
-  img.style.animationDelay=(-Math.random()*2.6).toFixed(2)+'s';
   wrap.appendChild(img);
   el.appendChild(wrap);
 }
 
-/* on win, drop the idle loop for the still happy face */
+/* on win, every seated puppy celebrates again - the game's PlayQueens("Happy") */
 function cheer(i){
   var el=cells[i];
-  if(!el.firstChild) return;
-  while(el.firstChild) el.removeChild(el.firstChild);
-  var img=document.createElement('img');
-  img.src="data:image/png;base64,"+ART.happy;
-  img.className='pop';
-  el.appendChild(img);
+  var wrap=el.firstChild;
+  if(!wrap||!wrap.classList||!wrap.classList.contains('pup')) return;
+  wrap.classList.remove('celeb','pop');
+  void wrap.offsetWidth;               // restart the chain even if it already ran
+  wrap.classList.add('celeb','pop');
 }
 
 function updateCount(){
@@ -664,7 +681,7 @@ function tryPuppy(i){
     else reject(i);
     return;
   }
-  seat(i,PUPPY,true);updateCount();clearNudge();hideHand();hideHelp();play('puppy');
+  seat(i,PUPPY,true,'celeb');updateCount();clearNudge();hideHand();hideHelp();play('puppy');
   if(step){if(stepDone()) advance();return;}
   seatedAny=true;
   busy=true;
@@ -691,7 +708,7 @@ function wrongQueen(i){
   busy=true;clearNudge();hideHand();hideHelp();play('wrong');
   var el=cells[i];
 
-  seat(i,PUPPY,true);                       // it lands, so the mistake is the player's to see
+  seat(i,PUPPY,true,'disap');               // it lands sulking, so the mistake is the player's to see
   var flash=document.createElement('div');
   flash.className='wrongflash';
   el.appendChild(flash);
@@ -705,6 +722,8 @@ function wrongQueen(i){
   var spent=document.getElementById('bones').children[bones];
   if(spent){spent.src="data:image/png;base64,"+ART.boneEmpty;spent.style.opacity=.45;spent.className='spent';}
 
+  // 1.4s, not the wash's 0.9s: the extra beat lets the disappointed face read
+  // before the red X replaces it
   setTimeout(function(){
     el.classList.remove('shake');
     if(flash.parentNode) flash.parentNode.removeChild(flash);
@@ -713,7 +732,7 @@ function wrongQueen(i){
     busy=false;
     if(bones<=0) doLose();
     else{setNote("Careful — that costs a <b>bone</b>");armNudge(NUDGE_MS);}
-  },900);
+  },1400);
 }
 
 function doLose(){
@@ -974,7 +993,7 @@ document.getElementById('logoImg').src="data:image/png;base64,"+ART.logo;
 document.getElementById('ctaIcon').src="data:image/png;base64,"+ART.icon;
 document.getElementById('pawImg').src="data:image/png;base64,"+ART.paw;
 document.getElementById('winImg').src="data:image/png;base64,"+ART.happy;
-document.getElementById('loseImg').src="data:image/png;base64,"+ART.cry;
+document.getElementById('loseSheet').src="data:image/png;base64,"+ART.crySheet;
 if(CTA_TEXT) document.querySelector('#cta .lbl').textContent=CTA_TEXT;
 if(HOOK_TEXT){
   var hk=document.getElementById('hook');

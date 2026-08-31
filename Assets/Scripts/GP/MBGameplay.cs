@@ -462,6 +462,16 @@ namespace qp {
             yield return new WaitForEndOfFrame();
             yield return new WaitForEndOfFrame();
 
+#if UNITY_EDITOR
+            // A direct play-mode start hitches through its first frames (domain reload, first
+            // render) with unscaled deltas of a second+ — enough to swallow the whole bloom.
+            // GP replay/capture runs wait for two calm frames so the intro is actually visible.
+            if (GPReplayer.WantsFreshBoard)
+                for (int calm = 0; calm < 2;) {
+                    yield return null;
+                    calm = Time.unscaledDeltaTime < 0.1f ? calm + 1 : 0;
+                }
+#endif
             // "Bloom" the cells in from the centre, then let the player interact
             yield return BloomReveal();
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
@@ -710,7 +720,18 @@ namespace qp {
                 int placed = CountQueens();
                 _topBar?.SetProgress(placed);
                 MaybePrepareReview(placed);
-                if (placed == _n) Win();
+                bool win = placed == _n;
+#if UNITY_EDITOR
+                // GPRecorder NoWin: the win's full feel — win sound, haptic, queens celebrating —
+                // but no popups (win/streak), no analytics/level++, no input shutoff. The ad
+                // session stays alive for scrubbing and re-records.
+                if (win && GPRecorder.NoWin && (GPRecorder.IsRecording || GPReplayer.IsReplaying)) {
+                    Haptics.Play(GameHaptic.Win);
+                    CommonSFX.Play(GPSFX.Instance.Win);
+                    return;
+                }
+#endif
+                if (win) Win();
                 else {
                     Haptics.Play(GameHaptic.Happy);
                     CommonSFX.Play(GPSFX.Instance.PlaceQueen);
@@ -718,11 +739,14 @@ namespace qp {
             } else {
                 PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
 #if UNITY_EDITOR
-                // GPRecorder sessions: shake, flash and sound still sell the mistake, but no bone
-                // is lost and the board can't fail mid-take — ad recordings need unlimited tries
-                bool countBones = !(GPRecorder.NoFail && (GPRecorder.IsRecording || GPReplayer.IsReplaying));
+                // GPRecorder sessions: the mistake always shakes, flashes and cries; what it COSTS
+                // is the record's fail mode (no cost / bones but no popup / the real game)
+                bool gpSession = GPRecorder.SessionActive;
+                bool countBones = !(gpSession && GPRecorder.FailMode == GPRecord.EFailMode.NoCost);
+                bool allowFail = !gpSession || GPRecorder.FailMode == GPRecord.EFailMode.Normal;
 #else
                 const bool countBones = true;
+                const bool allowFail = true;
 #endif
                 if (countBones) {
                     AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
@@ -734,7 +758,17 @@ namespace qp {
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
                 if (!countBones) return;
-                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) Fail();   // last bone gone
+                if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) {   // last bone gone
+                    if (allowFail) Fail();
+#if UNITY_EDITOR
+                    else {
+                        // recorder take without the popup: the board still mourns — CRY holds its
+                        // last frame, so every puppy stays crying to the end of the video
+                        PlayQueens(MBCell.QueenState.CRY);
+                        CommonSFX.Play(GPSFX.Instance.Fail);
+                    }
+#endif
+                }
                 else if (AppData.LastPlayData.bonesLost == _topBar.MaxWrongMoves - 1)   // just one bone left
                     MBToturial.instance?.ShowLastBoneToturial(_topBar.GetBonesTransform());
             }
@@ -755,6 +789,13 @@ namespace qp {
                 if (to == MBCell.ECellType.EMPTY) return;
             }
             PaintCell(cell, to);
+            // played moves tick (sound + haptic) after painting — replayed ones must too,
+            // with the drags' throttle so a same-frame burst doesn't stack sounds
+            if (Time.unscaledTime - _lastTick >= TickInterval) {
+                _lastTick = Time.unscaledTime;
+                Haptics.Play(to == MBCell.ECellType.EMPTY ? GameHaptic.Tap : GameHaptic.XMark);
+                CommonSFX.Play(to == MBCell.ECellType.EMPTY ? GPSFX.Instance.Erase : GPSFX.Instance.XMark);
+            }
         }
 
         /// <summary>Replay a queen double-tap — right/wrong and win/fail resolved by the normal logic.</summary>

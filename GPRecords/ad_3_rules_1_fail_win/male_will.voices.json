@@ -1,0 +1,69 @@
+{
+    "voiceId": "bIHbv24MWmeRgasZH58o",
+    "lines": [
+        {
+            "name": "intro",
+            "text": "Can you find all the puppies?",
+            "speed": 0.949999988079071,
+            "stability": 0.44999998807907107,
+            "style": 0.30000001192092898,
+            "path": "Voices/1/intro.mp3"
+        },
+        {
+            "name": "color",
+            "text": "Every color needs one puppy.",
+            "speed": 1.0,
+            "stability": 0.5,
+            "style": 0.25,
+            "path": "Voices/1/color.mp3"
+        },
+        {
+            "name": "touch",
+            "text": "Puppies can never touch…",
+            "speed": 1.0,
+            "stability": 0.44999998807907107,
+            "style": 0.30000001192092898,
+            "path": "Voices/1/touch.mp3"
+        },
+        {
+            "name": "rowcol",
+            "text": "…and only one per row and column.",
+            "speed": 1.0499999523162842,
+            "stability": 0.5,
+            "style": 0.25,
+            "path": "Voices/1/rowcol.mp3"
+        },
+        {
+            "name": "oops",
+            "text": "Oops — not there!",
+            "speed": 1.0,
+            "stability": 0.30000001192092898,
+            "style": 0.5,
+            "path": "Voices/1/oops.mp3"
+        },
+        {
+            "name": "logic",
+            "text": "Use logic to solve it!",
+            "speed": 1.0499999523162842,
+            "stability": 0.4000000059604645,
+            "style": 0.3499999940395355,
+            "path": "Voices/1/logic.mp3"
+        },
+        {
+            "name": "lastone",
+            "text": "Can you find the last one?",
+            "speed": 0.949999988079071,
+            "stability": 0.4000000059604645,
+            "style": 0.3499999940395355,
+            "path": "Voices/1/lastone.mp3"
+        },
+        {
+            "name": "cta",
+            "text": "Play now — FREE!",
+            "speed": 0.949999988079071,
+            "stability": 0.3499999940395355,
+            "style": 0.44999998807907107,
+            "path": "Voices/1/cta.mp3"
+        }
+    ]
+}
