@@ -19,10 +19,6 @@ namespace Common
         public static string keyaliasPass = "puzzby!";
 #endif
 
-        // Singular attribution — off until configured.
-        public static bool HasSingualarForAndroid = false;
-        public static bool HasSingualarForIos = false;
-
 #if UNITY_EDITOR
         // queensPuzzle Firebase app id (encoded) — fill when the Firebase project is set up.
         public static string FirebaseEncodeAppID = "";

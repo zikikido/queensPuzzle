@@ -16,29 +16,17 @@ namespace Common {
     ///   2) proguard-user.txt — the Singular -keep rules.
     ///
     /// Automatic at build time (no extra menus):
-    ///   - iOS: `pod repo update` + `pod update` after every iOS build (doc step).
     ///   - iOS: UnityAppController-conflict detection; when found, asks to apply Singular's
     ///     swizzle fix (optional in the doc, so it always asks — never silent).
+    ///   (Pods are installed by the EDM iOS Resolver itself — no pod step here.)
     /// </summary>
     [InitializeOnLoad]
     public static class SingularSetup {
 
-        // Runs on every editor load: keeps the Singular defines and the appset aar in sync
-        // with the project state (generatedConfig flags or the UPM package).
+        // Runs on every editor load: keeps the appset aar in sync with whether the
+        // Singular UPM package is installed.
         static SingularSetup() {
-            EditorApplication.delayCall += SyncDefinesAndAppset;
-        }
-
-        static void SyncDefinesAndAppset() {
-            if (Common.generatedConfig.HasSingualarForAndroid) {
-                DefinesController.AddDefines(UnityEditor.Build.NamedBuildTarget.Android, "SINGULAR_SDK_IAP_ENABLED", "KIDO_HAS_SINGUALR");
-            } else {
-                DefinesController.RemoveDefines(UnityEditor.Build.NamedBuildTarget.Android, "SINGULAR_SDK_IAP_ENABLED", "KIDO_HAS_SINGUALR");
-            }
-
-            // Singular can come from generatedConfig OR from the UPM package (this setup) —
-            // either way its Android SDK ships play-services-appset, so ours must go.
-            HandleAppSet(Common.generatedConfig.HasSingualarForAndroid || InstalledUrl() != null);
+            EditorApplication.delayCall += () => HandleAppSet(InstalledUrl() != null);
         }
 
         // Singular's Android SDK brings its own play-services-appset — Common's bundled copy
@@ -112,7 +100,7 @@ namespace Common {
             string status =
                 $"Package:   {pkgLine}\n" +
                 $"Proguard:  {pgLine}\n\n" +
-                "iOS pod update + AppController-conflict check run automatically on every iOS build.";
+                "iOS AppController-conflict check runs automatically on every iOS build.";
 
             // not installed → the two install actions
             if (current == null) {
@@ -140,7 +128,7 @@ namespace Common {
                 $"Package:   {pkgLine}\n" +
                 $"Proguard:  {pgLine}\n" +
                 $"SDK object: {objLine}\n\n" +
-                "iOS pod update + AppController-conflict check run automatically on every iOS build.";
+                "iOS AppController-conflict check runs automatically on every iOS build.";
 
             string otherLabel = current == UrlRegular ? $"Replace → Kids {KidsVersion}" : $"Replace → Regular {RegularVersion}";
             string otherUrl = current == UrlRegular ? UrlKids : UrlRegular;
@@ -312,55 +300,13 @@ namespace Common {
             Debug.Log($"[SingularSetup] {ProguardPath}: {added} rule(s) added.");
         }
 
-        // ================== iOS: post-build steps (pods + conflict check) ==================
+        // ================== iOS: post-build steps (conflict check) ==================
+        // Pods are handled by the EDM iOS Resolver's own `pod install`; no pod update here.
 
         [PostProcessBuild(10000)]   // high order = after the EDM iOS Resolver wrote the Podfile
         public static void OnPostProcessBuildIOS(BuildTarget target, string buildPath) {
             if (target != BuildTarget.iOS) return;
-            UpdatePods(buildPath);
             CheckAppControllerConflict(buildPath);
-        }
-
-        // Doc step "Update CocoaPods Dependencies": pod repo update + pod update. macOS only.
-        static void UpdatePods(string buildPath) {
-            if (Application.platform != RuntimePlatform.OSXEditor) {
-                Debug.LogWarning("[SingularSetup] Not on macOS — run 'pod repo update' and 'pod update' " +
-                                 $"manually in '{buildPath}' before building in Xcode.");
-                return;
-            }
-            if (!File.Exists(Path.Combine(buildPath, "Podfile"))) {
-                Debug.LogWarning($"[SingularSetup] No Podfile in '{buildPath}' — nothing to update " +
-                                 "(is the EDM iOS Resolver enabled?).");
-                return;
-            }
-            if (RunPod("repo update", buildPath))   // no point updating off a broken repo
-                RunPod("update", buildPath);
-        }
-
-        // Through a login shell so `pod` is found no matter how it was installed (gem/homebrew).
-        static bool RunPod(string args, string workDir) {
-            Debug.Log($"[SingularSetup] pod {args} … (in {workDir})");
-            var psi = new System.Diagnostics.ProcessStartInfo {
-                FileName = "/bin/zsh",
-                Arguments = $"-lc \"pod {args}\"",
-                WorkingDirectory = workDir,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-
-            using (var p = System.Diagnostics.Process.Start(psi)) {
-                string output = p.StandardOutput.ReadToEnd();
-                string error = p.StandardError.ReadToEnd();
-                p.WaitForExit();
-
-                if (p.ExitCode != 0) {
-                    Debug.LogError($"[SingularSetup] pod {args} FAILED (exit {p.ExitCode})\n{output}\n{error}");
-                    return false;
-                }
-                Debug.Log($"[SingularSetup] pod {args} done.\n{output}");
-                return true;
-            }
         }
 
         // Doc "Resolving UnityAppController Conflicts" (optional there, so we always ASK):
