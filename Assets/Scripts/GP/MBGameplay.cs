@@ -865,7 +865,7 @@ namespace qp {
         }
 
         // The post-win sequence: register the streak (grant + freeze boosts up front, so a granted
-        // reward never flashes on the counter), wait out half the celebration, then show the streak
+        // reward never flashes on the counter), wait out the full celebration, then show the streak
         // popup — its $ContinueButton hands off to the win popup. No streak popup when the win didn't
         // touch the streak (offline / already won today) — straight to the win popup.
         IEnumerator WinFlow() {
@@ -873,7 +873,7 @@ namespace qp {
             if (streak.reward != null) MBBoostButton.SuppressUpdate = true;
 
             float happyLen = _cells[0, 0] != null ? _cells[0, 0].GetStateLength(MBCell.QueenState.HAPPY) : 0f;
-            yield return new WaitForSecondsRealtime((happyLen > 0f ? happyLen : 3f) * 0.5f);
+            yield return new WaitForSecondsRealtime(happyLen > 0f ? happyLen : 3f);
 
             // Reward popup when a milestone was hit, progress popup when the streak just advanced,
             // otherwise (offline / already won today) nothing. Show it and wait until it closes,
