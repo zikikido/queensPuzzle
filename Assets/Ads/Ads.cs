@@ -13,14 +13,12 @@ namespace qp {
     public static class Ads {
 
         // ---- ad unit IDs (from the AppLovin dashboard) ----
-        // iOS units not created yet — fill when you add an iOS build.
-        const string Placeholder = "TODO_AD_UNIT_ID";
         const string RewardedAndroid     = "4380e51f1bc2f8ed";
-        const string RewardedIOS         = Placeholder;
+        const string RewardedIOS         = "0882b282111db249";
         const string InterstitialAndroid = "72a837c75ecbf3b6";
-        const string InterstitialIOS     = Placeholder;
+        const string InterstitialIOS     = "7e20cec71f4a2f13";
         const string BannerAndroid       = "265b0eafdc3e0341";
-        const string BannerIOS           = Placeholder;
+        const string BannerIOS           = "f0afe802fa7b4a9b";
 
 #if UNITY_IOS
         static readonly string RewardedId = RewardedIOS, InterstitialId = InterstitialIOS, BannerId = BannerIOS;
@@ -247,7 +245,7 @@ namespace qp {
 
         // ================== helpers ==================
 
-        static bool Usable(string id) => !string.IsNullOrEmpty(id) && id != Placeholder;
+        static bool Usable(string id) => !string.IsNullOrEmpty(id);
 
         // Reveal the screen two frames after the close-callback ran, so whatever it triggered
         // (a scene load, a popup) has rendered before the black lifts.
