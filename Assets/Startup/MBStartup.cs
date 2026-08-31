@@ -20,8 +20,10 @@ namespace qp {
             public string Name;
             public Action Begin;
             public Func<bool> IsDone;
+            public Func<bool> HoldTimeout;   // while true, the timeout clock doesn't count
             public float TimeoutSec;
             public bool Finished;
+            public bool WasHeld;
             public float StartedAt;
         }
 
@@ -35,8 +37,8 @@ namespace qp {
         public static bool Finished { get; private set; }
 
         /// <summary>Build one task (use inside Register() for a parallel stage).</summary>
-        public static StartupTask Task(string name, Action begin, Func<bool> isDone, float timeoutSec = 10f)
-            => new StartupTask { Name = name, Begin = begin, IsDone = isDone, TimeoutSec = timeoutSec };
+        public static StartupTask Task(string name, Action begin, Func<bool> isDone, float timeoutSec = 10f, Func<bool> holdTimeout = null)
+            => new StartupTask { Name = name, Begin = begin, IsDone = isDone, TimeoutSec = timeoutSec, HoldTimeout = holdTimeout };
 
         /// <summary>
         /// Add one boot STAGE. Stages run in sequence (this call after the previous Register);
@@ -81,7 +83,10 @@ namespace qp {
 
             Register(
                 Task("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f),
-                Task("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 5f)
+                // iOS: the consent form is an in-app modal — the engine keeps running under it,
+                // so the cap would fire mid-consent; hold it while any modal is presented.
+                // (Android pauses the whole activity instead; NativeModal is always false there.)
+                Task("max", MaxBoot.Begin, () => MaxBoot.Done, timeoutSec: 5f, holdTimeout: () => NativeModal.IsShowing)
             );
 
             // Stage 1b: right after the ads consent prompt is dismissed, ask for the OS
@@ -149,9 +154,27 @@ namespace qp {
                         CDebug.LogError(e); done = true; 
                     }
 
-                    if (!done && Time.realtimeSinceStartup - task.StartedAt >= task.TimeoutSec) {
-                        Debug.LogWarning($"[MBStartup] '{task.Name}' timed out after {task.TimeoutSec:0}s — continuing without it.");
-                        done = true;
+                    if (!done) {
+                        // A held task's clock resets while its predicate is true (e.g. the max
+                        // task while the consent form covers the game) — it gets a fresh window
+                        // once the popup is gone instead of timing out behind it.
+                        bool hold = false;
+                        if (task.HoldTimeout != null) {
+                            try { hold = task.HoldTimeout(); }
+                            catch (Exception e) { CDebug.LogError(e); }
+                        }
+
+                        if (hold != task.WasHeld) {
+                            task.WasHeld = hold;
+                            Debug.Log($"[MBStartup] '{task.Name}' hold {(hold ? "ON — popup covering the game" : "OFF")}");
+                        }
+
+                        if (hold) {
+                            task.StartedAt = Time.realtimeSinceStartup;
+                        } else if (Time.realtimeSinceStartup - task.StartedAt >= task.TimeoutSec) {
+                            Debug.LogWarning($"[MBStartup] '{task.Name}' timed out after {task.TimeoutSec:0}s — continuing without it.");
+                            done = true;
+                        }
                     }
 
                     if (done) {

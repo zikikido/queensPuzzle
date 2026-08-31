@@ -7,12 +7,16 @@ namespace qp {
     // GDPR regions + iOS ATT), and OnSdkInitializedEvent fires only AFTER the user finishes
     // consent — so Resolved is the signal that consent is known.
     //
-    // The `max` boot stage waits on Done with a ~5s cap, which gives the flow "GDPR → wait,
-    // else 5s" for free: with runInBackground = false the consent form pauses the app, so the
-    // boot coroutine freezes and simply resumes when the user dismisses it (the cap can't fire
-    // while nothing polls). With no form (non-GDPR, or offline where the SDK just retries the
-    // network ~30s for nothing) the app stays active and the cap releases the boot. Consent that
-    // lands after the cap is still applied via WhenResolved, and ads self-gate on their own flag.
+    // The `max` boot stage waits on Done with a ~5s cap, held open while the consent form is up.
+    // The two platforms get there differently:
+    //  - Android: the flow pauses the Unity activity itself, so the boot coroutine freezes and
+    //    resumes when the user dismisses it — the cap can't fire while nothing polls.
+    //  - iOS: the form is a view controller presented INSIDE the still-active app, so the engine
+    //    keeps running under it; the max task holds its timeout via NativeModal.IsShowing while
+    //    any modal is presented over the Unity view.
+    // With no form (non-GDPR, or offline where the SDK just retries the network ~30s for nothing)
+    // nothing is presented and the cap releases the boot after 5s. Consent that lands after the
+    // cap is still applied via WhenResolved, and ads self-gate on their own flag.
     public static class MaxBoot {
 
         // True once MAX finished initializing and Geography is known.
