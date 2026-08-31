@@ -72,7 +72,6 @@ namespace qp {
             var p = new SessionStartPayload {
                 eventname = "session_start",
                 session   = session,
-                platform  = Application.platform.ToString(),
                 lvl_idx   = AppData.LevelIdx.Value,
             };
             FillCommon(p);
@@ -120,6 +119,9 @@ namespace qp {
             p.app_version     = Application.version;
             p.first_version   = UserData.Instance.FirstVersion;
             p.user_id         = Common.UserID.GetUserIDLocal();
+            p.platform        = Application.platform == RuntimePlatform.IPhonePlayer ? "IOS"
+                              : Application.platform == RuntimePlatform.Android      ? "Android"
+                              : Application.platform.ToString();
             p.singular_source = AppData.SingularSource.Value;
         }
 

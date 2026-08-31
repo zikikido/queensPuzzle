@@ -16,6 +16,7 @@ namespace qp {
         public string app_version;
         public int first_version;    // UserData.FirstVersion — build the player first installed on
         public string user_id;       // UserID.GetUserIDLocal() — per-install GUID (resets on clear data / reinstall)
+        public string platform;      // "IOS" / "Android" (set in FillCommon; editor sends e.g. "OSXEditor")
         public SingularSource singular_source; // install attribution (network/campaign...). Until Singular resolves it
                                                // JsonUtility emits it with empty strings — network=="" means "not yet known"
     }
@@ -25,7 +26,6 @@ namespace qp {
     [Serializable]
     public class SessionStartPayload : EventBase {
         public int session;          // UserData.Sessions — 1-based launch counter
-        public string platform;      // Application.platform
         public int lvl_idx;          // campaign progress at launch
     }
 
