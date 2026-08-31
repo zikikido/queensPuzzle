@@ -10,16 +10,23 @@ namespace Common
     /// </summary>
     public static class generatedConfig
     {
+#if UNITY_EDITOR
+        // Editor/build-time only params — never compiled into the shipped game.
+        public static string AppleTeamID = "Z4V529B82P";
+
         // Shared kido signing keystore.
         public static string keyaliasName = "puzzby";
         public static string keyaliasPass = "puzzby!";
+#endif
 
         // Singular attribution — off until configured.
         public static bool HasSingualarForAndroid = false;
         public static bool HasSingualarForIos = false;
 
+#if UNITY_EDITOR
         // queensPuzzle Firebase app id (encoded) — fill when the Firebase project is set up.
         public static string FirebaseEncodeAppID = "";
+#endif
 
         // Firebase Remote Config default values.
         public static Dictionary<string, object> FBRCDefaults = null;
