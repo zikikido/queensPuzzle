@@ -26,9 +26,9 @@ namespace qp {
     /// </summary>
     public static class DailyChallengeManager {
 
-        // Campaign LevelIdx (0-based) that unlocks the daily — 21 completed levels, matching the
-        // first tier's progressMin so DailyProgress lands inside a tier the moment it unlocks.
-        const int UnlockLevelIdx = 21;
+        // Display stage number (1-based, like GameConfig.StartShowInterAtLevel) that unlocks the
+        // daily — reaching stage 21 unlocks it, matching the lock card's text.
+        const int UnlockLevel = 21;
 
         const string TiersResource = "DailyChallengeTiers";
 
@@ -81,7 +81,7 @@ namespace qp {
         public static string NiceDate =>
             MBServerTimeManagerV2.UTCNow.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
 
-        static bool IsUnlocked => AppData.LevelIdx >= UnlockLevelIdx;
+        static bool IsUnlocked => AppData.LevelIdx.Value + 1 >= UnlockLevel;
 
         static int DailyProgress => AppData.LevelIdx + _boardsSolved.Value;
 

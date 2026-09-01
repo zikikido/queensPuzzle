@@ -36,7 +36,8 @@ namespace qp {
 
         // Campaign level wins we mark as conversion events in the ad networks / Firebase.
         // 1-based level numbers; the very first level is lvl_win_1.
-        static readonly int[] WinMilestones = { 1, 2, 3, 5, 11, 21, 30 };
+        // 12 = one stage past StartShowInterAtLevel (11) — "survived the interstitials" signal.
+        static readonly int[] WinMilestones = { 1, 2, 3, 5, 11, 12, 21, 30 };
 
         public static void GameStart() {
             GameEvent("game_start");
