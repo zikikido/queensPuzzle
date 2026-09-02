@@ -75,7 +75,7 @@ namespace qp {
             new Firebase.Analytics.Parameter("queen_boosts", queenBoostsUsed),
             new Firebase.Analytics.Parameter("undos", undosUsed),
             new Firebase.Analytics.Parameter("lives_added", livesAdded),
-            new Firebase.Analytics.Parameter("bones_lost", bonesLost),
+            new Firebase.Analytics.Parameter("lives_lost", bonesLost),   // renamed from bones_lost (BQ history keeps the old name)
         };
 #endif
     }

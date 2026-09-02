@@ -102,6 +102,7 @@ namespace qp {
         static void SendLevelEvent(string eventname) {
             bool daily = DailyChallengeManager.InDailyRun;
             int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
+            var d = AppData.LastPlayData;
             var p = new EventPayload {
                 eventname     = eventname,
                 lvl_idx       = LevelIdx,
@@ -110,6 +111,10 @@ namespace qp {
                 lvl_attempts  = Attempts,
                 lvl_time_sec  = timeSec,
                 daily         = daily,
+                lives_lost    = d.bonesLost,
+                lives_added   = d.livesAdded,
+                hints_used    = d.hintsUsed,
+                queen_boosts_used = d.queenBoostsUsed,
             };
             FillCommon(p);
             EventClient.Enqueue(p);

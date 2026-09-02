@@ -51,6 +51,10 @@ namespace qp {
         public int lvl_attempts;
         public int lvl_time_sec;
         public bool daily;
+        public int lives_lost;       // lives (bones) lost during the attempt — LastPlayData.bonesLost
+        public int lives_added;      // fail-continue refills — LastPlayData.livesAdded
+        public int hints_used;       // LastPlayData.hintsUsed — winstats "solved without hints"
+        public int queen_boosts_used;// LastPlayData.queenBoostsUsed — counts as a "helper" too
     }
 
     /// <summary>
