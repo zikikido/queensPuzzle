@@ -29,15 +29,15 @@ namespace qp {
         }
 
         // Achievement line ($Achievement > $Text): the win's ONE social-proof string, plain text
-        // for now (dedicated icons pending art — see the Win Achievement brief). Campaign only:
-        // the daily's Done card has its own TOP% display. Runs in OnEnable so it's fresh on
-        // every show; the layout pass (_showing == false) just hides the row.
+        // for now (dedicated icons pending art — see the Win Achievement brief). Works in both
+        // modes — Pick reads daily time/attempts from DailyChallengeManager.State. Runs in
+        // OnEnable so it's fresh on every show; the layout pass (_showing == false) hides the row.
         void OnEnable() {
             var root = transform.RecursiveFindChild("$Achievement");
             if (root == null) return;
 
-            var a = _showing && !DailyChallengeManager.InDailyRun
-                ? WinAchievement.Pick(winStreak: 0, isNewBestStreak: false)   // TODO: wire streaks
+            var a = _showing
+                ? WinAchievement.Pick(WinStreak.Current, WinStreak.LastWinWasNewBest)
                 : WinAchievement.None;
 
             root.gameObject.SetActive(a.Type != EWinAchievement.None);

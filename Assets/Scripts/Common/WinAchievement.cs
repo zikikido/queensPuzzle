@@ -48,18 +48,24 @@ namespace qp {
             var d = AppData.LastPlayData;
             var stats = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight);
 
+            // Daily runs keep their time/attempts in DailyChallengeManager.State — same
+            // switches Analytics uses, so the comparisons are right in both modes.
+            bool daily = DailyChallengeManager.InDailyRun;
+            float timeSec = daily ? DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
+            int attempts = daily ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
+
             var best = None;
 
             void Consider(EWinAchievement type, float pct) {
                 if (pct >= MinShowPct && pct > best.Pct) best = Of(type, pct);
             }
 
-            Consider(EWinAchievement.Time, stats.FasterThanPct(AppData.LevelTimeSec.Value));
+            Consider(EWinAchievement.Time, stats.FasterThanPct(timeSec));
 
             // "no bones lost" only applies when the run was actually clean
             if (d.bonesLost == 0) Consider(EWinAchievement.NoBones, stats.NoBonesBeatsPct);
 
-            if (AppData.LevelAttempts.Value == 1) Consider(EWinAchievement.FirstTry, stats.FirstTryBeatsPct);
+            if (attempts == 1) Consider(EWinAchievement.FirstTry, stats.FirstTryBeatsPct);
 
             if (best.Type != EWinAchievement.None) return best;
 

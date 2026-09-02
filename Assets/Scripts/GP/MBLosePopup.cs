@@ -29,6 +29,18 @@ namespace qp {
                 _remainingText.text = $"Remaining: <color=#{hex}>{remaining}</color>";
             }
 
+            // Revive social proof ($SocialProof > $Text): the real share when it actually
+            // nudges ("52% of players needed a Revive here!"); a low share would backfire,
+            // so below 50% (or no data yet — RevivePct is -1) it's a plain encouragement.
+            var social = transform.RecursiveFindChild("$SocialProof");
+            var socialText = social != null ? social.RecursiveFindChild<TMPro.TMP_Text>("$Text") : null;
+            if (socialText != null) {
+                float revive = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).RevivePct;
+                socialText.text = revive >= 50f
+                    ? $"{revive:0.#}% of players used Revive\nto pass this level!"
+                    : "So close! Keep going!";
+            }
+
             // Last: the content above is final before the first animated frame is drawn.
             GetComponent<IPopupAnim>()?.PlayIn();   // the reskin animates the open, if it has one
         }
