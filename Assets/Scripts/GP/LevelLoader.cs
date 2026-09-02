@@ -145,6 +145,40 @@ namespace qp {
             return x;
         }
 
+        // ---- level set identity ----------------------------------------------------------
+
+        static string _levelSetsHash;
+
+        /// <summary>
+        /// Content fingerprint of the ENTIRE shipped level set — the campaign pack plus every
+        /// daily tier pack (everything under Resources/Levels). SHA1 over the encrypted file
+        /// bytes: encryption is deterministic (IV derived from content), so the hash changes
+        /// iff some board actually changed. Keys the winstats manifest (build-time export and,
+        /// later, the runtime fetch). Computed once (~ms), then cached for the session.
+        /// </summary>
+        public static string LevelSetsHash {
+            get {
+                if (_levelSetsHash != null) return _levelSetsHash;
+
+                var packs = Resources.LoadAll<TextAsset>("Levels");
+                System.Array.Sort(packs, (a, b) => string.CompareOrdinal(a.name, b.name));
+                using (var sha = System.Security.Cryptography.SHA1.Create()) {
+                    foreach (var ta in packs) {
+                        byte[] name = System.Text.Encoding.UTF8.GetBytes(ta.name);
+                        sha.TransformBlock(name, 0, name.Length, null, 0);
+                        byte[] bytes = ta.bytes;
+                        sha.TransformBlock(bytes, 0, bytes.Length, null, 0);
+                    }
+                    sha.TransformFinalBlock(System.Array.Empty<byte>(), 0, 0);
+                    var sb = new System.Text.StringBuilder(16);
+                    for (int i = 0; i < 8; i++) sb.Append(sha.Hash[i].ToString("x2"));
+                    _levelSetsHash = sb.ToString();   // 16 hex chars — plenty for identity
+                }
+                foreach (var ta in packs) Resources.UnloadAsset(ta);
+                return _levelSetsHash;
+            }
+        }
+
         static bool EnsurePack() {
             if (_pack != null) return true;
 
