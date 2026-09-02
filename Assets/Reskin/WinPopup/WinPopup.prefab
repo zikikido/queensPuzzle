@@ -20564,7 +20564,7 @@ GameObject:
   - component: {fileID: 1506627192229391609}
   - component: {fileID: 1177316458822379380}
   m_Layer: 0
-  m_Name: Text (TMP)
+  m_Name: $Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -21458,6 +21458,7 @@ MonoBehaviour:
   Listeners:
   - {fileID: 8222677179354806716}
   - {fileID: 4083155501058608957}
+  - {fileID: 1587504213502903553}
   ListneresMethod: 0
 --- !u!223 &1715749458153178930
 Canvas:
@@ -26529,7 +26530,7 @@ GameObject:
   - component: {fileID: 1765588161046598902}
   - component: {fileID: 1356266767059568228}
   m_Layer: 0
-  m_Name: $FirstTry
+  m_Name: $Achievement
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -28,14 +28,33 @@ namespace qp {
             _group.alpha = 0f;   // invisible, but alive for the layout pass
         }
 
-        // $FirstTry celebrates winning the level on the first attempt (counter kept in AppData;
-        // it only resets when a NEW level starts, so it's still valid while the popup shows).
+        // Achievement line ($Achievement > $Text): the win's ONE social-proof string, plain text
+        // for now (dedicated icons pending art — see the Win Achievement brief). Campaign only:
+        // the daily's Done card has its own TOP% display. Runs in OnEnable so it's fresh on
+        // every show; the layout pass (_showing == false) just hides the row.
         void OnEnable() {
-            int attempts = DailyChallengeManager.InDailyRun
-                ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
-            var firstTry = transform.RecursiveFindChild("$FirstTry");
-            if (firstTry != null) firstTry.gameObject.SetActive(attempts <= 1);
+            var root = transform.RecursiveFindChild("$Achievement");
+            if (root == null) return;
+
+            var a = _showing && !DailyChallengeManager.InDailyRun
+                ? WinAchievement.Pick(winStreak: 0, isNewBestStreak: false)   // TODO: wire streaks
+                : WinAchievement.None;
+
+            root.gameObject.SetActive(a.Type != EWinAchievement.None);
+            if (a.Type == EWinAchievement.None) return;
+
+            var text = root.RecursiveFindChild<TMPro.TMP_Text>("$Text");
+            if (text != null) text.text = AchievementText(a);
         }
+
+        static string AchievementText(WinAchievement a) => a.Type switch {
+            EWinAchievement.Time       => $"FASTER THAN {a.Pct:0.#}% OF PLAYERS!",
+            EWinAchievement.NoBones    => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
+            EWinAchievement.FirstTry   => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
+            EWinAchievement.WinStreak  => $"{a.Streak} WIN STREAK!",
+            EWinAchievement.BestStreak => $"NEW BEST STREAK: {a.Streak}!",
+            _ => "",
+        };
 
         IEnumerator Start() {
             // wait for UI to refresh our layout
