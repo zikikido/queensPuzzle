@@ -22,10 +22,11 @@ namespace QueensPuzzle
     ///
     /// Two entry points:
     ///  - Manual: QueensPuzzle → Export WinStats — fetch from the winstats-server and bake.
-    ///  - EVERY BUILD (IPreprocessBuildWithReport): fetches the fresh blob and compares to the baked
-    ///    one. Identical → build continues silently. Different / missing / fetch failed → the
-    ///    build PAUSES on a modal: [Download & Continue] [Continue WITHOUT] [Cancel Build];
-    ///    a failed download re-shows the same dialog (with the error) until a choice sticks.
+    ///  - EVERY BUILD (IPreprocessBuildWithReport), three questions max:
+    ///    1. "Check the server?" — opt-in (Skip builds with the baked blob as-is).
+    ///    2. Checked and different → PAUSE: [Use Fresh] [Keep Current] [Cancel Build]
+    ///       (identical → continues silently; a failed fetch loops a Retry dialog).
+    ///    3. Used fresh → "Commit to git?" — so a build never ships a blob the repo lacks.
     /// </summary>
     public sealed class WinStatsExporter : IPreprocessBuildWithReport
     {
@@ -71,6 +72,17 @@ namespace QueensPuzzle
                 return;
             }
 
+            // Step 1: opt-in — checking is a conscious choice, and a difference WILL pause the build.
+            int check = EditorUtility.DisplayDialogComplex(
+                "WinStats",
+                "Check winstats against the server before building?\n\n" +
+                "If the server has newer stats than the baked blob, the build will PAUSE and ask.",
+                "Check Server",                  // 0 (ok)
+                "Cancel Build",                  // 1 (cancel)
+                "Skip — build with baked");      // 2 (alt)
+            if (check == 2) return;
+            if (check == 1) throw new BuildFailedException("[WinStats] build cancelled by user.");
+
             string failure = null;
             while (true)
             {
@@ -91,16 +103,22 @@ namespace QueensPuzzle
                     int choice = EditorUtility.DisplayDialogComplex(
                         "WinStats changed on the server",
                         (baked == null ? "There is NO baked winstats blob yet.\n" : "The server has NEWER winstats than the baked blob.\n") +
-                        "\nThe fresh blob is already downloaded and validated — bake it into this build?\n" +
-                        "(It will also be committed to git, so the build always matches the repo.)",
-                        "Use Fresh, Commit & Continue",  // 0 (ok)
+                        "\nThe fresh blob is already downloaded and validated — bake it into this build?",
+                        "Use Fresh & Continue",          // 0 (ok)
                         "Cancel Build",                  // 1 (cancel)
                         "Keep Current & Continue");      // 2 (alt)
 
                     if (choice == 0)
                     {
-                        try { SaveBlob(fresh); CommitBlob(); return; }
+                        try { SaveBlob(fresh); }
                         catch (Exception e) { failure = e.Message; continue; }   // re-show as a failure
+
+                        // Step 3: the blob changed on disk — a build shouldn't ship what git doesn't have.
+                        if (EditorUtility.DisplayDialog("WinStats updated",
+                                "The baked blob changed. Commit it to git now?\n(Push stays manual.)",
+                                "Commit", "Don't Commit"))
+                            CommitBlob();
+                        return;
                     }
                     if (choice == 2) return;
                     throw new BuildFailedException("[WinStats] build cancelled by user.");
