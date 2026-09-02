@@ -91,14 +91,15 @@ namespace QueensPuzzle
                     int choice = EditorUtility.DisplayDialogComplex(
                         "WinStats changed on the server",
                         (baked == null ? "There is NO baked winstats blob yet.\n" : "The server has NEWER winstats than the baked blob.\n") +
-                        "\nDownload it and continue the build?",
-                        "Download & Continue",        // 0 (ok)
-                        "Cancel Build",               // 1 (cancel)
-                        "Continue WITHOUT download"); // 2 (alt)
+                        "\nThe fresh blob is already downloaded and validated — bake it into this build?\n" +
+                        "(It will also be committed to git, so the build always matches the repo.)",
+                        "Use Fresh, Commit & Continue",  // 0 (ok)
+                        "Cancel Build",                  // 1 (cancel)
+                        "Keep Current & Continue");      // 2 (alt)
 
                     if (choice == 0)
                     {
-                        try { SaveBlob(fresh); return; }
+                        try { SaveBlob(fresh); CommitBlob(); return; }
                         catch (Exception e) { failure = e.Message; continue; }   // re-show as a failure
                     }
                     if (choice == 2) return;
@@ -141,6 +142,42 @@ namespace QueensPuzzle
         {
             File.WriteAllBytes(BlobPath, blob);
             AssetDatabase.ImportAsset(BlobPath);
+        }
+
+        // A build must never ship a blob that isn't in git — the pre-build "Use Fresh" choice
+        // saves AND commits (just these two files; pushing stays manual). A git failure logs
+        // loudly but doesn't cancel the build the user just approved.
+        static void CommitBlob()
+        {
+            try
+            {
+                RunGit($"add -- \"{BlobPath}\" \"{BlobPath}.meta\"");
+                RunGit($"commit -m \"winstats: refresh baked blob (pre-build)\" -- \"{BlobPath}\" \"{BlobPath}.meta\"");
+                Debug.Log("[WinStats] fresh blob committed to git");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[WinStats] blob saved but NOT committed to git — commit it manually! " + e.Message);
+            }
+        }
+
+        static void RunGit(string args)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("git", args)
+            {
+                WorkingDirectory = Directory.GetCurrentDirectory(),   // the project root = repo root
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            using (var p = System.Diagnostics.Process.Start(psi))
+            {
+                string stderr = p.StandardError.ReadToEnd();
+                p.StandardOutput.ReadToEnd();
+                p.WaitForExit(30000);
+                if (p.ExitCode != 0) throw new Exception($"git {args} -> {stderr.Trim()}");
+            }
         }
 
         // hash -> weight for every unique board in the build (identical boards dedup by content).
