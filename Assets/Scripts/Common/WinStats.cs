@@ -157,6 +157,7 @@ namespace qp {
             int AnchorSec(int i) => _b[AnchorPos(i) + AnchorPctSize] | (_b[AnchorPos(i) + AnchorPctSize + 1] << 8);
 
             int Discrete(int field) {
+                if (_b == null) return -1;                 // no blob — Found=false contract
                 int v = _b[_pos + DiscretesOffset + field];
                 return v == 255 ? -1 : v;
             }
@@ -170,7 +171,7 @@ namespace qp {
             public float FasterThanPct(float timeSec) {
                 if (_b == null) return -1f;
 
-                if (timeSec >= AnchorSec(0)) return -1f;   // below the display floor
+                if (timeSec > AnchorSec(0)) return -1f;    // below the display floor (== ties the floor: exactly 60%)
 
                 // top = last distinct anchor (small stages duplicate the 95 pair in slot 6)
                 int top = _anchors - 1;
