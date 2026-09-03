@@ -210,7 +210,8 @@ namespace qp {
             /// (what a first-try win beats — never-winners included in the denominator).</summary>
             public float FirstTryBeatsPct => Discrete(FirstTryField);
 
-            /// <summary>Share of players who used a revive on this stage.</summary>
+            /// <summary>Share of stage STARTERS who ran out of lives there at least once —
+            /// "needed a revive", whether they took one or not.</summary>
             public float RevivePct => Discrete(ReviveField);
         }
 
