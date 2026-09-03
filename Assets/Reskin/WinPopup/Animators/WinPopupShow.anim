@@ -32,7 +32,7 @@ AnimationClip:
         time: 0.05
         value: {x: 0.9, y: 0.9, z: 0.9}
         inSlope: {x: 0, y: 0, z: 0}
-        outSlope: {x: 1.2000003, y: 1.2000003, z: 1.2000003}
+        outSlope: {x: 1.2, y: 1.2, z: 1.2}
         tangentMode: 0
         weightedMode: 0
         inWeight: {x: 0, y: 0, z: 0}
@@ -49,7 +49,7 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    path: SafeArea/UIContainer/Middle/Scaler/Queen
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen
   - curve:
       serializedVersion: 2
       m_Curve:
@@ -83,7 +83,7 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
   m_FloatCurves:
   - serializedVersion: 2
     curve:
@@ -93,14 +93,14 @@ AnimationClip:
         time: 0
         value: 0
         inSlope: 0
-        outSlope: 13.066667
+        outSlope: 13.228758
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
         time: 0.15
-        value: 0.98
+        value: 0.99215686
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -129,16 +129,16 @@ AnimationClip:
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
-        time: 0.05
+        time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 7.9999995
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
-        time: 0.3
+        time: 0.4
         value: 1
         inSlope: 0
         outSlope: 0
@@ -150,7 +150,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Char
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/BackLigt
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -171,7 +171,7 @@ AnimationClip:
         time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 6.6666665
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -189,7 +189,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/Rays
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/BackLigt (1)
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -210,7 +210,7 @@ AnimationClip:
         time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 6.6666665
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -228,7 +228,46 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/BackLigt
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/Rays
+    classID: 114
+    script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+    flags: 16
+  - serializedVersion: 2
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.1
+        value: 0
+        inSlope: 0
+        outSlope: 6.67
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    attribute: m_Color.a
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/RaysSmall
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -249,7 +288,7 @@ AnimationClip:
         time: 0.2
         value: 0
         inSlope: 0
-        outSlope: 7.8500004
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -267,7 +306,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/$TopText/Scaler/Text (TMP)
+    path: SafeArea/UIContainer/Scaler/PopupUp/$TopText/Text (TMP)
     classID: 225
     script: {fileID: 0}
     flags: 16
@@ -288,7 +327,7 @@ AnimationClip:
         time: 0.2
         value: -12
         inSlope: 0
-        outSlope: 94.200005
+        outSlope: 94.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -306,7 +345,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_AnchoredPosition.y
-    path: SafeArea/UIContainer/$TopText/Scaler/Text (TMP)
+    path: SafeArea/UIContainer/Scaler/PopupUp/$TopText/Text (TMP)
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -327,7 +366,7 @@ AnimationClip:
         time: 0.45
         value: 0
         inSlope: 0
-        outSlope: 7.850001
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -345,7 +384,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/LvlVtbStrech/Scaler/$LvlButton
+    path: SafeArea/UIContainer/Scaler/PopupUp/$LvlButton
     classID: 225
     script: {fileID: 0}
     flags: 16
@@ -355,7 +394,7 @@ AnimationClip:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: -12
+        value: -753
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -364,16 +403,16 @@ AnimationClip:
         outWeight: 0
       - serializedVersion: 3
         time: 0.45
-        value: -12
+        value: -753
         inSlope: 0
-        outSlope: 94.20001
+        outSlope: 94.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
         time: 0.65
-        value: 0
+        value: -741
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -384,7 +423,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_AnchoredPosition.y
-    path: SafeArea/UIContainer/LvlVtbStrech/Scaler/$LvlButton
+    path: SafeArea/UIContainer/Scaler/PopupUp/$LvlButton
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -405,7 +444,7 @@ AnimationClip:
         time: 0.35
         value: 0
         inSlope: 0
-        outSlope: 7.8499994
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -423,10 +462,49 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
     classID: 225
     script: {fileID: 0}
-    flags: 0
+    flags: 16
+  - serializedVersion: 2
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.05
+        value: 0
+        inSlope: 0
+        outSlope: 8
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.3
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    attribute: m_Alpha
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/$WinQueen
+    classID: 225
+    script: {fileID: 0}
+    flags: 16
   m_PPtrCurves: []
   m_SampleRate: 60
   m_WrapMode: 0
@@ -436,7 +514,7 @@ AnimationClip:
   m_ClipBindingConstant:
     genericBindings:
     - serializedVersion: 2
-      path: 608504112
+      path: 2698154971
       attribute: 3
       script: {fileID: 0}
       typeID: 4
@@ -445,7 +523,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 3850770241
+      path: 3182111193
       attribute: 3
       script: {fileID: 0}
       typeID: 4
@@ -463,7 +541,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 3826621398
+      path: 1689768110
       attribute: 304273561
       script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
       typeID: 114
@@ -472,7 +550,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 3250819662
+      path: 4070653596
       attribute: 304273561
       script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
       typeID: 114
@@ -481,7 +559,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 3453647325
+      path: 3951662714
       attribute: 304273561
       script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
       typeID: 114
@@ -490,7 +568,16 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 37257548
+      path: 3433269545
+      attribute: 304273561
+      script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+      typeID: 114
+      customType: 0
+      isPPtrCurve: 0
+      isIntCurve: 0
+      isSerializeReferenceCurve: 0
+    - serializedVersion: 2
+      path: 168651640
       attribute: 1574349066
       script: {fileID: 0}
       typeID: 225
@@ -499,7 +586,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 37257548
+      path: 168651640
       attribute: 538195251
       script: {fileID: 0}
       typeID: 224
@@ -508,7 +595,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 1955096978
+      path: 4231038820
       attribute: 1574349066
       script: {fileID: 0}
       typeID: 225
@@ -517,7 +604,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 1955096978
+      path: 4231038820
       attribute: 538195251
       script: {fileID: 0}
       typeID: 224
@@ -526,7 +613,16 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 3850770241
+      path: 3182111193
+      attribute: 1574349066
+      script: {fileID: 0}
+      typeID: 225
+      customType: 0
+      isPPtrCurve: 0
+      isIntCurve: 0
+      isSerializeReferenceCurve: 0
+    - serializedVersion: 2
+      path: 59161262
       attribute: 1574349066
       script: {fileID: 0}
       typeID: 225
@@ -564,14 +660,14 @@ AnimationClip:
         time: 0
         value: 0
         inSlope: 0
-        outSlope: 13.066667
+        outSlope: 13.228758
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
         time: 0.15
-        value: 0.98
+        value: 0.99215686
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -603,7 +699,7 @@ AnimationClip:
         time: 0.05
         value: 0.9
         inSlope: 0
-        outSlope: 1.2000003
+        outSlope: 1.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -621,7 +717,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.x
-    path: SafeArea/UIContainer/Middle/Scaler/Queen
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -642,7 +738,7 @@ AnimationClip:
         time: 0.05
         value: 0.9
         inSlope: 0
-        outSlope: 1.2000003
+        outSlope: 1.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -660,7 +756,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.y
-    path: SafeArea/UIContainer/Middle/Scaler/Queen
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -681,7 +777,7 @@ AnimationClip:
         time: 0.05
         value: 0.9
         inSlope: 0
-        outSlope: 1.2000003
+        outSlope: 1.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -699,7 +795,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.z
-    path: SafeArea/UIContainer/Middle/Scaler/Queen
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -717,16 +813,16 @@ AnimationClip:
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
-        time: 0.05
+        time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 7.9999995
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
-        time: 0.3
+        time: 0.4
         value: 1
         inSlope: 0
         outSlope: 0
@@ -738,7 +834,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Char
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/BackLigt
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -759,7 +855,7 @@ AnimationClip:
         time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 6.6666665
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -777,7 +873,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/Rays
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/BackLigt (1)
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -798,7 +894,7 @@ AnimationClip:
         time: 0.1
         value: 0
         inSlope: 0
-        outSlope: 6.6666665
+        outSlope: 6.67
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -816,7 +912,46 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Color.a
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/BackLigt
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/Rays
+    classID: 114
+    script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+    flags: 16
+  - serializedVersion: 2
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.1
+        value: 0
+        inSlope: 0
+        outSlope: 6.67
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    attribute: m_Color.a
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/RaysSmall
     classID: 114
     script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
     flags: 16
@@ -837,7 +972,7 @@ AnimationClip:
         time: 0.2
         value: 0
         inSlope: 0
-        outSlope: 7.8500004
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -855,7 +990,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/$TopText/Scaler/Text (TMP)
+    path: SafeArea/UIContainer/Scaler/PopupUp/$TopText/Text (TMP)
     classID: 225
     script: {fileID: 0}
     flags: 16
@@ -876,7 +1011,7 @@ AnimationClip:
         time: 0.2
         value: -12
         inSlope: 0
-        outSlope: 94.200005
+        outSlope: 94.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -894,7 +1029,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_AnchoredPosition.y
-    path: SafeArea/UIContainer/$TopText/Scaler/Text (TMP)
+    path: SafeArea/UIContainer/Scaler/PopupUp/$TopText/Text (TMP)
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -915,7 +1050,7 @@ AnimationClip:
         time: 0.45
         value: 0
         inSlope: 0
-        outSlope: 7.850001
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -933,7 +1068,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/LvlVtbStrech/Scaler/$LvlButton
+    path: SafeArea/UIContainer/Scaler/PopupUp/$LvlButton
     classID: 225
     script: {fileID: 0}
     flags: 16
@@ -943,7 +1078,7 @@ AnimationClip:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: -12
+        value: -753
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -952,16 +1087,16 @@ AnimationClip:
         outWeight: 0
       - serializedVersion: 3
         time: 0.45
-        value: -12
+        value: -753
         inSlope: 0
-        outSlope: 94.20001
+        outSlope: 94.2
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
         time: 0.65
-        value: 0
+        value: -741
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -972,7 +1107,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_AnchoredPosition.y
-    path: SafeArea/UIContainer/LvlVtbStrech/Scaler/$LvlButton
+    path: SafeArea/UIContainer/Scaler/PopupUp/$LvlButton
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -993,7 +1128,7 @@ AnimationClip:
         time: 0.35
         value: 0
         inSlope: 0
-        outSlope: 7.8499994
+        outSlope: 7.85
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -1011,10 +1146,10 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_Alpha
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
     classID: 225
     script: {fileID: 0}
-    flags: 0
+    flags: 16
   - serializedVersion: 2
     curve:
       serializedVersion: 2
@@ -1050,10 +1185,10 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.x
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
     classID: 224
     script: {fileID: 0}
-    flags: 0
+    flags: 16
   - serializedVersion: 2
     curve:
       serializedVersion: 2
@@ -1089,10 +1224,10 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.y
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
     classID: 224
     script: {fileID: 0}
-    flags: 0
+    flags: 16
   - serializedVersion: 2
     curve:
       serializedVersion: 2
@@ -1128,10 +1263,49 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.z
-    path: SafeArea/UIContainer/$Achievement/Scaler/$Text
+    path: SafeArea/UIContainer/Scaler/PopupUp/$Achievement
     classID: 224
     script: {fileID: 0}
-    flags: 0
+    flags: 16
+  - serializedVersion: 2
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.05
+        value: 0
+        inSlope: 0
+        outSlope: 8
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.3
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    attribute: m_Alpha
+    path: SafeArea/UIContainer/Scaler/PopupUp/Queen/$WinQueen
+    classID: 225
+    script: {fileID: 0}
+    flags: 16
   m_EulerEditorCurves: []
   m_HasGenericRootTransform: 0
   m_HasMotionFloatCurves: 0

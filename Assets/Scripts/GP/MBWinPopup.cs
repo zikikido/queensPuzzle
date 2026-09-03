@@ -1,5 +1,6 @@
 using Common;
 using System.Collections;
+using System.Globalization;
 using UnityEngine;
 
 namespace qp {
@@ -28,28 +29,56 @@ namespace qp {
             _group.alpha = 0f;   // invisible, but alive for the layout pass
         }
 
-        // Achievement line ($Achievement > $Text): the win's ONE social-proof string, plain text
-        // for now (dedicated icons pending art — see the Win Achievement brief). Works in both
-        // modes — Pick reads daily time/attempts from DailyChallengeManager.State. Runs in
-        // OnEnable so it's fresh on every show; the layout pass (_showing == false) hides the row.
+        // Social-proof block ($Achievement): $Fast/$Bones carry the ONE strongest comparison
+        // from WinAchievement.Pick in their $Text; $DailyChallange shows the run's clock and
+        // exists only on daily-challenge wins. Runs in OnEnable so it's fresh on every show;
+        // the layout pass (_showing == false) hides the whole block.
         void OnEnable() {
             var root = transform.RecursiveFindChild("$Achievement");
             if (root == null) return;
 
             var a = _showing ? WinAchievement.Pick() : WinAchievement.None;
+            bool daily = _showing && DailyChallengeManager.InDailyRun;
 
-            root.gameObject.SetActive(a.Type != EWinAchievement.None);
-            if (a.Type == EWinAchievement.None) return;
+            root.gameObject.SetActive(daily || a.Type != EWinAchievement.None);
 
-            var text = root.RecursiveFindChild<TMPro.TMP_Text>("$Text");
-            if (text != null) text.text = AchievementText(a);
+            _SetRow(root, "$Fast", a.Type == EWinAchievement.Time, a);
+            _SetRow(root, "$Bones", a.Type == EWinAchievement.NoBones, a);
+
+            var dailyRow = root.RecursiveFindChild("$DailyChallange");
+            if (dailyRow != null) {
+                dailyRow.gameObject.SetActive(daily);
+                if (daily) {
+                    var time = dailyRow.RecursiveFindChild<TMPro.TMP_Text>("$Time");
+                    if (time != null) time.text = _Clock(DailyChallengeManager.State.timeSec);
+                }
+            }
         }
 
-        static string AchievementText(WinAchievement a) => a.Type switch {
-            EWinAchievement.Time     => $"FASTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            EWinAchievement.NoBones  => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            _ => "",
-        };
+        void _SetRow(Transform root, string row, bool on, WinAchievement a) {
+            var t = root.RecursiveFindChild(row);
+            if (t == null) return;
+            t.gameObject.SetActive(on);
+            if (!on) return;
+            var text = t.RecursiveFindChild<TMPro.TMP_Text>("$Text");
+            if (text != null) text.text = _AchievementText(a);
+        }
+
+        // The percent is the hero of the line: gold and oversized, trailing zeros trimmed
+        // (90.00 -> "90", 90.10 -> "90.1").
+        static string _AchievementText(WinAchievement a) {
+            string pct = $"<size=91><color=#FFB300>{a.Pct.ToString("0.##", CultureInfo.InvariantCulture)}%</color></size>";
+            return a.Type switch {
+                EWinAchievement.Time     => $"Faster than {pct} of players!",
+                EWinAchievement.NoBones  => $"Better than {pct} of players!",
+                _ => "",
+            };
+        }
+
+        static string _Clock(float sec) {
+            int s = Mathf.Max(0, Mathf.RoundToInt(sec));
+            return $"{s / 60:00}:{s % 60:00}";
+        }
 
         IEnumerator Start() {
             // wait for UI to refresh our layout

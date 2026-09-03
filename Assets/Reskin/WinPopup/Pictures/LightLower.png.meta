@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 53dff5e54e941c04591aa79838c26565
+guid: 71702174516a9964e8a893960a2eeddf
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4367311894353508403
-    second: BackLigt_0
+      213: 6530981346138524359
+    second: LightLower_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -72,12 +72,12 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 256
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
+    compressionQuality: 100
+    crunchedCompression: 1
     allowsAlphaSplitting: 0
     overridden: 0
     ignorePlatformSupport: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BackLigt_0
+      name: LightLower_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 860
-        height: 980
+        width: 720
+        height: 252
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3387746670fcb9c30800000000000000
-      internalID: 4367311894353508403
+      spriteID: 7ca0a438ee4b2aa50800000000000000
+      internalID: 6530981346138524359
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BackLigt_0: 4367311894353508403
+      LightLower_0: 6530981346138524359
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
