@@ -36,9 +36,7 @@ namespace qp {
             var root = transform.RecursiveFindChild("$Achievement");
             if (root == null) return;
 
-            var a = _showing
-                ? WinAchievement.Pick(WinStreak.Current, WinStreak.LastWinWasNewBest)
-                : WinAchievement.None;
+            var a = _showing ? WinAchievement.Pick() : WinAchievement.None;
 
             root.gameObject.SetActive(a.Type != EWinAchievement.None);
             if (a.Type == EWinAchievement.None) return;
@@ -48,11 +46,9 @@ namespace qp {
         }
 
         static string AchievementText(WinAchievement a) => a.Type switch {
-            EWinAchievement.Time       => $"FASTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            EWinAchievement.NoBones    => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            EWinAchievement.FirstTry   => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            EWinAchievement.WinStreak  => $"{a.Streak} WIN STREAK!",
-            EWinAchievement.BestStreak => $"NEW BEST STREAK: {a.Streak}!",
+            EWinAchievement.Time     => $"FASTER THAN {a.Pct:0.#}% OF PLAYERS!",
+            EWinAchievement.NoBones  => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
+            EWinAchievement.FirstTry => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
             _ => "",
         };
 

@@ -855,7 +855,6 @@ namespace qp {
             Analytics.GameWin();
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
-            WinStreak.OnWin();   // campaign AND daily — before the popup (it reads Current/LastWinWasNewBest)
             if (!DailyChallengeManager.InDailyRun) AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
 
             Haptics.Play(GameHaptic.Win); // last, so nothing here can block the popup
@@ -907,7 +906,6 @@ namespace qp {
             PlayQueens(MBCell.QueenState.CRY);   // the board mourns (overrides the disappointment)
             Ads.HideBanner();            // banner off while the fail popup is up
             Analytics.GameLose();   // BEFORE Stash/Invalidate — the counters still belong to the attempt
-            WinStreak.OnFail();   // any fail breaks the streak (campaign or daily), revive or not
 
             // Failed → the attempt is over: quitting now restarts the level fresh.
             // But Continue may revive it — it waits in the stash until the popup decides.
