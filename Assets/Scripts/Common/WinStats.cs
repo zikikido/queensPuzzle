@@ -39,7 +39,8 @@ namespace qp {
         const int NoBonesField = 0;
         const int FirstTryField = 1;
         const int ReviveField = 2;
-        const int KnownDiscretes = 3;
+        const int ReviveFracField = 3;     // hundredths for Revive ("12.47%"; 0..99, 255 = none)
+        const int KnownDiscretes = 4;      // pct bytes + the frac byte — all required
 
         static int AnchorsOffset => HashSize;                                    // anchors start
         static int DiscretesOffset => HashSize + _anchors * AnchorStride;        // first discrete
@@ -211,8 +212,16 @@ namespace qp {
             public float FirstTryBeatsPct => Discrete(FirstTryField);
 
             /// <summary>Share of stage STARTERS who ran out of lives there at least once —
-            /// "needed a revive", whether they took one or not.</summary>
-            public float RevivePct => Discrete(ReviveField);
+            /// "needed a revive", whether they took one or not. Two decimals when the blob
+            /// carries the optional hundredths byte ("12.47"), whole otherwise.</summary>
+            public float RevivePct {
+                get {
+                    int v = Discrete(ReviveField);
+                    if (v < 0) return -1f;
+                    int f = _b[_pos + DiscretesOffset + ReviveFracField];
+                    return f <= 99 ? v + f / 100f : v;
+                }
+            }
         }
 
         // ---- download-time validation (editor) ----------------------------------------
@@ -285,10 +294,12 @@ namespace qp {
                 if (sec > prevSec) return $"{who}: anchor secs not descending";
                 prevPct = pct; prevSec = sec;
             }
-            for (int i = 0; i < KnownDiscretes; i++) {
+            for (int i = 0; i < ReviveFracField; i++) {
                 int v = b[pos + HashSize + anchors * AnchorStride + i];
                 if (v > 100 && v != 255) return $"{who}: discrete pct {v} invalid";
             }
+            int f = b[pos + HashSize + anchors * AnchorStride + ReviveFracField];
+            if (f > 99 && f != 255) return $"{who}: revive frac {f} invalid";
             return null;
         }
     }

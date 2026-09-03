@@ -40,7 +40,7 @@ namespace qp {
                 float revive = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).RevivePct;
                 bool reviveKnown = AppData.LevelIdx.Value + 1 >= GameConfig.StartShowReviveAtLevel;
                 socialText.text = reviveKnown && revive >= 10f
-                    ? $"<color=#FABA1F>{revive:0.#}%</color> of players needed a\nRevive here too!"
+                    ? $"<color=#FABA1F>{revive:0.##}%</color> of players needed a\nRevive here too!"
                     : "So close! Keep going!";
             }
 
