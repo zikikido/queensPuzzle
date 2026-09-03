@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd770e719cedf9048ab595e156a53016, type: 3}
+  m_Name: WinQueenSpineController
+  m_EditorClassIdentifier:
+  skeletonDataAsset: {fileID: 11400000, guid: 11e445fadc45ff64db9534f614ce2f9f, type: 2}
+  defaultState:
+  states:
+  - name: WinIn
+    spineAnim: win_in
+    speed: 1
+    loop: 0
+    loopDelay: 0
+    next: WinIdle
+    nextDelay: 0
+    mix: 0
+    nextMix: -1
+  - name: WinIdle
+    spineAnim: win_idle
+    speed: 1
+    loop: 1
+    loopDelay: 0
+    next:
+    nextDelay: 0
+    mix: 0
+    nextMix: -1

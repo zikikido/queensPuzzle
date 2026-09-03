@@ -1,0 +1,637 @@
+fileFormatVersion: 2
+guid: 0c95ff683c4ea36459cb064336995300
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -7584525837122897317
+    second: Windog_0
+  - first:
+      213: -1943717095365146462
+    second: Windog_1
+  - first:
+      213: 489312422077563615
+    second: Windog_2
+  - first:
+      213: -4465950861783971133
+    second: Windog_3
+  - first:
+      213: 9222240366026537048
+    second: Windog_4
+  - first:
+      213: 111737525421377652
+    second: Windog_5
+  - first:
+      213: -6877989823902387147
+    second: Windog_6
+  - first:
+      213: -5010663681728925485
+    second: Windog_7
+  - first:
+      213: -8577965076193727728
+    second: Windog_8
+  - first:
+      213: -2458233912584756946
+    second: Windog_9
+  - first:
+      213: -3907227277952040789
+    second: Windog_10
+  - first:
+      213: 8698518943735363317
+    second: Windog_11
+  - first:
+      213: -1875588993691415121
+    second: Windog_12
+  - first:
+      213: -7325428724008749646
+    second: Windog_13
+  - first:
+      213: -6017528069720822194
+    second: Windog_14
+  - first:
+      213: 4763175264556405919
+    second: Windog_15
+  - first:
+      213: -1023990277675720228
+    second: Windog_16
+  - first:
+      213: -7439169593576011313
+    second: Windog_17
+  - first:
+      213: 2740881289420730344
+    second: Windog_18
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 0
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 0
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 1
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 48
+    textureCompression: 1
+    compressionQuality: 100
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Windog_0
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 563
+        width: 235
+        height: 455
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5a74888fe95eb690800000000000000
+      internalID: -7584525837122897317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_1
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 911
+        width: 94
+        height: 111
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a808ea99978605e0800000000000000
+      internalID: -1943717095365146462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_2
+      rect:
+        serializedVersion: 2
+        x: 335
+        y: 911
+        width: 147
+        height: 109
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd28e1e2e036ac600800000000000000
+      internalID: 489312422077563615
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_3
+      rect:
+        serializedVersion: 2
+        x: 484
+        y: 911
+        width: 56
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ca44035a51c502c0800000000000000
+      internalID: -4465950861783971133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_4
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 850
+        width: 54
+        height: 76
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 858b74a50cafbff70800000000000000
+      internalID: 9222240366026537048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_5
+      rect:
+        serializedVersion: 2
+        x: 599
+        y: 906
+        width: 126
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47882d6ffa8fc8100800000000000000
+      internalID: 111737525421377652
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_6
+      rect:
+        serializedVersion: 2
+        x: 738
+        y: 845
+        width: 284
+        height: 137
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 534fb8142b87c80a0800000000000000
+      internalID: -6877989823902387147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_7
+      rect:
+        serializedVersion: 2
+        x: 238
+        y: 562
+        width: 304
+        height: 348
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d0b899ddeb867ab0800000000000000
+      internalID: -5010663681728925485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_8
+      rect:
+        serializedVersion: 2
+        x: 599
+        y: 850
+        width: 109
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01b24c11632f4f880800000000000000
+      internalID: -8577965076193727728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_9
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 521
+        width: 193
+        height: 327
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e212191e74992edd0800000000000000
+      internalID: -2458233912584756946
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_10
+      rect:
+        serializedVersion: 2
+        x: 738
+        y: 521
+        width: 179
+        height: 322
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba0c3f8fd7db6c9c0800000000000000
+      internalID: -3907227277952040789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_11
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 712
+        width: 93
+        height: 106
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f63a5184e857b870800000000000000
+      internalID: 8698518943735363317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_12
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 583
+        width: 100
+        height: 127
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fad046e5fb198f5e0800000000000000
+      internalID: -1875588993691415121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_13
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 2
+        width: 372
+        height: 559
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b5f3062369d65a90800000000000000
+      internalID: -7325428724008749646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_14
+      rect:
+        serializedVersion: 2
+        x: 376
+        y: 2
+        width: 394
+        height: 517
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4e29525a127d7ca0800000000000000
+      internalID: -6017528069720822194
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_15
+      rect:
+        serializedVersion: 2
+        x: 772
+        y: 432
+        width: 101
+        height: 80
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f94dfceaaa23a1240800000000000000
+      internalID: 4763175264556405919
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_16
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 485
+        width: 101
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd16fad844e0ac1f0800000000000000
+      internalID: -1023990277675720228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_17
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 432
+        width: 90
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc9c3074ba2c2c890800000000000000
+      internalID: -7439169593576011313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_18
+      rect:
+        serializedVersion: 2
+        x: 772
+        y: 2
+        width: 245
+        height: 428
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8efef6bc201990620800000000000000
+      internalID: 2740881289420730344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Windog_0: -7584525837122897317
+      Windog_1: -1943717095365146462
+      Windog_10: -3907227277952040789
+      Windog_11: 8698518943735363317
+      Windog_12: -1875588993691415121
+      Windog_13: -7325428724008749646
+      Windog_14: -6017528069720822194
+      Windog_15: 4763175264556405919
+      Windog_16: -1023990277675720228
+      Windog_17: -7439169593576011313
+      Windog_18: 2740881289420730344
+      Windog_2: 489312422077563615
+      Windog_3: -4465950861783971133
+      Windog_4: 9222240366026537048
+      Windog_5: 111737525421377652
+      Windog_6: -6877989823902387147
+      Windog_7: -5010663681728925485
+      Windog_8: -8577965076193727728
+      Windog_9: -2458233912584756946
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -14,18 +14,18 @@ namespace qp {
         static readonly int ShowState = Animator.StringToHash("Show");
 
         Animator _animator;
-        MBSpriteFlipbook _char;
+        MBSpinePlayer _char;
 
         void Awake() {
             _animator = GetComponent<Animator>();
-            _char = transform.RecursiveFindChild<MBSpriteFlipbook>("$Char");
+            _char = transform.RecursiveFindChild<MBSpinePlayer>("$WinQueen");
         }
 
         /// <summary>Rewinds and plays the show cascade. Driven by MBWinPopup.Show.</summary>
         public void PlayIn() {
-            // Clear the previous run's last frame so the dog opens on the neutral "In" first frame
-            // instead of flashing the stale pose until PlayCharIn fires later in the cascade.
-            if (_char != null) _char.StartFrame("In");
+            // Clear the previous run's last frame so the dog opens on the neutral "WinIn" first
+            // frame instead of flashing the stale pose until PlayCharIn fires later in the cascade.
+            if (_char != null) _char.StartFrame("WinIn");
 
             _animator.Play(ShowState, 0, 0f);
 
@@ -42,9 +42,9 @@ namespace qp {
             return !st.IsName("Show") || st.normalizedTime >= 1f;
         }
 
-        /// <summary>Animation event. Starts the character flipbook; its controller chains In -> Idle.</summary>
+        /// <summary>Animation event. Starts the character; its controller chains WinIn -> WinIdle.</summary>
         public void PlayCharIn() {
-            if (_char != null) _char.Play("In");
+            if (_char != null) _char.Play("WinIn");
         }
 
         /// <summary>Animation event. Barks the win puppy. Silent while the clip is still a placeholder.</summary>
