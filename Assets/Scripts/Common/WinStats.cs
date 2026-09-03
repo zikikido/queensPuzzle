@@ -162,16 +162,19 @@ namespace qp {
                 return v == 255 ? -1 : v;
             }
 
-            /// <summary>⏱️ "Faster than X%" for a solve of `timeSec` — or -1 (hide: slower than
-            /// the 60% floor, or no data). Continuous: linear interpolation between anchors
-            /// ("Faster than 87.3%"); past the top anchor an asymptotic curve toward (never
-            /// reaching) 100, capped at 99.9. The UI picks how many decimals to show.
+            /// <summary>⏱️ "Faster than X%" for a solve of `timeSec` — or -1 (no data).
+            /// Continuous: linear interpolation between anchors ("Faster than 87.3%"); past the
+            /// top anchor an asymptotic curve toward (never reaching) 100, capped at 99.9;
+            /// past the slowest anchor a decay toward 0 — so STRICTLY slower than the anchor is
+            /// strictly below its pct, and display floors like the win popup's 60% (caller
+            /// policy) keep hiding it. The UI picks how many decimals to show.
             /// No difficulty math here: a stage record's distribution already IS its difficulty,
             /// and the fallback record was picked by the stage's weight band.</summary>
             public float FasterThanPct(float timeSec) {
                 if (_b == null) return -1f;
 
-                if (timeSec > AnchorSec(0)) return -1f;    // below the display floor (== ties the floor: exactly 60%)
+                if (timeSec > AnchorSec(0))                // slower than our data reaches — decay to 0
+                    return AnchorPct(0) * (AnchorSec(0) / timeSec);
 
                 // top = last distinct anchor (small stages duplicate the 95 pair in slot 6)
                 int top = _anchors - 1;

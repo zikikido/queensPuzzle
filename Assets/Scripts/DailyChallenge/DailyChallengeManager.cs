@@ -139,7 +139,7 @@ namespace qp {
         public static void OnSolved() {
             if (!InDailyRun || _state.solved || _state.dayIndex != DayIndex) return;
             _state.solved = true;
-            _state.topPct = FakeTopPct(_state.timeSec, LevelLoader.CurrentLevelWeight);
+            _state.topPct = TopPct(_state.timeSec, LevelLoader.CurrentLevelWeight);
             _state.Save();
             _boardsSolved.Value++;
         }
@@ -157,7 +157,7 @@ namespace qp {
             if (_state.tier < 0) _state.tier = Tier;
             if (_state.timeSec <= 0f) _state.timeSec = 120f;
             _state.solved = true;
-            _state.topPct = FakeTopPct(_state.timeSec, 0);
+            _state.topPct = TopPct(_state.timeSec, 0);
             _state.Save();
             _boardsSolved.Value++;
         }
@@ -168,15 +168,25 @@ namespace qp {
             return s >= 3600 ? $"{s / 3600}:{s / 60 % 60:00}:{s % 60:00}" : $"{s / 60}:{s % 60:00}";
         }
 
+        /// <summary>"TOP X %" for the daily card — the real winstats percentile (100 - faster-than),
+        /// rounded, clamped 1..99. The board's own record when the blob has one, else its weight-band
+        /// global (difficulty is already IN the record — no weight math here). No blob at all →
+        /// the old fake curve, so the card always has a number.</summary>
+        static int TopPct(float timeSec, int weight) {
+            float pct = WinStats.For(LevelLoader.CurrentLevelHash, weight).FasterThanPct(timeSec);
+            if (pct < 0f) return FakeTopPct(timeSec, weight);
+            int top = (int)Math.Round(100f - pct);
+            return top < 1 ? 1 : top > 99 ? 99 : top;
+        }
+
         // Weight of a mid-difficulty "no-guess" board — the neutral point where the raw solve
         // time is used as-is. Harder boards score better for the same time, easier ones worse.
         const int RefWeight = 600;
 
-        // "TOP X %" v1 — no backend yet, so a deterministic curve over the solve time, adjusted
-        // for how hard the board was (LevelPack.Level.weight). Effective time = solve time scaled
-        // by RefWeight/weight (clamped ±2x), so a fast solve on a hard board beats the same time
-        // on an easy one. 2 min effective = top 5%, linear to 95% at 25 min. Replace with the real
-        // leaderboard percentile when a server exists.
+        // "TOP X %" fallback for a missing/corrupt winstats blob — a deterministic curve over the
+        // solve time, adjusted for how hard the board was (LevelPack.Level.weight). Effective time
+        // = solve time scaled by RefWeight/weight (clamped ±2x), so a fast solve on a hard board
+        // beats the same time on an easy one. 2 min effective = top 5%, linear to 95% at 25 min.
         static int FakeTopPct(float timeSec, int weight) {
             float factor = weight > 0 ? (float)weight / RefWeight : 1f;   // 0 = unrated → neutral
             if (factor < 0.5f) factor = 0.5f; else if (factor > 2f) factor = 2f;

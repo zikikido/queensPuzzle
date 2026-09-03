@@ -22,7 +22,7 @@ namespace qp {
         public float timeSec;       // accumulated ACTIVE play time — pauses off-board, continues across restarts/fails
         public int attempts;        // boards started today (restarts/fails; a restore is the same attempt)
         public bool solved;
-        public int topPct;          // "TOP X %" — fake for now (see DailyChallengeManager.FakeTopPct)
+        public int topPct;          // "TOP X %" — winstats percentile (see DailyChallengeManager.TopPct)
 
         public static DailyChallengeState Load() => _holder.Value ?? new DailyChallengeState();
 
