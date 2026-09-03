@@ -1909,6 +1909,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4012478396509249600, guid: b1844d81f71d9ff41a1a74c0c10e9c88, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4012478396509249600, guid: b1844d81f71d9ff41a1a74c0c10e9c88, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4012478396509249600, guid: b1844d81f71d9ff41a1a74c0c10e9c88, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4925732777709881215, guid: b1844d81f71d9ff41a1a74c0c10e9c88, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -1987,7 +1999,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7932887595852150522, guid: b1844d81f71d9ff41a1a74c0c10e9c88, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2540,7 +2552,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.15
+  m_fontSize: 0.1
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -11617,6 +11629,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: FirstTryPopup
       objectReference: {fileID: 0}
+    - target: {fileID: 9053138201280830723, guid: 7659eab023a62854e8d4dfcd619d0871, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -14299,7 +14315,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.25
+  m_fontSize: 0.2
   m_fontSizeBase: 0.27
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -15546,7 +15562,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.15
+  m_fontSize: 0.1
   m_fontSizeBase: 24
   m_fontWeight: 400
   m_enableAutoSizing: 1

@@ -67,7 +67,7 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Light
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$Light
   - curve:
       serializedVersion: 2
       m_Curve:
@@ -119,7 +119,7 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    path: SafeArea/UIContainer/LvlSStrech/Scaler/Container/$BtnContinue
+    path: SafeArea/UIContainer/Scaler/Container/$BtnContinue
   m_FloatCurves: []
   m_PPtrCurves: []
   m_SampleRate: 60
@@ -130,7 +130,7 @@ AnimationClip:
   m_ClipBindingConstant:
     genericBindings:
     - serializedVersion: 2
-      path: 1685212687
+      path: 2504055162
       attribute: 3
       script: {fileID: 0}
       typeID: 4
@@ -139,7 +139,7 @@ AnimationClip:
       isIntCurve: 0
       isSerializeReferenceCurve: 0
     - serializedVersion: 2
-      path: 1956979421
+      path: 3777407704
       attribute: 3
       script: {fileID: 0}
       typeID: 4
@@ -222,7 +222,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.x
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Light
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$Light
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -279,7 +279,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.x
-    path: SafeArea/UIContainer/LvlSStrech/Scaler/Container/$BtnContinue
+    path: SafeArea/UIContainer/Scaler/Container/$BtnContinue
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -336,7 +336,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.y
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Light
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$Light
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -393,7 +393,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.y
-    path: SafeArea/UIContainer/LvlSStrech/Scaler/Container/$BtnContinue
+    path: SafeArea/UIContainer/Scaler/Container/$BtnContinue
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -450,7 +450,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.z
-    path: SafeArea/UIContainer/Middle/Scaler/Queen/$Light
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$Light
     classID: 224
     script: {fileID: 0}
     flags: 16
@@ -507,7 +507,7 @@ AnimationClip:
       m_PostInfinity: 2
       m_RotationOrder: 4
     attribute: m_LocalScale.z
-    path: SafeArea/UIContainer/LvlSStrech/Scaler/Container/$BtnContinue
+    path: SafeArea/UIContainer/Scaler/Container/$BtnContinue
     classID: 224
     script: {fileID: 0}
     flags: 16
