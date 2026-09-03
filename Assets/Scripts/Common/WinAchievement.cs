@@ -41,6 +41,10 @@ namespace qp {
             // Daily runs keep their time/attempts in DailyChallengeManager.State — same
             // switches Analytics uses, so the comparisons are right in both modes.
             bool daily = DailyChallengeManager.InDailyRun;
+
+            // The tutorial's win stays clean — no comparison line on the very first level.
+            // LevelIdx already advanced on win, so the solved campaign level is LevelIdx - 1.
+            if (!daily && AppData.LevelIdx.Value <= 1) return None;
             float timeSec = daily ? DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
             int attempts = daily ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
 

@@ -43,7 +43,7 @@ namespace qp {
             bool daily = DailyChallengeManager.InDailyRun;
             int attempts = daily ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
             if (attempts > 1) return;
-            if (!daily && AppData.LevelIdx.Value == 0) return;   // very first level = the tutorial's moment
+            if (!daily && AppData.LevelIdx.Value + 1 < GameConfig.StartShowFirstTryAtLevel) return;   // opening levels stay clean
 
             float retriedX = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).FirstTryBeatsPct;
             if (retriedX < 0f) return;                           // no data — say nothing

@@ -32,11 +32,14 @@ namespace qp {
             // Revive social proof ($SocialProofContiner > $Text): the real share when it actually
             // nudges ("52% of players needed a Revive here!"); a low share would backfire,
             // so below 50% (or no data yet — RevivePct is -1) it's a plain encouragement.
+            // Also gated on StartShowReviveAtLevel — before the Revive button exists for this
+            // player, "Revive" is a word they've never seen.
             var social = transform.RecursiveFindChild("$SocialProofContiner");
             var socialText = social != null ? social.RecursiveFindChild<TMPro.TMP_Text>("$Text") : null;
             if (socialText != null) {
                 float revive = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).RevivePct;
-                socialText.text = revive >= 50f
+                bool reviveKnown = AppData.LevelIdx.Value + 1 >= GameConfig.StartShowReviveAtLevel;
+                socialText.text = reviveKnown && revive >= 50f
                     ? $"<color=#FABA1F>{revive:0.#}%</color> of players needed a\nRevive here!"
                     : "So close! Keep going!";
             }
