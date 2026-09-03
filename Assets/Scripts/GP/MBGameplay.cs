@@ -34,6 +34,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        MBFirstTryPopup _firstTryPopup;   // level-start "XX% pass on their first try" toast (optional)
         MBDailyStreakInfoPopup _streakProgressPopup;          // shown when the streak advanced
         MBDailyStreakInGameRewordedPopup _streakRewardPopup;    // shown when a milestone was hit
         MBFailPopup _failPopup;      // same pattern as the win popup — shows when the bones run out
@@ -107,6 +108,9 @@ namespace qp {
             _failPopup = FindAnyObjectByType<MBFailPopup>(FindObjectsInactive.Include);
             if (_failPopup != null) _failPopup.gameObject.SetActive(true);
             else Debug.LogError("[MBGameplay] MBFailPopup missing in the scene");
+
+            // First-try social proof toast — optional (no error when the scene doesn't have it).
+            _firstTryPopup = FindAnyObjectByType<MBFirstTryPopup>(FindObjectsInactive.Include);
 
             // In-game streak popups (progress + reward): same wake-for-layout trick; each shows on a
             // qualifying win via WinFlow. Found once here so WinFlow never has to look them up.
@@ -477,6 +481,9 @@ namespace qp {
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
             SetChromeInteractable(true);   // bloom done — bars usable again
+
+            // Level-start social proof, right after the reveal — self-dismissing, never blocks.
+            if (_firstTryPopup != null) _firstTryPopup.TryShow();
 
             // Safety net — should be IMPOSSIBLE: Win()/Fail() call LastPlayData.Invalidate() (and
             // clear the queued save) before anything else can persist, so a finished board should
