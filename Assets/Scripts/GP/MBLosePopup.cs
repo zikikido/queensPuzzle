@@ -30,14 +30,15 @@ namespace qp {
             }
 
             // Social proof ($SocialProofContiner > $Text): "you're not alone" — the share of
-            // stage starters who ran out of bones here at least once, like this player just did.
-            // Under 10% it backfires ("almost nobody fails here but you") — and -1 means no
-            // data — so both fall back to a plain encouragement. Also gated on
+            // stage starters who lost or left here (100 - never-lose-or-leave), like this
+            // player just did. Under 10% it backfires ("almost nobody fails here but you") —
+            // and -1 means no data — so both fall back to a plain encouragement. Also gated on
             // StartShowReviveAtLevel — aligned with when the Revive button starts existing.
             var social = transform.RecursiveFindChild("$SocialProofContiner");
             var socialText = social != null ? social.RecursiveFindChild<TMPro.TMP_Text>("$Text") : null;
             if (socialText != null) {
-                float revive = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).RevivePct;
+                float nlol = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).NeverLoseOrLeavePct;
+                float revive = nlol < 0f ? -1f : 100f - nlol;
                 bool reviveKnown = AppData.LevelIdx.Value + 1 >= GameConfig.StartShowReviveAtLevel;
                 socialText.text = reviveKnown && revive >= 10f
                     ? $"<color=#FABA1F>{revive:0.##}%</color> of players needed a\nRevive here too!"

@@ -7,7 +7,6 @@ namespace qp {
         None,        // nothing crossed the bar — the popup shows no achievement line
         Time,        // ⏱️ FASTER THAN X% OF PLAYERS!
         NoBones,     // 🦴 BETTER THAN X% OF PLAYERS!   (finished with all lives)
-        FirstTry,    // 🎯 BETTER THAN X% OF PLAYERS!   (won on the first attempt)
     }
 
     /// <summary>The chosen achievement + its number, ready for display.</summary>
@@ -28,7 +27,7 @@ namespace qp {
         public const float MinShowPct = 60f;
 
         /// <summary>
-        /// Picks the ONE achievement this win shows: the STRONGEST comparison (⏱️/🦴/🎯)
+        /// Picks the ONE achievement this win shows: the STRONGEST comparison (⏱️/🦴)
         /// that cleared <see cref="MinShowPct"/> — always the best, every time. Nothing
         /// qualifies → no line. Stats come from the baked winstats blob; -1 = no data.
         /// Call AFTER the win while LastPlayData still describes it (same contract as
@@ -46,7 +45,6 @@ namespace qp {
             // LevelIdx already advanced on win, so the solved campaign level is LevelIdx - 1.
             if (!daily && AppData.LevelIdx.Value <= 1) return None;
             float timeSec = daily ? DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
-            int attempts = daily ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
 
             var pick = None;
 
@@ -54,14 +52,16 @@ namespace qp {
                 if (pct >= MinShowPct && pct > pick.Pct) pick = Of(type, pct);
             }
 
+            // No FirstTry achievement: most starters pass most levels on their first attempt,
+            // so a first-try win rarely beats even half the field — it could never clear the
+            // 60% bar. The first-try stat lives in the level-start popup instead.
             Consider(EWinAchievement.Time, stats.FasterThanPct(timeSec));
             if (d.bonesLost == 0) Consider(EWinAchievement.NoBones, stats.NoBonesBeatsPct);   // only a clean run
-            if (attempts == 1) Consider(EWinAchievement.FirstTry, stats.FirstTryBeatsPct);
 
 #if UNITY_EDITOR
             UnityEngine.Debug.Log($"[WinAchievement] hash {LevelLoader.CurrentLevelHash} global={stats.IsGlobal} | " +
                 $"time {timeSec:0}s -> {stats.FasterThanPct(timeSec):0.#}% | bones lost {d.bonesLost} -> {stats.NoBonesBeatsPct}% | " +
-                $"attempts {attempts} -> {stats.FirstTryBeatsPct}% | picked: {pick.Type}");
+                $"picked: {pick.Type}");
 #endif
             return pick;
         }

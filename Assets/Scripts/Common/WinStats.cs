@@ -7,7 +7,7 @@ namespace qp {
     /// <summary>
     /// Zero-parse reader for the baked winstats blob (Resources/winstats.bytes) — per-stage
     /// "better than X%" data, packed by pawdoku-winstats-server (see its winstats.ts for the
-    /// byte layout; QWST v1, 25-byte records, count-prefixed hash buckets).
+    /// byte layout; QWST v1, 31-byte records, count-prefixed hash buckets).
     ///
     /// The blob bytes ARE the data structure: loaded once, kept as byte[], every lookup is
     /// one mask + one offset read + 1-3 record compares. A stage without a record falls back
@@ -37,10 +37,9 @@ namespace qp {
 
         // The discrete percents, in their exact order after the anchors (1 byte each).
         const int NoBonesField = 0;
-        const int FirstTryField = 1;
-        const int ReviveField = 2;
-        const int ReviveFracField = 3;     // hundredths for Revive ("12.47%"; 0..99, 255 = none)
-        const int KnownDiscretes = 4;      // pct bytes + the frac byte — all required
+        const int NeverLoseOrLeaveField = 1;
+        const int NeverLoseOrLeaveFracField = 2;   // hundredths ("96.33%"; 0..99, 255 = none)
+        const int KnownDiscretes = 3;      // pct bytes + the frac byte — all required
 
         static int AnchorsOffset => HashSize;                                    // anchors start
         static int DiscretesOffset => HashSize + _anchors * AnchorStride;        // first discrete
@@ -207,18 +206,16 @@ namespace qp {
             /// <summary>🦴 Share of winners who lost at least one life (what a clean run beats).</summary>
             public float NoBonesBeatsPct => Discrete(NoBonesField);
 
-            /// <summary>🎯 Share of stage STARTERS who did not win it on their first attempt
-            /// (what a first-try win beats — never-winners included in the denominator).</summary>
-            public float FirstTryBeatsPct => Discrete(FirstTryField);
-
-            /// <summary>Share of stage STARTERS who ran out of lives there at least once —
-            /// "needed a revive", whether they took one or not. Two decimals when the blob
-            /// carries the optional hundredths byte ("12.47"), whole otherwise.</summary>
-            public float RevivePct {
+            /// <summary>🎯 THE one social-proof stat: share of stage STARTERS who won it on
+            /// their FIRST attempt — never lost there and never left. Two decimals when the
+            /// blob carries the hundredths byte ("96.33"), whole otherwise. All three UI
+            /// lines derive from it: level-start "X% pass first try", the lose popup's
+            /// "100-X% needed a Revive here too", the win popup's "BETTER THAN 100-X%".</summary>
+            public float NeverLoseOrLeavePct {
                 get {
-                    int v = Discrete(ReviveField);
+                    int v = Discrete(NeverLoseOrLeaveField);
                     if (v < 0) return -1f;
-                    int f = _b[_pos + DiscretesOffset + ReviveFracField];
+                    int f = _b[_pos + DiscretesOffset + NeverLoseOrLeaveFracField];
                     return f <= 99 ? v + f / 100f : v;
                 }
             }
@@ -294,12 +291,12 @@ namespace qp {
                 if (sec > prevSec) return $"{who}: anchor secs not descending";
                 prevPct = pct; prevSec = sec;
             }
-            for (int i = 0; i < ReviveFracField; i++) {
+            for (int i = 0; i < NeverLoseOrLeaveFracField; i++) {
                 int v = b[pos + HashSize + anchors * AnchorStride + i];
                 if (v > 100 && v != 255) return $"{who}: discrete pct {v} invalid";
             }
-            int f = b[pos + HashSize + anchors * AnchorStride + ReviveFracField];
-            if (f > 99 && f != 255) return $"{who}: revive frac {f} invalid";
+            int f = b[pos + HashSize + anchors * AnchorStride + NeverLoseOrLeaveFracField];
+            if (f > 99 && f != 255) return $"{who}: never-lose-or-leave frac {f} invalid";
             return null;
         }
     }

@@ -22,10 +22,20 @@ namespace qp {
         [SerializeField] float _fadeIn = 0.15f;
         [SerializeField] float _hold = 2.5f;     // long enough to read, short enough to not nag
         [SerializeField] float _fadeOut = 0.25f;
-        [SerializeField] Color _pctColor = new Color(1f, 0.42f, 0.61f);   // the "78%" pops in its own color
+        [SerializeField] Color _pctColor = new Color32(0xFF, 0x97, 0x43, 0xFF);   // the "78%" pops in its own color
+        [SerializeField] float _pctSize = 84f;                             // TMP <size> for the number
 
         CanvasGroup _group;
         Coroutine _running;
+        bool _boardLockHeld;   // InputLocks held while visible — the dismiss tap must not paint an X
+
+        // The board reads MBTouches (world-space), not UI raycasts — the fullscreen
+        // $CloseBtn alone can't shield it. Lock like every other overlay does.
+        void _lockBoard(bool on) {
+            if (on == _boardLockHeld || MBGameplay.instance == null) return;
+            _boardLockHeld = on;
+            MBGameplay.instance.InputLocks += on ? 1 : -1;
+        }
 
         void Awake() {
             _group = GetComponent<CanvasGroup>();
@@ -42,49 +52,61 @@ namespace qp {
         public void TryShow() {
             bool daily = DailyChallengeManager.InDailyRun;
             int attempts = daily ? DailyChallengeManager.State.attempts : AppData.LevelAttempts.Value;
-            if (attempts > 1) return;
+            //if (attempts > 1) return;
             if (!daily && AppData.LevelIdx.Value + 1 < GameConfig.StartShowFirstTryAtLevel) return;   // opening levels stay clean
 
-            float beatsX = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).FirstTryBeatsPct;
-            if (beatsX < 0f) return;                             // no data — say nothing
-            float rate = 100f - beatsX;                          // stored = % of starters who DIDN'T pass first try
+            float rate = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).NeverLoseOrLeavePct;
+            if (rate < 0f) return;                               // no data — say nothing
 
             gameObject.SetActive(true);                          // may start inactive — Awake runs now
 
             var text = transform.RecursiveFindChild<TMPro.TMP_Text>("$Text");
             if (text == null) return;
-            string pct = $"<color=#{ColorUtility.ToHtmlStringRGB(_pctColor)}>{rate:0.#}%</color>";
+            string pct = $"<size={_pctSize:0.#}><color=#{ColorUtility.ToHtmlStringRGB(_pctColor)}>{rate:0.##}%</color></size>";
             text.text = rate >= 50f
-                ? $"{pct} of players pass this level\non their first try!"
-                : $"ONLY {pct} of players pass this level\non their first try!";
+                ? $"{pct} of players pass\nthis level on their first try!"
+                : $"Only {pct} of players pass\nthis level on their first try!";
 
+            _lockBoard(true);
             if (_running != null) StopCoroutine(_running);
             _running = StartCoroutine(ShowFlow());
         }
 
         IEnumerator ShowFlow() {
             _group.blocksRaycasts = true;                        // tappable only while visible
-            for (float t = 0f; t < _fadeIn; t += Time.unscaledDeltaTime) {
-                _group.alpha = t / _fadeIn;
+            // From the CURRENT alpha at constant speed — a re-show mid-fade-out never pops.
+            for (float a = _group.alpha; a < 1f; a += Time.unscaledDeltaTime / _fadeIn) {
+                _group.alpha = a;
                 yield return null;
             }
             _group.alpha = 1f;
 
             yield return new WaitForSecondsRealtime(_hold);
 
-            for (float t = 0f; t < _fadeOut; t += Time.unscaledDeltaTime) {
-                _group.alpha = 1f - t / _fadeOut;
-                yield return null;
-            }
             _running = null;
-            Hide();
+            Hide();                                              // same animated exit as a tap
         }
 
-        /// <summary>Tap (or the flow ending) → gone immediately.</summary>
+        /// <summary>Tap (or the hold ending) → the board comes back FIRST (lock released,
+        /// taps no longer eaten), then the card fades out. Safe to call repeatedly:
+        /// the unlock is guarded and a running fade just restarts from where it is.</summary>
         public void Hide() {
             if (_running != null) { StopCoroutine(_running); _running = null; }
-            _group.alpha = 0f;
+            _lockBoard(false);
             _group.blocksRaycasts = false;
+            if (_group.alpha > 0f) _running = StartCoroutine(HideFlow());
         }
+
+        IEnumerator HideFlow() {
+            // From the CURRENT alpha (a tap mid-fade-in exits from there) at constant speed.
+            for (float a = _group.alpha; a > 0f; a -= Time.unscaledDeltaTime / _fadeOut) {
+                _group.alpha = a;
+                yield return null;
+            }
+            _group.alpha = 0f;
+            _running = null;
+        }
+
+        void OnDisable() => _lockBoard(false);   // never leak the lock past our lifetime
     }
 }

@@ -48,7 +48,6 @@ namespace qp {
         static string AchievementText(WinAchievement a) => a.Type switch {
             EWinAchievement.Time     => $"FASTER THAN {a.Pct:0.#}% OF PLAYERS!",
             EWinAchievement.NoBones  => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
-            EWinAchievement.FirstTry => $"BETTER THAN {a.Pct:0.#}% OF PLAYERS!",
             _ => "",
         };
 
