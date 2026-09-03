@@ -45,9 +45,9 @@ namespace qp {
             if (attempts > 1) return;
             if (!daily && AppData.LevelIdx.Value + 1 < GameConfig.StartShowFirstTryAtLevel) return;   // opening levels stay clean
 
-            float retriedX = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).FirstTryBeatsPct;
-            if (retriedX < 0f) return;                           // no data — say nothing
-            float rate = 100f - retriedX;                        // stored = % who retried
+            float beatsX = WinStats.For(LevelLoader.CurrentLevelHash, LevelLoader.CurrentLevelWeight).FirstTryBeatsPct;
+            if (beatsX < 0f) return;                             // no data — say nothing
+            float rate = 100f - beatsX;                          // stored = % of starters who DIDN'T pass first try
 
             gameObject.SetActive(true);                          // may start inactive — Awake runs now
 

@@ -206,7 +206,8 @@ namespace qp {
             /// <summary>🦴 Share of winners who lost at least one life (what a clean run beats).</summary>
             public float NoBonesBeatsPct => Discrete(NoBonesField);
 
-            /// <summary>🎯 Share of winners who needed more than one attempt (what a first-try beats).</summary>
+            /// <summary>🎯 Share of stage STARTERS who did not win it on their first attempt
+            /// (what a first-try win beats — never-winners included in the denominator).</summary>
             public float FirstTryBeatsPct => Discrete(FirstTryField);
 
             /// <summary>Share of players who used a revive on this stage.</summary>
