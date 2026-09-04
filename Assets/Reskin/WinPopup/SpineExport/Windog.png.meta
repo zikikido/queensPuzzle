@@ -59,6 +59,60 @@ TextureImporter:
   - first:
       213: 2740881289420730344
     second: Windog_18
+  - first:
+      213: 5435466580050610386
+    second: Windog_19
+  - first:
+      213: -5087695734208109864
+    second: Windog_20
+  - first:
+      213: 7318880381246772309
+    second: Windog_21
+  - first:
+      213: 2698284841535039450
+    second: Windog_22
+  - first:
+      213: -1154431317607061868
+    second: Windog_23
+  - first:
+      213: -1836258160822765125
+    second: Windog_24
+  - first:
+      213: 3438434927161503521
+    second: Windog_25
+  - first:
+      213: 2617929194031384048
+    second: Windog_26
+  - first:
+      213: 8094728524239869505
+    second: Windog_27
+  - first:
+      213: -1915979415346656355
+    second: Windog_28
+  - first:
+      213: 3394516932937251665
+    second: Windog_29
+  - first:
+      213: -1759534867395109840
+    second: Windog_30
+  - first:
+      213: -2256029724987014093
+    second: Windog_31
+  - first:
+      213: 3449632502180855892
+    second: Windog_32
+  - first:
+      213: -7293174814245938592
+    second: Windog_33
+  - first:
+      213: -2579000566314001818
+    second: Windog_34
+  - first:
+      213: 4233917891966983581
+    second: Windog_35
+  - first:
+      213: 740645915003574542
+    second: Windog_36
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -109,7 +163,7 @@ TextureImporter:
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
-  alphaIsTransparency: 0
+  alphaIsTransparency: 1
   spriteTessellationDetail: -1
   textureType: 8
   textureShape: 1
@@ -156,7 +210,7 @@ TextureImporter:
     resizeAlgorithm: 0
     textureFormat: 48
     textureCompression: 1
-    compressionQuality: 100
+    compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
     overridden: 1
@@ -176,6 +230,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 48
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 1
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -184,9 +251,9 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 2
-        y: 563
-        width: 235
-        height: 455
+        y: 966
+        width: 109
+        height: 54
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -205,10 +272,10 @@ TextureImporter:
       name: Windog_1
       rect:
         serializedVersion: 2
-        x: 239
-        y: 911
-        width: 94
-        height: 111
+        x: 113
+        y: 966
+        width: 90
+        height: 51
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -227,10 +294,10 @@ TextureImporter:
       name: Windog_2
       rect:
         serializedVersion: 2
-        x: 335
-        y: 911
-        width: 147
-        height: 109
+        x: 205
+        y: 966
+        width: 77
+        height: 56
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -249,10 +316,10 @@ TextureImporter:
       name: Windog_3
       rect:
         serializedVersion: 2
-        x: 484
-        y: 911
-        width: 56
-        height: 77
+        x: 284
+        y: 966
+        width: 76
+        height: 54
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -271,10 +338,10 @@ TextureImporter:
       name: Windog_4
       rect:
         serializedVersion: 2
-        x: 543
-        y: 850
-        width: 54
-        height: 76
+        x: 521
+        y: 559
+        width: 235
+        height: 455
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -293,10 +360,10 @@ TextureImporter:
       name: Windog_5
       rect:
         serializedVersion: 2
-        x: 599
-        y: 906
-        width: 126
-        height: 110
+        x: 758
+        y: 558
+        width: 245
+        height: 428
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -315,10 +382,10 @@ TextureImporter:
       name: Windog_6
       rect:
         serializedVersion: 2
-        x: 738
-        y: 845
-        width: 284
-        height: 137
+        x: 1004
+        y: 837
+        width: 269
+        height: 149
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -337,10 +404,10 @@ TextureImporter:
       name: Windog_7
       rect:
         serializedVersion: 2
-        x: 238
-        y: 562
-        width: 304
-        height: 348
+        x: 1275
+        y: 838
+        width: 277
+        height: 174
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -359,10 +426,10 @@ TextureImporter:
       name: Windog_8
       rect:
         serializedVersion: 2
-        x: 599
-        y: 850
-        width: 109
-        height: 54
+        x: 1553
+        y: 798
+        width: 189
+        height: 203
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -381,10 +448,10 @@ TextureImporter:
       name: Windog_9
       rect:
         serializedVersion: 2
-        x: 543
-        y: 521
-        width: 193
-        height: 327
+        x: 1744
+        y: 797
+        width: 141
+        height: 195
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -403,10 +470,10 @@ TextureImporter:
       name: Windog_10
       rect:
         serializedVersion: 2
-        x: 738
-        y: 521
-        width: 179
-        height: 322
+        x: 2
+        y: 570
+        width: 517
+        height: 394
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -425,10 +492,10 @@ TextureImporter:
       name: Windog_11
       rect:
         serializedVersion: 2
-        x: 919
-        y: 712
-        width: 93
-        height: 106
+        x: 1004
+        y: 547
+        width: 217
+        height: 290
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -447,10 +514,10 @@ TextureImporter:
       name: Windog_12
       rect:
         serializedVersion: 2
-        x: 919
-        y: 583
-        width: 100
-        height: 127
+        x: 1223
+        y: 548
+        width: 207
+        height: 268
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -469,10 +536,10 @@ TextureImporter:
       name: Windog_13
       rect:
         serializedVersion: 2
-        x: 2
-        y: 2
-        width: 372
-        height: 559
+        x: 1431
+        y: 679
+        width: 139
+        height: 117
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -491,10 +558,10 @@ TextureImporter:
       name: Windog_14
       rect:
         serializedVersion: 2
-        x: 376
-        y: 2
-        width: 394
-        height: 517
+        x: 1572
+        y: 679
+        width: 147
+        height: 109
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -513,10 +580,10 @@ TextureImporter:
       name: Windog_15
       rect:
         serializedVersion: 2
-        x: 772
-        y: 432
-        width: 101
-        height: 80
+        x: 1721
+        y: 668
+        width: 100
+        height: 127
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -535,10 +602,10 @@ TextureImporter:
       name: Windog_16
       rect:
         serializedVersion: 2
-        x: 919
-        y: 485
-        width: 101
-        height: 96
+        x: 1887
+        y: 771
+        width: 143
+        height: 185
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -557,10 +624,10 @@ TextureImporter:
       name: Windog_17
       rect:
         serializedVersion: 2
-        x: 919
-        y: 432
-        width: 90
-        height: 51
+        x: 1431
+        y: 540
+        width: 284
+        height: 137
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -579,10 +646,10 @@ TextureImporter:
       name: Windog_18
       rect:
         serializedVersion: 2
-        x: 772
-        y: 2
-        width: 245
-        height: 428
+        x: 1823
+        y: 668
+        width: 96
+        height: 101
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -593,6 +660,402 @@ TextureImporter:
       bones: []
       spriteID: 8efef6bc201990620800000000000000
       internalID: 2740881289420730344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_19
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 9
+        width: 372
+        height: 559
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d88c646e08ae6b40800000000000000
+      internalID: 5435466580050610386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_20
+      rect:
+        serializedVersion: 2
+        x: 376
+        y: 378
+        width: 322
+        height: 179
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d2614d7fafd469b0800000000000000
+      internalID: -5087695734208109864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_21
+      rect:
+        serializedVersion: 2
+        x: 700
+        y: 378
+        width: 271
+        height: 178
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5541acdfde2e19560800000000000000
+      internalID: 7318880381246772309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_22
+      rect:
+        serializedVersion: 2
+        x: 973
+        y: 353
+        width: 327
+        height: 193
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad7648a64cb327520800000000000000
+      internalID: 2698284841535039450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_23
+      rect:
+        serializedVersion: 2
+        x: 1717
+        y: 540
+        width: 110
+        height: 126
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 496e17445d2aaffe0800000000000000
+      internalID: -1154431317607061868
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_24
+      rect:
+        serializedVersion: 2
+        x: 1301
+        y: 268
+        width: 193
+        height: 270
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb93f308eec4486e0800000000000000
+      internalID: -1836258160822765125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_25
+      rect:
+        serializedVersion: 2
+        x: 1496
+        y: 245
+        width: 158
+        height: 222
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12fe1c04956c7bf20800000000000000
+      internalID: 3438434927161503521
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_26
+      rect:
+        serializedVersion: 2
+        x: 1656
+        y: 444
+        width: 111
+        height: 94
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f58d594bb0c45420800000000000000
+      internalID: 2617929194031384048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_27
+      rect:
+        serializedVersion: 2
+        x: 1769
+        y: 444
+        width: 106
+        height: 93
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1461a8084b0465070800000000000000
+      internalID: 8094728524239869505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_28
+      rect:
+        serializedVersion: 2
+        x: 375
+        y: 8
+        width: 335
+        height: 369
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9b4d4f7fd21965e0800000000000000
+      internalID: -1915979415346656355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_29
+      rect:
+        serializedVersion: 2
+        x: 710
+        y: 8
+        width: 311
+        height: 344
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15bf5c36a2fbb1f20800000000000000
+      internalID: 3394516932937251665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_30
+      rect:
+        serializedVersion: 2
+        x: 1022
+        y: 268
+        width: 101
+        height: 80
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03c100b4c50e497e0800000000000000
+      internalID: -1759534867395109840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_31
+      rect:
+        serializedVersion: 2
+        x: 1124
+        y: 267
+        width: 70
+        height: 79
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3344d670be8f0b0e0800000000000000
+      internalID: -2256029724987014093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_32
+      rect:
+        serializedVersion: 2
+        x: 1194
+        y: 267
+        width: 68
+        height: 81
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 450c12adb7e8fdf20800000000000000
+      internalID: 3449632502180855892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_33
+      rect:
+        serializedVersion: 2
+        x: 1656
+        y: 239
+        width: 142
+        height: 203
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06a9b08b52079ca90800000000000000
+      internalID: -7293174814245938592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_34
+      rect:
+        serializedVersion: 2
+        x: 1021
+        y: 8
+        width: 356
+        height: 259
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66a925926ac853cd0800000000000000
+      internalID: -2579000566314001818
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_35
+      rect:
+        serializedVersion: 2
+        x: 1378
+        y: 8
+        width: 150
+        height: 236
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9ddcd6f3e5e1ca30800000000000000
+      internalID: 4233917891966983581
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Windog_36
+      rect:
+        serializedVersion: 2
+        x: 1529
+        y: 9
+        width: 143
+        height: 228
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e09d12c198d474a00800000000000000
+      internalID: 740645915003574542
       vertices: []
       indices: 
       edges: []
@@ -622,8 +1085,26 @@ TextureImporter:
       Windog_16: -1023990277675720228
       Windog_17: -7439169593576011313
       Windog_18: 2740881289420730344
+      Windog_19: 5435466580050610386
       Windog_2: 489312422077563615
+      Windog_20: -5087695734208109864
+      Windog_21: 7318880381246772309
+      Windog_22: 2698284841535039450
+      Windog_23: -1154431317607061868
+      Windog_24: -1836258160822765125
+      Windog_25: 3438434927161503521
+      Windog_26: 2617929194031384048
+      Windog_27: 8094728524239869505
+      Windog_28: -1915979415346656355
+      Windog_29: 3394516932937251665
       Windog_3: -4465950861783971133
+      Windog_30: -1759534867395109840
+      Windog_31: -2256029724987014093
+      Windog_32: 3449632502180855892
+      Windog_33: -7293174814245938592
+      Windog_34: -2579000566314001818
+      Windog_35: 4233917891966983581
+      Windog_36: 740645915003574542
       Windog_4: 9222240366026537048
       Windog_5: 111737525421377652
       Windog_6: -6877989823902387147

@@ -26,6 +26,7 @@ namespace qp {
             // Clear the previous run's last frame so the dog opens on the neutral "WinIn" first
             // frame instead of flashing the stale pose until PlayCharIn fires later in the cascade.
             if (_char != null) _char.StartFrame("WinIn");
+            _SetBones();
 
             _animator.Play(ShowState, 0, 0f);
 
@@ -40,6 +41,17 @@ namespace qp {
             if (_animator == null || !_animator.isInitialized) return true;
             var st = _animator.GetCurrentAnimatorStateInfo(0);
             return !st.IsName("Show") || st.normalizedTime >= 1f;
+        }
+
+        // The dog holds the bones the player finished with: slots bone_1..3 carry attachments
+        // "1Bone"/"2Bones"/"3Bones" and the win animations never key them, so a direct set sticks.
+        // 3 is the game's bone count (top-bar row) and all the skeleton has.
+        void _SetBones() {
+            var skeleton = _char != null ? _char.GetComponent<Spine.Unity.ISkeletonComponent>()?.Skeleton : null;
+            if (skeleton == null) return;
+            int left = Mathf.Clamp(3 - AppData.LastPlayData.bonesLost, 1, 3);
+            for (int i = 1; i <= 3; i++)
+                skeleton.SetAttachment($"bone_{i}", i != left ? null : i == 1 ? "1Bone" : $"{i}Bones");
         }
 
         /// <summary>Animation event. Starts the character; its controller chains WinIn -> WinIdle.</summary>
