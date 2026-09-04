@@ -6,8 +6,11 @@ using UnityEngine;
 namespace qp {
     public class MBWinPopup : MonoBehaviour {
 
+        const float DailyYAlone = -28f;   // $DailyChallange y when it's the only row
+
         CanvasGroup _group;
-        bool _showing;   // a real win is on screen (guards the layout pass from hiding it)
+        bool _showing;      // a real win is on screen (guards the layout pass from hiding it)
+        float _dailyY = float.NaN;   // $DailyChallange's authored y, cached on first daily show
 
         /// <summary>The one way to open the popup (MBGameplay.Win).</summary>
         public void Show() {
@@ -51,6 +54,12 @@ namespace qp {
                 if (daily) {
                     var time = dailyRow.RecursiveFindChild<TMPro.TMP_Text>("$Time");
                     if (time != null) time.text = _Clock(DailyChallengeManager.State.timeSec);
+
+                    // Alone (no achievement row underneath) the daily row drops toward center.
+                    var rt = (RectTransform)dailyRow;
+                    if (float.IsNaN(_dailyY)) _dailyY = rt.anchoredPosition.y;   // authored y
+                    rt.anchoredPosition = new Vector2(rt.anchoredPosition.x,
+                        a.Type == EWinAchievement.None ? DailyYAlone : _dailyY);
                 }
             }
         }
@@ -64,10 +73,11 @@ namespace qp {
             if (text != null) text.text = _AchievementText(a);
         }
 
-        // The percent is the hero of the line: gold and oversized, trailing zeros trimmed
+        // The percent is the hero of the line: gold, oversized and stroked like the win title
+        // (the material tag resolves via Resources/Fonts & Materials/), trailing zeros trimmed
         // (90.00 -> "90", 90.10 -> "90.1").
         static string _AchievementText(WinAchievement a) {
-            string pct = $"<size=91><color=#FFB300>{a.Pct.ToString("0.##", CultureInfo.InvariantCulture)}%</color></size>";
+            string pct = $"<size=91><color=#FFB300><material=\"Mitr-SemiBold Win Text\">{a.Pct.ToString("0.##", CultureInfo.InvariantCulture)}%</material></color></size>";
             return a.Type switch {
                 EWinAchievement.Time     => $"Faster than {pct} of players!",
                 EWinAchievement.NoBones  => $"Better than {pct} of players!",
