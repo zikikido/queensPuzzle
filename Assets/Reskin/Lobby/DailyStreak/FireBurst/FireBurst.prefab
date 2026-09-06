@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4762489871284321243
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1895693492061665878}
+  - component: {fileID: 1237180382684133917}
+  m_Layer: 0
+  m_Name: FireBurst
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1895693492061665878
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4762489871284321243}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 100, y: 100, z: 100}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1237180382684133917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4762489871284321243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bbdd705470bb7a4e841cc46d6234ff0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  UI: 1
+  FlameSprite: {fileID: 403208247147482157, guid: 55a86114d6a8e644eb1589da8d925241, type: 3}
+  GlowSprite: {fileID: -676628513636133388, guid: 4d25c283d27cee044a2e57a13dde4510, type: 3}
+  Tongues: 10
+  Embers: 10
+  Sparks: 6
+  Smoke: 4
+  Seed: 5
+  Speed: 3
+  LifeTime: 3
+  Radius: 1
+  RiseHeight: 3
+  SizeMin: 0.3
+  SizeMax: 0.6
+  Tints:
+  - {r: 1, g: 0.9, b: 0.5, a: 1}
+  - {r: 1, g: 0.65, b: 0.15, a: 1}
+  - {r: 1, g: 0.4, b: 0.05, a: 1}
