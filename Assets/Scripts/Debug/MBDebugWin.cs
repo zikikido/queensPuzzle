@@ -110,6 +110,7 @@ namespace qp {
             GUILayout.Space(16);
             GUILayout.Label("Overlays");
             if (Button($"FPS overlay: {(AppData.ShowFps.Value ? "ON" : "OFF")}")) MBFpsOverlay.Toggle();
+            if (Button($"Reaction FX loop (TEMP): {(MBReactionFpsTest.Running ? "ON" : "OFF")}")) MBReactionFpsTest.Toggle();
 
 #if NOTIFICATION_INSTALLER
             GUILayout.Space(16);

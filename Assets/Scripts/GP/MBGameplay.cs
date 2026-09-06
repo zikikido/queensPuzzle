@@ -34,6 +34,7 @@ namespace qp {
         MBTouches _touches;
         bool _ready;                 // input gated until the bloom reveal finishes
         MBWinPopup _winPopup;        // found by type (it lives elsewhere in the scene, inactive)
+        readonly ReactionDirector _reactions = new ReactionDirector();   // rare "nice move" reactions
         MBFirstTryPopup _firstTryPopup;   // level-start "XX% pass on their first try" toast (optional)
         MBDailyStreakInfoPopup _streakProgressPopup;          // shown when the streak advanced
         MBDailyStreakInGameRewordedPopup _streakRewardPopup;    // shown when a milestone was hit
@@ -184,12 +185,17 @@ namespace qp {
         // Run a boost's effect; true when it actually did something (so the button spends one).
         bool UseBoost(EBoostType type) {
             switch (type) {
-                case EBoostType.QUEEN: return OpenQueen();
+                case EBoostType.QUEEN: {
+                    bool opened = OpenQueen();
+                    if (opened) _reactions.OnBoost(Time.unscaledTime);   // revealed progress isn't the player's thinking
+                    return opened;
+                }
                 case EBoostType.HINT:
                     MBToturial.instance?.SetHandVisible(false);   // boost hint: Apply button, no hand
                     MBToturial.instance?.SetApplyVisible(true);
                     // count + sound only here (player's boost) — the tutorial calls OpenHint directly
                     if (OpenHint()) {
+                        _reactions.OnBoost(Time.unscaledTime);
                         CommonSFX.Play(GPSFX.Instance.Hint);
                         AppData.LastPlayData.hintsUsed++;
                         AppData.LastPlayData.Save();
@@ -480,6 +486,8 @@ namespace qp {
             yield return BloomReveal();
             Haptics.Prepare();   // warm the engine so the first tap fires without latency
             _ready = true;
+            _reactions.OnLevelStart(AppData.LevelIdx.Value, Time.unscaledTime);
+            ReactionBackdrop.ColorAt = p => { var c = HitTest(p); return c != null ? c.CellColor : (Color?)null; };
             SetChromeInteractable(true);   // bloom done — bars usable again
 
             // Level-start social proof, right after the reveal — self-dismissing, never blocks.
@@ -581,6 +589,8 @@ namespace qp {
             _stroke?.Add(new CellEdit(cell.Y * _n + cell.X, cell.State));
             cell.MarkCell(to);
             SaveBoard();
+            if (to == MBCell.ECellType.X && !cell.IsSolutionQueen)
+                _reactions.OnCorrectX(Time.unscaledTime, cell.transform.position);
         }
 
         // ---- board persistence: every move is saved; reopening the same level restores it ----
@@ -742,6 +752,7 @@ namespace qp {
                 else {
                     Haptics.Play(GameHaptic.Happy);
                     CommonSFX.Play(GPSFX.Instance.PlaceQueen);
+                    _reactions.OnCorrectQueen(placed, _n, Time.unscaledTime, cell.transform.position);
                 }
             } else {
                 PlayQueens(MBCell.QueenState.DISAPPOINTED);   // a wrong queen — the board is let down
@@ -759,6 +770,7 @@ namespace qp {
                     AppData.LastPlayData.bonesLost++;   // a bone is lost (saved with the board)
                     AppData.LastPlayData.Save();
                     _topBar?.SetWrongMoves(AppData.LastPlayData.bonesLost);
+                    _reactions.OnWrong(AppData.LastPlayData.bonesLost, _topBar != null ? _topBar.MaxWrongMoves : int.MaxValue);
                 }
                 Haptics.Play(GameHaptic.Wrong);
                 CommonSFX.Play(GPSFX.Instance.Error);
@@ -947,6 +959,7 @@ namespace qp {
             SaveBoard();
             Analytics.LivesAdded(GameConfig.BonesAddedAfterRewarded);
             _topBar?.SetWrongMoves(0);
+            _reactions.OnBoost(Time.unscaledTime);   // revive: ad time isn't thinking time, don't fake an "unstuck"
             _ready = true;
 
             // resume without a bloom → re-show the banner ourselves (same level gate as BuildBoard)

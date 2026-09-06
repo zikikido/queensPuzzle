@@ -42,6 +42,9 @@ namespace qp {
             return (transform as RectTransform).sizeDelta;
         }
 
+        /// <summary>The region color painted on this cell — lets effects avoid blending into it.</summary>
+        public Color CellColor => _cellSprite != null ? _cellSprite.color : Color.white;
+
         public void Init(int clrindx, int xindex, int yindex, bool hasQueen) {
             X = xindex;
             Y = yindex;
