@@ -15,6 +15,7 @@ namespace qp {
         public bool UI;
         public Sprite PawSprite;
         public int Steps = 5;            // trail paw prints
+        public bool RandomSeed = true;   // each Play rolls a new arrangement; off = always the Seed field
         public int Seed = 4;
         public float Speed = 1f;
         public float StampSize = 0.85f;
@@ -99,7 +100,7 @@ namespace qp {
                 var sr = go.GetComponent<SpriteRenderer>();
                 if (sr == null) sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = PawSprite;
-                sr.sortingOrder = i == 0 ? 310 : 300 + i;
+                sr.sortingOrder = i == 0 ? 50 : i;    // stamp above its trail
                 sr.enabled = false;
                 _sr[i] = sr;
             }
@@ -132,7 +133,8 @@ namespace qp {
 
         /// <summary>Play in place (UI: leave the RectTransform where it is).</summary>
         public void Play() {
-            Init();
+            if (RandomSeed) { Seed = Random.Range(0, 1 << 20); Rebuild(); }
+            else Init();
             _avoidBackdrop();
             StopAllCoroutines();
             StartCoroutine(_run());

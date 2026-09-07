@@ -1,13 +1,10 @@
 fileFormatVersion: 2
-guid: 41e2a557c0025dc4c82197b2f32de65e
+guid: e1c11acd303000a4f9e8a3599d228813
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -5411893110744544436
-    second: Paw_0
-  - first:
-      213: -4055733351385865141
-    second: Paw_1
+      213: 2126420921054381646
+    second: ChatGPT Image Sep 7, 2026, 05_17_57 PM_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -129,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Paw_0
+      name: ChatGPT Image Sep 7, 2026, 05_17_57 PM_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 256
-        height: 256
+        x: 1
+        y: 11
+        width: 109
+        height: 105
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,30 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c4b00b3a3e715e4b0800000000000000
-      internalID: -5411893110744544436
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Paw_1
-      rect:
-        serializedVersion: 2
-        x: 61
-        y: 234
-        width: 7
-        height: 6
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: b44e0fe410427b7c0800000000000000
-      internalID: -4055733351385865141
+      spriteID: e46c76abf80928d10800000000000000
+      internalID: 2126420921054381646
       vertices: []
       indices: 
       edges: []
@@ -186,8 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Paw_0: -5411893110744544436
-      Paw_1: -4055733351385865141
+      ChatGPT Image Sep 7, 2026, 05_17_57 PM_0: 2126420921054381646
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

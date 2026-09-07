@@ -12,6 +12,7 @@ namespace qp {
 
         public Sprite[] Sprites;
         public int Count = 12;
+        public bool RandomSeed = true;   // each Play rolls a new arrangement; off = always the Seed field
         public int Seed = 7;
         public float Speed = 1f;        // playback speed: 2 = twice as fast
         public float LifeTime = 1.5f;   // base heart life in seconds (at Speed 1)
@@ -51,7 +52,7 @@ namespace qp {
                 if (sr == null) sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = Sprites[i % Sprites.Length];
                 sr.color = Tints[i % Tints.Length];
-                sr.sortingOrder = 300 + i;
+                sr.sortingOrder = i;
                 sr.enabled = false;
                 _items[i] = sr;
 
@@ -91,6 +92,8 @@ namespace qp {
 
         public void Play(Vector3 worldPos) {
             transform.position = worldPos;
+            if (RandomSeed) { Seed = Random.Range(0, 1 << 20); Rebuild(); }
+            else Init();
             StopAllCoroutines();
             StartCoroutine(_run());
         }

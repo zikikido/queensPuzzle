@@ -21,6 +21,7 @@ namespace qp {
         public int Embers = 8;
         public int Sparks = 6;
         public int Smoke = 4;
+        public bool RandomSeed = true;   // each Play rolls a new arrangement; off = always the Seed field
         public int Seed = 5;
         public float Speed = 1f;
         public float LifeTime = 0.55f;   // base item life in seconds (at Speed 1)
@@ -69,7 +70,7 @@ namespace qp {
                     _size[i] = Radius * 0.9f;
                     _tint[i] = Color.Lerp(Tints[0], Color.white, 0.5f);
                     sprite = GlowSprite;
-                    orders[i] = 299;
+                    orders[i] = 10;                       // flash above smoke/glow, behind flames
                 } else if (i <= Tongues) {                           // flame tongues, two depths
                     int k = i - 1;
                     bool inner = k >= (Tongues + 1) / 2;             // second half = bright core, in front
@@ -85,7 +86,7 @@ namespace qp {
                         ? Color.Lerp(Tints[0], Color.white, Random.Range(0.1f, 0.35f))
                         : Color.Lerp(Tints[Tints.Length - 1], Tints[Tints.Length / 2], Random.value);
                     sprite = FlameSprite;
-                    orders[i] = (inner ? 315 : 300) + i;
+                    orders[i] = (inner ? 40 : 20) + i;
                 } else if (i <= Tongues + Embers) {                  // ember
                     _kind[i] = 2;
                     _delay[i] = Random.Range(0.02f, 0.1f);
@@ -95,7 +96,7 @@ namespace qp {
                     _size[i] = Random.Range(0.08f, 0.16f);
                     _tint[i] = Tints[Random.Range(0, Tints.Length)];
                     sprite = FlameSprite;
-                    orders[i] = 330 + i;
+                    orders[i] = 60 + i;
                 } else if (i <= Tongues + Embers + Sparks) {         // spark streak
                     _kind[i] = 4;
                     _delay[i] = Random.Range(0f, 0.08f);
@@ -106,7 +107,7 @@ namespace qp {
                     _wobblePhase[i] = Random.Range(0f, Mathf.PI * 2f);
                     _tint[i] = new Color(1f, 0.95f, 0.55f);
                     sprite = FlameSprite;
-                    orders[i] = 340 + i;
+                    orders[i] = 80 + i;                   // sparks on top
                 } else if (i <= Tongues + Embers + Sparks + Smoke) { // smoke puff
                     _kind[i] = 3;
                     _delay[i] = LifeTime * Random.Range(0.22f, 0.38f);
@@ -117,7 +118,7 @@ namespace qp {
                     _wobblePhase[i] = Random.Range(0f, Mathf.PI * 2f);
                     _tint[i] = new Color(0.58f, 0.54f, 0.51f);
                     sprite = GlowSprite;
-                    orders[i] = 296 + i - (Tongues + Embers + Sparks);   // behind the flames
+                    orders[i] = 1 + i - (Tongues + Embers + Sparks);      // behind the flames
                 } else {                                             // base glow, grounds the fire
                     _kind[i] = 5;
                     _delay[i] = 0f;
@@ -125,7 +126,7 @@ namespace qp {
                     _size[i] = Radius * 1.6f;
                     _tint[i] = Tints[Tints.Length / 2];
                     sprite = GlowSprite;
-                    orders[i] = 295;
+                    orders[i] = 0;                        // base glow at the very back
                 }
                 _makeItem(i, sprite, orders[i]);
                 _timeline = Mathf.Max(_timeline, _delay[i] + _life[i]);
@@ -192,7 +193,8 @@ namespace qp {
 
         /// <summary>Play in place (UI: leave the RectTransform where it is).</summary>
         public void Play() {
-            Init();
+            if (RandomSeed) { Seed = Random.Range(0, 1 << 20); Rebuild(); }
+            else Init();
             StopAllCoroutines();
             StartCoroutine(_run());
         }

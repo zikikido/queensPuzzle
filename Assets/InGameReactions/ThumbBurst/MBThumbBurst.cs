@@ -17,6 +17,7 @@ namespace qp {
         public Sprite StarSprite;
         public int Minis = 9;
         public int Stars = 6;
+        public bool RandomSeed = true;   // each Play rolls a new arrangement; off = always the Seed field
         public int Seed = 11;
         public float Speed = 1f;
         public float LifeTime = 0.7f;    // base item life in seconds (at Speed 1)
@@ -62,7 +63,7 @@ namespace qp {
                     _size[i] = BigSize;
                     _tint[i] = Tint;
                     sprite = ThumbSprite;
-                    orders[i] = 315;
+                    orders[i] = 50;                       // big thumb above the minis
                 } else if (i <= Minis) {                             // mini thumbs, upward fan
                     _kind[i] = 1;
                     _delay[i] = 0.05f + Random.Range(0f, 0.12f);
@@ -74,7 +75,7 @@ namespace qp {
                     _spin[i] = Random.Range(4f, 8f);
                     _tint[i] = Color.Lerp(Tint, Color.white, Random.Range(0f, 0.3f));
                     sprite = ThumbSprite;
-                    orders[i] = 300 + i;
+                    orders[i] = i;
                 } else {                                             // sparkle stars, all directions
                     _kind[i] = 2;
                     _delay[i] = Random.Range(0f, 0.08f);
@@ -86,7 +87,7 @@ namespace qp {
                     _spin[i] = Random.Range(-4f, 4f);
                     _tint[i] = Color.Lerp(StarTint, Color.white, Random.Range(0f, 0.4f));
                     sprite = StarSprite;
-                    orders[i] = 330 + i;
+                    orders[i] = 60 + i;                   // stars on top
                 }
                 _makeItem(i, sprite, orders[i]);
                 _timeline = Mathf.Max(_timeline, _delay[i] + _life[i]);
@@ -153,7 +154,8 @@ namespace qp {
 
         /// <summary>Play in place (UI: leave the RectTransform where it is).</summary>
         public void Play() {
-            Init();
+            if (RandomSeed) { Seed = Random.Range(0, 1 << 20); Rebuild(); }
+            else Init();
             StopAllCoroutines();
             StartCoroutine(_run());
         }
