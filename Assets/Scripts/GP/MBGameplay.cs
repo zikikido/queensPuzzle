@@ -589,7 +589,22 @@ namespace qp {
             _stroke?.Add(new CellEdit(cell.Y * _n + cell.X, cell.State));
             cell.MarkCell(to);
             SaveBoard();
-            if (to == MBCell.ECellType.X && !cell.IsSolutionQueen)
+            if (to == MBCell.ECellType.X && !cell.IsSolutionQueen) {
+                _pendingX ??= new System.Collections.Generic.Dictionary<MBCell, Coroutine>();
+                if (_pendingX.TryGetValue(cell, out var prev) && prev != null) StopCoroutine(prev);
+                _pendingX[cell] = StartCoroutine(_correctXAfterTapWindow(cell));
+            }
+        }
+
+        System.Collections.Generic.Dictionary<MBCell, Coroutine> _pendingX;
+
+        // The first tap of a queen double-tap paints a transient X — wait out the double-tap
+        // window (with headroom) and count the X only if it survived (a real mark, not half
+        // a queen gesture).
+        IEnumerator _correctXAfterTapWindow(MBCell cell) {
+            yield return new WaitForSecondsRealtime(_touches.DoubleClickDelteTime * 1.5f);
+            _pendingX.Remove(cell);
+            if (cell != null && cell.State == MBCell.ECellType.X)
                 _reactions.OnCorrectX(Time.unscaledTime, cell.transform.position);
         }
 
