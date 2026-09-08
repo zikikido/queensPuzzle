@@ -287,11 +287,27 @@ namespace QueensPuzzle.EditorTools
                 {
                     if (GUILayout.Button("Save", GUILayout.Height(24))) SaveNumber();
                     if (GUILayout.Button("Recheck", GUILayout.Height(24))) Recheck();
+                    if (GUILayout.Button("Recolor", GUILayout.Height(24))) RecolorLevel();
                 }
 
                 if (GUILayout.Button("Play", GUILayout.Height(24))) Play();
             }
 
+        }
+
+        // Same rules as the campaign recolor (OKLab spread + no same-family neighbours),
+        // applied to just the loaded level. Seeded by level number, like the campaign pass.
+        void RecolorLevel()
+        {
+            var assign = CampaignBuilderWindow.RecolorSingle(_level, _levelNumber);
+            if (assign == null) { _status = "Recolor failed — no colour set fits the rules."; return; }
+            bool identity = true;
+            for (int r = 0; r < _level.size; r++) if (assign[r] != r) { identity = false; break; }
+            _level.regionColors = identity ? null : assign;
+            if (EditorUtility.IsPersistent(_level)) EditorUtility.SetDirty(_level);
+            SeedPaintFromLevel();
+            _status = "Recoloured with campaign rules.";
+            Repaint();
         }
 
         void HandleObjectPicker()

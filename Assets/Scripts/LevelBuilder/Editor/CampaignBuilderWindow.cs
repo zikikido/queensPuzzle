@@ -281,6 +281,8 @@ namespace QueensPuzzle
             new Vector2Int(3, 13),   // magenta ~ salmon
             new Vector2Int(1, 11),   // purple ~ periwinkle
             new Vector2Int(10, 12),  // muted blue ~ muted green
+            new Vector2Int(4, 8),    // mint ~ light green
+            new Vector2Int(4, 16),   // mint ~ pale cyan
         };
 
         System.Collections.Generic.List<Vector2Int> ByEyePairs()
@@ -381,8 +383,12 @@ namespace QueensPuzzle
             }
 
             if (colorFindings == null) return;
-            EditorGUILayout.LabelField($"{colorFindings.Count} {colorFindingsTitle} in {CountDistinctLevels()} level(s) of {SetName}",
-                colorFindings.Count > 0 ? EditorStyles.miniBoldLabel : EditorStyles.miniLabel);
+            int violations = 0;
+            foreach (var f in colorFindings) if (f.lvl > 0) violations++;
+            EditorGUILayout.LabelField(
+                $"{violations} {colorFindingsTitle} in {CountDistinctLevels()} level(s) of {SetName}" +
+                (colorFindings.Count > violations ? $"  +{colorFindings.Count - violations} borderline" : ""),
+                violations > 0 ? EditorStyles.miniBoldLabel : EditorStyles.miniLabel);
             if (colorFindings.Count == 0) return;
             colorScroll = EditorGUILayout.BeginScrollView(colorScroll, GUILayout.MaxHeight(140));
             int i = 0;
@@ -396,7 +402,9 @@ namespace QueensPuzzle
                     if (parts.Count < 3) parts.Add(f.desc);
                     else if (parts.Count == 3) parts.Add("…");
                 }
-                EditorGUILayout.LabelField($"L{lvl}:  {string.Join(" · ", parts)}", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField(
+                    lvl > 0 ? $"L{lvl}:  {string.Join(" · ", parts)}" : string.Join(" · ", parts),
+                    EditorStyles.miniLabel);
             }
             EditorGUILayout.EndScrollView();
         }
@@ -404,7 +412,7 @@ namespace QueensPuzzle
         int CountDistinctLevels()
         {
             var seen = new System.Collections.Generic.HashSet<int>();
-            foreach (var f in colorFindings) seen.Add(f.lvl);
+            foreach (var f in colorFindings) if (f.lvl > 0) seen.Add(f.lvl);
             return seen.Count;
         }
 
@@ -454,6 +462,9 @@ namespace QueensPuzzle
             colorFindings = new System.Collections.Generic.List<(int, string)>();
             colorFindingsTitle = global && neighbors ? "color issue(s)"
                 : global ? "close pair(s)" : "forbidden neighbor pair(s)";
+            // the neighbors button also reports near-threshold pairs, with the levels they touch in
+            var border = neighbors && !global ? BorderlinePairs(lab) : null;
+            var borderHits = new System.Collections.Generic.Dictionary<(int, int), System.Collections.Generic.List<string>>();
             if (!System.IO.Directory.Exists(OutputFolder)) return;
             foreach (var file in System.IO.Directory.GetFiles(OutputFolder, "*.asset"))
             {
@@ -473,44 +484,67 @@ namespace QueensPuzzle
                             if (d < colorMinDist)
                                 colorFindings.Add((l, $"{palette[ca].Name}~{palette[cb].Name} {d:0.00}"));
                         }
-                        if (neighbors && adj[a, b] && (ca == cb || ForbiddenNeighbor(ca, cb, lab)))
-                            colorFindings.Add((l, $"{(char)('A' + a)}~{(char)('A' + b)} {palette[ca].Name}~{palette[cb].Name}"));
+                        if (neighbors && adj[a, b])
+                        {
+                            if (ca == cb || ForbiddenNeighbor(ca, cb, lab))
+                                colorFindings.Add((l, $"{(char)('A' + a)}~{(char)('A' + b)} {palette[ca].Name}~{palette[cb].Name}"));
+                            else if (border != null && border.ContainsKey((Mathf.Min(ca, cb), Mathf.Max(ca, cb))))
+                            {
+                                var key = (Mathf.Min(ca, cb), Mathf.Max(ca, cb));
+                                if (!borderHits.TryGetValue(key, out var hits)) borderHits[key] = hits = new System.Collections.Generic.List<string>();
+                                if (hits.Count < 3) hits.Add($"L{l} {(char)('A' + a)}~{(char)('A' + b)}");
+                            }
+                        }
                     }
             }
             colorFindings.Sort((x, y) => x.lvl.CompareTo(y.lvl));
+            if (border != null)
+            {
+                int row = 0;
+                foreach (var kv in border)
+                {
+                    string where = borderHits.TryGetValue(kv.Key, out var hits)
+                        ? string.Join(", ", hits) : "not adjacent in this set";
+                    colorFindings.Add((--row, $"borderline  {kv.Value}   ({where})"));
+                }
+            }
             Repaint();
         }
 
-        // Recolour every level in the set under both rules: every pair on the board at least
-        // colorMinDist apart in OKLab, and no forbiddenNeighbors pair on touching regions.
-        // Same-name pairs may share a board — they just never touch — which leaves far more
-        // palette slack for big boards than the old everything-far-from-everything pass.
+        // Recolour levels that violate either rule: a pair anywhere on the board closer than
+        // colorMinDist in OKLab, or a forbidden family pair on touching regions. Clean levels
+        // keep the colours players already saw. Same-name pairs may share a board — they just
+        // never touch — which leaves far more palette slack for big boards than the old
+        // everything-far-from-everything pass.
         void RecolorAllLevels()
         {
             if (!System.IO.Directory.Exists(OutputFolder)) return;
             var files = System.IO.Directory.GetFiles(OutputFolder, "*.asset");
             if (!EditorUtility.DisplayDialog("Recolor all levels",
-                    $"Rewrite region colours on {files.Length} level(s) in {SetName}?\n\n" +
-                    $"Every board gets colours at least {colorMinDist:0.00} apart,\n" +
+                    $"Rewrite region colours on violating level(s) of {files.Length} in {SetName}?\n\n" +
+                    $"Only boards that break the rules are touched: colours at least {colorMinDist:0.00} apart,\n" +
                     "and same-name colours never touch.\n" +
                     "Re-export the level pack afterwards.", "Recolor", "Cancel"))
                 return;
 
             var lab = PaletteLab();
-            int done = 0, failed = 0;
+            int done = 0, failed = 0, skipped = 0;
             try
             {
                 for (int i = 0; i < files.Length; i++)
                 {
                     if (!int.TryParse(System.IO.Path.GetFileNameWithoutExtension(files[i]), out int l)) continue;
                     if (EditorUtility.DisplayCancelableProgressBar("Recoloring",
-                            $"level {l}  ({done} done, {failed} failed)", (float)i / files.Length))
+                            $"level {l}  ({done} done, {skipped} clean, {failed} failed)", (float)i / files.Length))
                         break;
 
                     var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
                     if (lvl == null) continue;
 
-                    var assign = PickSpreadColors(lvl.size, l, lab, Adjacency(lvl));
+                    var adj = Adjacency(lvl);
+                    if (!HasColorIssues(lvl, lab, adj)) { skipped++; continue; }   // clean — keep shipped colours
+
+                    var assign = PickSpreadColors(lvl.size, l, lab, adj);
                     if (assign == null) { failed++; continue; }   // threshold too high for this size
 
                     bool identity = true;
@@ -524,9 +558,45 @@ namespace QueensPuzzle
             finally { EditorUtility.ClearProgressBar(); }
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"[CampaignBuilder] recoloured {done} level(s), {failed} unsolvable at {colorMinDist:0.00}. " +
+            Debug.Log($"[CampaignBuilder] recoloured {done} level(s), {skipped} already clean, {failed} unsolvable at {colorMinDist:0.00}. " +
                       "Re-export the level pack to ship it.");
             FindColorIssues(global: true, neighbors: true);   // should come back empty
+        }
+
+        // Palette pairs that PASS every rule but sit within a safety margin of a threshold.
+        // The rules are step functions over a continuous perception, so a pair this close to
+        // a line is "unchecked", not "clean" — review by eye and veto via the by-eye list.
+        System.Collections.Generic.Dictionary<(int, int), string> BorderlinePairs(Vector3[] lab)
+        {
+            var palette = qp.SORegionsColors.Instance.Colors;
+            var border = new System.Collections.Generic.Dictionary<(int, int), string>();
+            for (int a = 0; a < lab.Length; a++)
+                for (int b = a + 1; b < lab.Length; b++)
+                {
+                    float ok = Vector3.Distance(lab[a], lab[b]);
+                    if (ok < colorMinDist || ForbiddenNeighbor(a, b, lab)) continue;   // already caught
+                    float nm = a < nameDist.GetLength(0) && b < nameDist.GetLength(0) ? nameDist[a, b] : 1f;
+                    float hd = Mathf.Abs(Mathf.DeltaAngle(HueDeg(lab[a]), HueDeg(lab[b])));
+                    if (ok >= colorMinDist + 0.03f && nm >= nameMinDist + 0.05f && hd >= hueMinDeg + 4f) continue;
+                    border[(a, b)] = $"{a}~{b} {palette[a].Name}~{palette[b].Name}  OKLab {ok:0.00} · name {nm:0.00} · hue {hd:0}°";
+                }
+            return border;
+        }
+
+        // True when the board breaks either rule — a close (or identical) pair anywhere,
+        // or a forbidden family pair touching.
+        bool HasColorIssues(LevelData lvl, Vector3[] lab, bool[,] adj)
+        {
+            int n = lvl.size;
+            for (int a = 0; a < n; a++)
+                for (int b = a + 1; b < n; b++)
+                {
+                    int ca = lvl.ColorOf(a), cb = lvl.ColorOf(b);
+                    if (ca >= lab.Length || cb >= lab.Length) continue;
+                    if (ca == cb || Vector3.Distance(lab[ca], lab[cb]) < colorMinDist) return true;
+                    if (adj[a, b] && ForbiddenNeighbor(ca, cb, lab)) return true;
+                }
+            return false;
         }
 
         /// <summary>
@@ -557,6 +627,15 @@ namespace QueensPuzzle
                 if (attempt > 250) break;   // enough candidates seen
             }
             return best;   // null => no spread set at this threshold, lower the slider
+        }
+
+        /// One level under the same rules and default thresholds as the campaign pass —
+        /// LevelBuilderWindow's per-level Recolor button. Null when no colour set fits.
+        public static int[] RecolorSingle(LevelData lvl, int seed)
+        {
+            var win = CreateInstance<CampaignBuilderWindow>();
+            try { return win.PickSpreadColors(lvl.size, seed, PaletteLab(), Adjacency(lvl)); }
+            finally { DestroyImmediate(win); }
         }
 
         /// Place the picked colours on the regions so no forbidden pair touches.
