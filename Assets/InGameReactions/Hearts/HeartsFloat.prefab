@@ -406,13 +406,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Sprites:
   - {fileID: 1114489221793674916, guid: b25e8e70ca95f1a418f42bdd245bcaee, type: 3}
-  Count: 12
+  Count: 5
+  RandomSeed: 1
   Seed: 7
   Speed: 2
   LifeTime: 2
   SizeMin: 0.5
-  SizeMax: 1.5
-  SpawnArea: {x: 2.2, y: 0.8}
+  SizeMax: 1
+  SpawnArea: {x: 2.2, y: 2.2}
+  Outline: 1
+  OutlineColor: {r: 1, g: 1, b: 1, a: 1}
+  OutlineScale: 1.15
   Tints:
   - {r: 1, g: 0.35, b: 0.45, a: 1}
   - {r: 1, g: 0.62, b: 0.2, a: 1}

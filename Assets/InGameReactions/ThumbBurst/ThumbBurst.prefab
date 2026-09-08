@@ -1332,7 +1332,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 2.5, y: 2.5, z: 2.5}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6888793966841941771}
@@ -1370,6 +1370,7 @@ MonoBehaviour:
   StarSprite: {fileID: -5800627885573411657, guid: fe77cc3986aa2014e97dd17524e5dfc6, type: 3}
   Minis: 9
   Stars: 6
+  RandomSeed: 1
   Seed: 11
   Speed: 1
   LifeTime: 0.7
