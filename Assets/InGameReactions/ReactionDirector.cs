@@ -35,7 +35,7 @@ namespace qp {
         float _avgGap = -1f;               // running average of gaps between correct actions
         float _progressAnchor;             // stuck clock: now - anchor = time without progress
         float _lastCorrectAt = -1f;        // previous correct action, for pace + streak gaps
-        int _fastStreak;
+        float _fastStreak;                 // combo credit: fast queen +1, fast X +1/3
         int _cleanStreak;                  // consecutive correct queens, no wrongs/boosts between
         int _levelsSinceMistake = 99;      // 99 = no mistake seen this session
         bool _wrongThisLevel;
@@ -69,12 +69,16 @@ namespace qp {
             _cleanStreak = 0;
         }
 
-        /// <summary>Correct X: worth a third of a queen — nudges the stuck clock, can fire unstuck.</summary>
+        /// <summary>Correct X: worth a third of a queen — nudges the stuck clock, adds 1/3
+        /// combo credit when fast (never breaks a combo), can fire unstuck.</summary>
         public void OnCorrectX(float now, Vector3 pos) {
             bool stuck = _isStuck(now);
+            float gap = _lastCorrectAt < 0f ? float.MaxValue : now - _lastCorrectAt;
+            if (gap <= Mathf.Clamp(_pace() * FastFactor, FastMin, FastMax))
+                _fastStreak += 1f / 3f;
             _progressAnchor += (now - _progressAnchor) / 3f;
             _observePace(now);
-            if (stuck && _gateOpen()) _fire(pos);
+            if (stuck && _gateOpen()) _fire(pos, now);
         }
 
         /// <summary>Correct queen that did NOT win the level.</summary>
@@ -82,7 +86,7 @@ namespace qp {
             bool stuck = _isStuck(now);
             float gap = _lastCorrectAt < 0f ? float.MaxValue : now - _lastCorrectAt;
             bool fast = gap <= Mathf.Clamp(_pace() * FastFactor, FastMin, FastMax);
-            _fastStreak = fast ? _fastStreak + 1 : 0;
+            _fastStreak = fast ? _fastStreak + 1f : 0f;
             _cleanStreak++;
             if (_correctSinceLastBone >= 0) _correctSinceLastBone++;
             _progressAnchor = now;
@@ -92,9 +96,9 @@ namespace qp {
             if (!_gateOpen()) return;
             bool mistakesAreNormal = _wrongThisLevel || _levelsSinceMistake <= 3;
             if (stuck || _correctSinceLastBone == 2
-                || (_fastStreak >= 3 && placed <= total * 0.6f)
+                || (_fastStreak >= 2.99f && placed <= total * 0.6f)
                 || (_cleanStreak >= 6 && mistakesAreNormal))
-                _fire(pos);
+                _fire(pos, now);
         }
 
         // ---- decision helpers ----
@@ -117,8 +121,9 @@ namespace qp {
 
         // ---- playing ----
 
-        void _fire(Vector3 pos) {
-            _fastStreak = 0;
+        void _fire(Vector3 pos, float now) {
+            _progressAnchor = now;   // a reaction acknowledges the progress — fresh stuck clock
+            _fastStreak = 0f;
             _cleanStreak = 0;
             _correctSinceLastBone = -1;
 
