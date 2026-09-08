@@ -224,24 +224,153 @@ namespace QueensPuzzle
             Debug.Log($"[CampaignBuilder] filled {made} level(s), {scan.open.Count} still open, {attempts} boards generated at tol ±{config.matchTol * 100:0}%");
         }
 
-        // ---- colors: find & fix close colors on touching regions --------------------------
+        // ---- colors: find & fix confusable region colors ----------------------------------
+        //
+        // Two colours can confuse a player in two different ways, and each needs its own rule:
+        //  - physically alike (OKLab distance < colorMinDist): the eye can't tell them apart at
+        //    all, so they must never share a board;
+        //  - same colour *family* (shared XKCD name, or hue angles too close): easy to tell apart
+        //    side by side, but the player identifies regions categorically — "the pink one" — so
+        //    a light pink and a dark pink still collide. Such pairs may share a board but must
+        //    never touch. The two family tests cover each other's blind spots: names miss pairs
+        //    straddling a naming boundary, hue misses pairs people collapse into one name.
 
         bool colorsFoldout = true;
         float colorMinDist = 0.09f;   // OKLab distance below which two colors read as "the same"
-        System.Collections.Generic.List<(int lvl, int ca, int cb, float d)> colorFindings;
+        float nameMinDist = 0.20f;    // XKCD name distance below which two colors share a name
+        float hueMinDeg = 18f;        // hue angle difference below which two colors share a family
+        System.Collections.Generic.List<(int lvl, string desc)> colorFindings;
+        string colorFindingsTitle;
         Vector2 colorScroll;
+
+        // XKCD colour-survey name distance between every SORegionsColors pair: 0 = people give
+        // both colours the same name, 1 = never the same name. Computed offline from the C3
+        // dataset (Heer & Stone) — recompute whenever a palette colour changes.
+        static readonly float[,] nameDist =
+        {
+            { 0.000f, 1.000f, 1.000f, 1.000f, 0.995f, 0.946f, 1.000f, 1.000f, 0.944f, 1.000f, 1.000f, 1.000f, 0.991f, 1.000f, 1.000f, 0.011f, 0.999f },
+            { 1.000f, 0.000f, 0.984f, 0.943f, 0.995f, 0.999f, 0.941f, 0.794f, 1.000f, 0.903f, 0.976f, 0.636f, 1.000f, 0.326f, 0.893f, 1.000f, 0.991f },
+            { 1.000f, 0.984f, 0.000f, 1.000f, 0.625f, 1.000f, 1.000f, 0.128f, 0.990f, 1.000f, 0.158f, 0.158f, 0.942f, 1.000f, 0.259f, 1.000f, 0.095f },
+            { 1.000f, 0.943f, 1.000f, 0.000f, 1.000f, 0.930f, 0.029f, 1.000f, 1.000f, 0.043f, 1.000f, 1.000f, 1.000f, 0.306f, 1.000f, 1.000f, 1.000f },
+            { 0.995f, 0.995f, 0.625f, 1.000f, 0.000f, 1.000f, 1.000f, 0.847f, 0.547f, 1.000f, 0.643f, 0.834f, 0.354f, 1.000f, 0.804f, 0.989f, 0.439f },
+            { 0.946f, 0.999f, 1.000f, 0.930f, 1.000f, 0.000f, 0.947f, 1.000f, 0.996f, 0.975f, 1.000f, 1.000f, 1.000f, 0.982f, 1.000f, 0.950f, 1.000f },
+            { 1.000f, 0.941f, 1.000f, 0.029f, 1.000f, 0.947f, 0.000f, 1.000f, 1.000f, 0.015f, 1.000f, 0.999f, 1.000f, 0.290f, 1.000f, 0.999f, 1.000f },
+            { 1.000f, 0.794f, 0.128f, 1.000f, 0.847f, 1.000f, 1.000f, 0.000f, 1.000f, 0.993f, 0.379f, 0.052f, 0.997f, 0.902f, 0.423f, 1.000f, 0.242f },
+            { 0.944f, 1.000f, 0.990f, 1.000f, 0.547f, 0.996f, 1.000f, 1.000f, 0.000f, 1.000f, 0.994f, 1.000f, 0.182f, 1.000f, 1.000f, 0.918f, 0.918f },
+            { 1.000f, 0.903f, 1.000f, 0.043f, 1.000f, 0.975f, 0.015f, 0.993f, 1.000f, 0.000f, 1.000f, 0.987f, 1.000f, 0.248f, 0.997f, 1.000f, 1.000f },
+            { 1.000f, 0.976f, 0.158f, 1.000f, 0.643f, 1.000f, 1.000f, 0.379f, 0.994f, 1.000f, 0.000f, 0.307f, 0.947f, 1.000f, 0.036f, 1.000f, 0.352f },
+            { 1.000f, 0.636f, 0.158f, 1.000f, 0.834f, 1.000f, 0.999f, 0.052f, 1.000f, 0.987f, 0.307f, 0.000f, 0.996f, 0.813f, 0.309f, 1.000f, 0.291f },
+            { 0.991f, 1.000f, 0.942f, 1.000f, 0.354f, 1.000f, 1.000f, 0.997f, 0.182f, 1.000f, 0.947f, 0.996f, 0.000f, 1.000f, 0.992f, 0.978f, 0.850f },
+            { 1.000f, 0.326f, 1.000f, 0.306f, 1.000f, 0.982f, 0.290f, 0.902f, 1.000f, 0.248f, 1.000f, 0.813f, 1.000f, 0.000f, 0.949f, 1.000f, 1.000f },
+            { 1.000f, 0.893f, 0.259f, 1.000f, 0.804f, 1.000f, 1.000f, 0.423f, 1.000f, 0.997f, 0.036f, 0.309f, 0.992f, 0.949f, 0.000f, 1.000f, 0.502f },
+            { 0.011f, 1.000f, 1.000f, 1.000f, 0.989f, 0.950f, 0.999f, 1.000f, 0.918f, 1.000f, 1.000f, 1.000f, 0.978f, 1.000f, 1.000f, 0.000f, 0.998f },
+            { 0.999f, 0.991f, 0.095f, 1.000f, 0.439f, 1.000f, 1.000f, 0.242f, 0.918f, 1.000f, 0.352f, 0.291f, 0.850f, 1.000f, 0.502f, 0.998f, 0.000f },
+        };
+
+        // Pairs both family tests call "far" but a human eye confirmed as confusable — the veto
+        // list of last resort, edited in the window and persisted in EditorPrefs. Ships with
+        // magenta #EA73FA ~ salmon #FF808E and purple #B185CF ~ periwinkle #9DAFFF.
+        const string ByEyePrefsKey = "CampaignBuilder.forbiddenByEye";
+        System.Collections.Generic.List<Vector2Int> forbiddenByEye;
+        int byEyeA, byEyeB;
+
+        // Project-level pairs; the prefs list only ever adds on top of these, so removing one
+        // for good means removing it here.
+        static readonly Vector2Int[] shippedByEye =
+        {
+            new Vector2Int(3, 13),   // magenta ~ salmon
+            new Vector2Int(1, 11),   // purple ~ periwinkle
+            new Vector2Int(10, 12),  // muted blue ~ muted green
+        };
+
+        System.Collections.Generic.List<Vector2Int> ByEyePairs()
+        {
+            if (forbiddenByEye != null) return forbiddenByEye;
+            forbiddenByEye = new System.Collections.Generic.List<Vector2Int>(shippedByEye);
+            foreach (var tok in EditorPrefs.GetString(ByEyePrefsKey, "")
+                         .Split(new[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                var ab = tok.Split('~');
+                if (ab.Length == 2 && int.TryParse(ab[0], out int a) && int.TryParse(ab[1], out int b)
+                    && !forbiddenByEye.Contains(new Vector2Int(a, b)))
+                    forbiddenByEye.Add(new Vector2Int(a, b));
+            }
+            return forbiddenByEye;
+        }
+
+        void SaveByEyePairs()
+        {
+            var parts = new string[forbiddenByEye.Count];
+            for (int i = 0; i < parts.Length; i++) parts[i] = $"{forbiddenByEye[i].x}~{forbiddenByEye[i].y}";
+            EditorPrefs.SetString(ByEyePrefsKey, parts.Length == 0 ? "none" : string.Join(";", parts));
+        }
+
+        // Assumes a saturated palette: a near-grey colour has no meaningful hue angle, so the
+        // hue test would need a chroma guard if a pale colour ever joins the palette.
+        bool ForbiddenNeighbor(int a, int b, Vector3[] lab)
+        {
+            if (a >= nameDist.GetLength(0) || b >= nameDist.GetLength(0)) return false;
+            if (nameDist[a, b] < nameMinDist) return true;
+            if (Mathf.Abs(Mathf.DeltaAngle(HueDeg(lab[a]), HueDeg(lab[b]))) < hueMinDeg) return true;
+            foreach (var p in ByEyePairs())
+                if ((p.x == a && p.y == b) || (p.x == b && p.y == a)) return true;
+            return false;
+        }
+
+        static float HueDeg(Vector3 lab) => Mathf.Atan2(lab.z, lab.y) * Mathf.Rad2Deg;
 
         void DrawColorsSection()
         {
             colorsFoldout = EditorGUILayout.Foldout(colorsFoldout, "Colors", true);
             if (!colorsFoldout) return;
 
-            colorMinDist = EditorGUILayout.Slider("Min color distance", colorMinDist, 0.03f, 0.20f);
+            colorMinDist = EditorGUILayout.Slider("Min OKLab distance", colorMinDist, 0.03f, 0.20f);
+            nameMinDist = EditorGUILayout.Slider("Min name distance", nameMinDist, 0.03f, 0.40f);
+            hueMinDeg = EditorGUILayout.Slider("Min hue diff (deg)", hueMinDeg, 5f, 45f);
+
+            // the human veto list — forbidden as neighbours no matter what the sliders say
+            EditorGUILayout.LabelField("Forbidden by eye", EditorStyles.miniBoldLabel);
+            var pal = qp.SORegionsColors.Instance.Colors;
+            var byEye = ByEyePairs();
+            for (int p = 0; p < byEye.Count; p++)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    var pr = byEye[p];
+                    var rect = GUILayoutUtility.GetRect(36, 16, GUILayout.Width(36));
+                    if (pr.x < pal.Length && pr.y < pal.Length)
+                    {
+                        EditorGUI.DrawRect(new Rect(rect.x, rect.y, 16, 16), pal[pr.x].Color);
+                        EditorGUI.DrawRect(new Rect(rect.x + 18, rect.y, 16, 16), pal[pr.y].Color);
+                        EditorGUILayout.LabelField($"{pr.x}~{pr.y}  {pal[pr.x].Name}~{pal[pr.y].Name}", EditorStyles.miniLabel);
+                    }
+                    else EditorGUILayout.LabelField($"{pr.x}~{pr.y}  (outside palette)", EditorStyles.miniLabel);
+                    if (GUILayout.Button("✕", GUILayout.Width(22))) { byEye.RemoveAt(p--); SaveByEyePairs(); }
+                }
+            }
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Find close colors"))
+                var names = new string[pal.Length];
+                for (int p = 0; p < pal.Length; p++) names[p] = $"{p} {pal[p].Name}";
+                byEyeA = EditorGUILayout.Popup(byEyeA, names);
+                byEyeB = EditorGUILayout.Popup(byEyeB, names);
+                if (GUILayout.Button("Add pair", GUILayout.Width(70)) && byEyeA != byEyeB)
                 {
-                    FindCloseColors();
+                    var pr = new Vector2Int(Mathf.Min(byEyeA, byEyeB), Mathf.Max(byEyeA, byEyeB));
+                    if (!byEye.Contains(pr)) { byEye.Add(pr); SaveByEyePairs(); }
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Find close colors (OKLab)"))
+                {
+                    FindColorIssues(global: true, neighbors: false);
+                    GUIUtility.ExitGUI();
+                }
+                if (GUILayout.Button("Find forbidden neighbors (XKCD + hue)"))
+                {
+                    FindColorIssues(global: false, neighbors: true);
                     GUIUtility.ExitGUI();
                 }
                 if (GUILayout.Button("Recolor all levels"))
@@ -252,8 +381,7 @@ namespace QueensPuzzle
             }
 
             if (colorFindings == null) return;
-            var palette = qp.SORegionsColors.Instance.Colors;
-            EditorGUILayout.LabelField($"{colorFindings.Count} close pair(s) in {CountDistinctLevels()} level(s) of {SetName}",
+            EditorGUILayout.LabelField($"{colorFindings.Count} {colorFindingsTitle} in {CountDistinctLevels()} level(s) of {SetName}",
                 colorFindings.Count > 0 ? EditorStyles.miniBoldLabel : EditorStyles.miniLabel);
             if (colorFindings.Count == 0) return;
             colorScroll = EditorGUILayout.BeginScrollView(colorScroll, GUILayout.MaxHeight(140));
@@ -265,7 +393,7 @@ namespace QueensPuzzle
                 while (i < colorFindings.Count && colorFindings[i].lvl == lvl)
                 {
                     var f = colorFindings[i++];
-                    if (parts.Count < 3) parts.Add($"{palette[f.ca].Name}~{palette[f.cb].Name} {f.d:0.00}");
+                    if (parts.Count < 3) parts.Add(f.desc);
                     else if (parts.Count == 3) parts.Add("…");
                 }
                 EditorGUILayout.LabelField($"L{lvl}:  {string.Join(" · ", parts)}", EditorStyles.miniLabel);
@@ -316,46 +444,55 @@ namespace QueensPuzzle
             return adj;
         }
 
-        void FindCloseColors()
+        // global: any two colours on the board closer than colorMinDist in OKLab — such a pair
+        // must not share a board at all. neighbors: touching regions whose colours share a name
+        // per forbiddenNeighbors (or are the same colour outright).
+        void FindColorIssues(bool global, bool neighbors)
         {
             var lab = PaletteLab();
-            colorFindings = new System.Collections.Generic.List<(int, int, int, float)>();
+            var palette = qp.SORegionsColors.Instance.Colors;
+            colorFindings = new System.Collections.Generic.List<(int, string)>();
+            colorFindingsTitle = global && neighbors ? "color issue(s)"
+                : global ? "close pair(s)" : "forbidden neighbor pair(s)";
             if (!System.IO.Directory.Exists(OutputFolder)) return;
             foreach (var file in System.IO.Directory.GetFiles(OutputFolder, "*.asset"))
             {
                 if (!int.TryParse(System.IO.Path.GetFileNameWithoutExtension(file), out int l)) continue;
                 var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
                 if (lvl == null) continue;
-                var adj = Adjacency(lvl);
                 int n = lvl.size;
+                var adj = neighbors ? Adjacency(lvl) : null;
                 for (int a = 0; a < n; a++)
                     for (int b = a + 1; b < n; b++)
                     {
-                        if (!adj[a, b]) continue;
                         int ca = lvl.ColorOf(a), cb = lvl.ColorOf(b);
                         if (ca >= lab.Length || cb >= lab.Length) continue;
-                        float d = ca == cb ? 0f : Vector3.Distance(lab[ca], lab[cb]);
-                        if (d < colorMinDist) colorFindings.Add((l, ca, cb, d));
+                        if (global)
+                        {
+                            float d = ca == cb ? 0f : Vector3.Distance(lab[ca], lab[cb]);
+                            if (d < colorMinDist)
+                                colorFindings.Add((l, $"{palette[ca].Name}~{palette[cb].Name} {d:0.00}"));
+                        }
+                        if (neighbors && adj[a, b] && (ca == cb || ForbiddenNeighbor(ca, cb, lab)))
+                            colorFindings.Add((l, $"{(char)('A' + a)}~{(char)('A' + b)} {palette[ca].Name}~{palette[cb].Name}"));
                     }
             }
             colorFindings.Sort((x, y) => x.lvl.CompareTo(y.lvl));
             Repaint();
         }
 
-        // Recolour every level in the set: give each board a colour set where EVERY pair is at
-        // least colorMinDist apart, not just the touching ones. Adjacency then stops mattering —
-        // if no two colours on the board are close, no two neighbours can be either.
-        //
-        // Replaces the old repair pass, which only patched levels already below the threshold and
-        // left merely-acceptable boards alone. The palette carries more colours than the largest
-        // board needs, and this spends that slack.
+        // Recolour every level in the set under both rules: every pair on the board at least
+        // colorMinDist apart in OKLab, and no forbiddenNeighbors pair on touching regions.
+        // Same-name pairs may share a board — they just never touch — which leaves far more
+        // palette slack for big boards than the old everything-far-from-everything pass.
         void RecolorAllLevels()
         {
             if (!System.IO.Directory.Exists(OutputFolder)) return;
             var files = System.IO.Directory.GetFiles(OutputFolder, "*.asset");
             if (!EditorUtility.DisplayDialog("Recolor all levels",
                     $"Rewrite region colours on {files.Length} level(s) in {SetName}?\n\n" +
-                    $"Every board gets colours at least {colorMinDist:0.00} apart.\n" +
+                    $"Every board gets colours at least {colorMinDist:0.00} apart,\n" +
+                    "and same-name colours never touch.\n" +
                     "Re-export the level pack afterwards.", "Recolor", "Cancel"))
                 return;
 
@@ -373,7 +510,7 @@ namespace QueensPuzzle
                     var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{l}.asset");
                     if (lvl == null) continue;
 
-                    var assign = PickSpreadColors(lvl.size, l, lab);
+                    var assign = PickSpreadColors(lvl.size, l, lab, Adjacency(lvl));
                     if (assign == null) { failed++; continue; }   // threshold too high for this size
 
                     bool identity = true;
@@ -389,18 +526,19 @@ namespace QueensPuzzle
             AssetDatabase.SaveAssets();
             Debug.Log($"[CampaignBuilder] recoloured {done} level(s), {failed} unsolvable at {colorMinDist:0.00}. " +
                       "Re-export the level pack to ship it.");
-            FindCloseColors();   // should come back empty
+            FindColorIssues(global: true, neighbors: true);   // should come back empty
         }
 
         /// <summary>
-        /// n palette colours that are both far apart AND look like a set. Seeded by level number,
-        /// so a level always gets the same colours while neighbours get different ones.
+        /// Region→colour assignment: n palette colours that are far apart AND look like a set,
+        /// arranged so no forbiddenNeighbors pair lands on touching regions. Seeded by level
+        /// number, so a level always gets the same colours while neighbours get different ones.
         ///
         /// Distance alone is not enough: a set can be perfectly distinguishable and still ugly —
         /// hues bunched on one side of the wheel, or a pale cream sitting next to a dark green.
         /// So we generate many valid sets and keep the one that also reads as balanced.
         /// </summary>
-        int[] PickSpreadColors(int n, int seed, Vector3[] lab)
+        int[] PickSpreadColors(int n, int seed, Vector3[] lab, bool[,] adj)
         {
             if (n > lab.Length) return null;
             var rng = new System.Random(seed);
@@ -412,10 +550,41 @@ namespace QueensPuzzle
                 var set = TrySpreadSet(n, rng, lab);
                 if (set == null) continue;
                 float s = HarmonyScore(set, lab);
-                if (s > bestScore) { bestScore = s; best = set; }
-                if (best != null && attempt > 250) break;   // enough candidates seen
+                if (s <= bestScore) continue;
+                var assign = ArrangeOnRegions(set, adj, lab);
+                if (assign == null) continue;   // no arrangement keeps forbidden pairs apart
+                bestScore = s; best = assign;
+                if (attempt > 250) break;   // enough candidates seen
             }
             return best;   // null => no spread set at this threshold, lower the slider
+        }
+
+        /// Place the picked colours on the regions so no forbidden pair touches.
+        /// Exhaustive backtracking — null only when no permutation works for this set.
+        int[] ArrangeOnRegions(int[] set, bool[,] adj, Vector3[] lab)
+        {
+            int n = set.Length;
+            var assign = new int[n];
+            var used = new bool[n];
+
+            bool Place(int region)
+            {
+                if (region == n) return true;
+                for (int i = 0; i < n; i++)
+                {
+                    if (used[i]) continue;
+                    bool ok = true;
+                    for (int r = 0; r < region && ok; r++)
+                        if (adj[region, r] && ForbiddenNeighbor(set[i], assign[r], lab)) ok = false;
+                    if (!ok) continue;
+                    used[i] = true; assign[region] = set[i];
+                    if (Place(region + 1)) return true;
+                    used[i] = false;
+                }
+                return false;
+            }
+
+            return Place(0) ? assign : null;
         }
 
         /// One greedy attempt: shuffle the palette, take colours that clear colorMinDist.
