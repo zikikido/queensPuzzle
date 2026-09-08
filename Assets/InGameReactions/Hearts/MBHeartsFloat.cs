@@ -19,6 +19,9 @@ namespace qp {
         public float SizeMin = 0.24f;
         public float SizeMax = 0.55f;
         public Vector2 SpawnArea = new Vector2(1.1f, 0.4f);   // box (width, height) hearts start inside
+        public bool Outline = true;              // white sticker edge behind every heart
+        public Color OutlineColor = Color.white;
+        public float OutlineScale = 1.15f;
         public Color[] Tints = {
             new Color(1f, 0.35f, 0.45f),     // pink-red
             new Color(1f, 0.62f, 0.2f),      // orange
@@ -29,6 +32,7 @@ namespace qp {
         };
 
         SpriteRenderer[] _items;
+        SpriteRenderer[] _outlines;
         float[] _delay, _life, _x0, _y0, _rise, _swayAmp, _swayFreq, _swayPhase, _size, _spin, _spinPhase;
         float _timeline;   // full effect length on the internal (unscaled) clock
 
@@ -37,6 +41,7 @@ namespace qp {
         public void Init() {
             if (_items != null) return;
             _items = new SpriteRenderer[Count];
+            _outlines = new SpriteRenderer[Count];
             _delay = new float[Count]; _life = new float[Count];
             _x0 = new float[Count]; _y0 = new float[Count]; _rise = new float[Count];
             _swayAmp = new float[Count]; _swayFreq = new float[Count]; _swayPhase = new float[Count];
@@ -52,9 +57,10 @@ namespace qp {
                 if (sr == null) sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = Sprites[i % Sprites.Length];
                 sr.color = Tints[i % Tints.Length];
-                sr.sortingOrder = i;
+                sr.sortingOrder = i * 2 + 1;
                 sr.enabled = false;
                 _items[i] = sr;
+                _outlines[i] = _makeOutline(go, sr, i * 2);
 
                 _delay[i] = i * 0.07f + Random.Range(0f, 0.05f);
                 _life[i] = LifeTime * Random.Range(0.85f, 1.15f);
@@ -70,6 +76,21 @@ namespace qp {
                 _timeline = Mathf.Max(_timeline, _delay[i] + _life[i]);
             }
             Random.state = old;
+        }
+
+        // The edge: same sprite as a child (inherits the full motion), bigger, behind.
+        SpriteRenderer _makeOutline(GameObject owner, SpriteRenderer sr, int order) {
+            var ot = owner.transform.Find("outline");
+            if (!Outline) { if (ot != null) { if (Application.isPlaying) Destroy(ot.gameObject); else DestroyImmediate(ot.gameObject); } return null; }
+            var og = ot != null ? ot.gameObject : new GameObject("outline");
+            og.transform.SetParent(owner.transform, false);
+            og.transform.localScale = Vector3.one * OutlineScale;
+            var osr = og.GetComponent<SpriteRenderer>();
+            if (osr == null) osr = og.AddComponent<SpriteRenderer>();
+            osr.sprite = sr.sprite;
+            osr.sortingOrder = order;
+            osr.enabled = false;
+            return osr;
         }
 
         /// <summary>Drop the cached choreography and rebuild from the current inspector values.</summary>
@@ -108,8 +129,10 @@ namespace qp {
 
         public void Hide() {
             if (_items == null) return;
-            foreach (var sr in _items)
-                if (sr != null) sr.enabled = false;
+            for (int i = 0; i < _items.Length; i++) {
+                if (_items[i] != null) _items[i].enabled = false;
+                if (_outlines != null && _outlines[i] != null) _outlines[i].enabled = false;
+            }
         }
 
         /// <summary>Set every heart's state for time t — pure, so editor code can scrub it.</summary>
@@ -118,7 +141,8 @@ namespace qp {
             for (int i = 0; i < _items.Length; i++) {
                 float lt = t - _delay[i];
                 var sr = _items[i];
-                if (lt < 0f || lt > _life[i]) { sr.enabled = false; continue; }
+                var osr = _outlines != null ? _outlines[i] : null;
+                if (lt < 0f || lt > _life[i]) { sr.enabled = false; if (osr != null) osr.enabled = false; continue; }
                 sr.enabled = true;
 
                 float x = _x0[i] + Mathf.Sin(lt * _swayFreq[i] + _swayPhase[i]) * _swayAmp[i] * Mathf.Clamp01(lt);
@@ -133,6 +157,12 @@ namespace qp {
                 var c = sr.color;
                 c.a = Mathf.Clamp01(lt / 0.15f) * Mathf.Clamp01((_life[i] - lt) / 0.35f);
                 sr.color = c;
+                if (osr != null) {
+                    osr.enabled = true;
+                    var oc = OutlineColor;
+                    oc.a = c.a;
+                    osr.color = oc;
+                }
             }
         }
 

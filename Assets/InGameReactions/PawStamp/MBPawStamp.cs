@@ -21,6 +21,9 @@ namespace qp {
         public float StampSize = 0.85f;
         public float StepSize = 0.32f;
         public float StepGap = 0.42f;    // distance between trail steps
+        public bool Outline = true;              // white sticker edge behind every print
+        public Color OutlineColor = Color.white;
+        public float OutlineScale = 1.15f;
         public Color[] Tints = {         // every print picks one — colorful trail
             new Color(1f, 0.35f, 0.45f),     // pink-red
             new Color(1f, 0.62f, 0.2f),      // orange
@@ -32,6 +35,7 @@ namespace qp {
 
         bool _ui;
         SpriteRenderer[] _sr;
+        SpriteRenderer[] _outlines;
         Image[] _img;
         float[] _delay, _life, _rot;
         Vector3[] _pos;
@@ -46,7 +50,7 @@ namespace qp {
             if (_delay != null) return;
             _ui = UI;
             int total = _total;
-            if (_ui) _img = new Image[total]; else _sr = new SpriteRenderer[total];
+            if (_ui) _img = new Image[total]; else { _sr = new SpriteRenderer[total]; _outlines = new SpriteRenderer[total]; }
             _delay = new float[total]; _life = new float[total]; _rot = new float[total];
             _pos = new Vector3[total];
             _tint = new Color[total];
@@ -100,10 +104,26 @@ namespace qp {
                 var sr = go.GetComponent<SpriteRenderer>();
                 if (sr == null) sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = PawSprite;
-                sr.sortingOrder = i == 0 ? 50 : i;    // stamp above its trail
+                sr.sortingOrder = i == 0 ? 51 : i * 2 + 1;    // stamp above its trail
                 sr.enabled = false;
                 _sr[i] = sr;
+                _outlines[i] = _makeOutline(go, sr, i == 0 ? 50 : i * 2);
             }
+        }
+
+        // The edge: same sprite as a child (inherits the full motion), bigger, behind.
+        SpriteRenderer _makeOutline(GameObject owner, SpriteRenderer sr, int order) {
+            var ot = owner.transform.Find("outline");
+            if (!Outline) { if (ot != null) { if (Application.isPlaying) Destroy(ot.gameObject); else DestroyImmediate(ot.gameObject); } return null; }
+            var og = ot != null ? ot.gameObject : new GameObject("outline");
+            og.transform.SetParent(owner.transform, false);
+            og.transform.localScale = Vector3.one * OutlineScale;
+            var osr = og.GetComponent<SpriteRenderer>();
+            if (osr == null) osr = og.AddComponent<SpriteRenderer>();
+            osr.sprite = sr.sprite;
+            osr.sortingOrder = order;
+            osr.enabled = false;
+            return osr;
         }
 
         static void _strip<T>(GameObject go) where T : Component {
@@ -209,11 +229,21 @@ namespace qp {
             tr.localPosition = pos;
             tr.localRotation = Quaternion.Euler(0f, 0f, zRot);
             tr.localScale = new Vector3(scaleX, scaleY, 1f);
+            if (!_ui && _outlines != null && _outlines[i] != null) {
+                var osr = _outlines[i];
+                osr.enabled = true;
+                var oc = OutlineColor;
+                oc.a = c.a;
+                osr.color = oc;
+            }
         }
 
         void _off(int i) {
             if (_ui) { if (_img[i] != null) _img[i].enabled = false; }
-            else if (_sr[i] != null) _sr[i].enabled = false;
+            else {
+                if (_sr[i] != null) _sr[i].enabled = false;
+                if (_outlines != null && _outlines[i] != null) _outlines[i].enabled = false;
+            }
         }
 
         public void Hide() {
