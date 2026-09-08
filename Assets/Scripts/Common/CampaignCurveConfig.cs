@@ -9,9 +9,6 @@ namespace QueensPuzzle
     ///
     /// Scale: difficulty 0..1 where 1.0 = <see cref="weightCap"/> — the hardest puzzle solvable
     /// by pure deduction. Levels requiring guessing are always rejected at build time.
-    /// Difficulty and targetWeight are FELT values on a 10x10 baseline; each size's
-    /// <see cref="SizeRange.feelFactor"/> converts the accept window to raw weight, so the same
-    /// target produces the same player fail rate on any board size.
     ///
     ///   L1..learnEnd   learning ramp: median learnStart → learnEndMedian, decade rhythm on top,
     ///                  milestones capped to the ramp (learnMilestones).
@@ -116,11 +113,6 @@ namespace QueensPuzzle
             public int minWeight;
             [Tooltip("Heaviest clean weight worth asking of this size.")]
             public int maxWeight;
-            [Tooltip("How heavy a raw weight point FEELS on this size, in 10x10 terms — calibrated " +
-                     "from live fail rates (Sep 2026, 74K plays): at equal raw weight bigger boards " +
-                     "lose far more (guess risk isn't in the weight model). Windows are divided by " +
-                     "this, so targets always mean felt (10x10-equivalent) difficulty.")]
-            public float feelFactor = 1f;
         }
 
         [Header("Board size rotation (decade slots X1..X0)")]
@@ -131,10 +123,10 @@ namespace QueensPuzzle
         {
             // floors reflect what RANDOM generation actually produces (measured), not the
             // hand-made MSet references — e.g. only ~5% of random 8x8 boards weigh under ~50
-            new SizeRange { size = 8,  minWeight = 19, maxWeight = 700,  feelFactor = 0.32f },
-            new SizeRange { size = 9,  minWeight = 55, maxWeight = 950,  feelFactor = 0.76f },
-            new SizeRange { size = 10, minWeight = 80, maxWeight = 1300, feelFactor = 1.00f },
-            new SizeRange { size = 11, minWeight = 150, maxWeight = 1600, feelFactor = 2.00f },
+            new SizeRange { size = 8,  minWeight = 19, maxWeight = 700 },
+            new SizeRange { size = 9,  minWeight = 55, maxWeight = 950 },
+            new SizeRange { size = 10, minWeight = 80, maxWeight = 1300 },
+            new SizeRange { size = 11, minWeight = 150, maxWeight = 1600 },
         };
 
         [Header("Quality gates")]
@@ -221,44 +213,32 @@ namespace QueensPuzzle
                 targetWeight = (int)Math.Round(d * weightCap),
                 role = role,
             };
-            // difficulty/targetWeight are FELT (10x10-equivalent); the accept window is the
-            // raw weight that produces that feel on the chosen size.
-            float feel = FeelFactor(size);
             if (role == Role.Milestone && level > learnEnd)
             {
-                t.minWeight = (int)(milestoneMin * weightCap / feel);
-                t.maxWeight = (int)(milestonePoolMax / feel);   // hoarded clean pool qualifies
+                t.minWeight = (int)(milestoneMin * weightCap);
+                t.maxWeight = milestonePoolMax;   // hoarded clean pool qualifies
             }
             else
             {
                 int tol = Math.Max(minTolWeight, (int)(matchTol * t.targetWeight));
-                t.minWeight = Math.Max(1, (int)Math.Round((t.targetWeight - tol) / feel));
-                t.maxWeight = (int)Math.Round((t.targetWeight + tol) / feel);
+                t.minWeight = Math.Max(1, t.targetWeight - tol);
+                t.maxWeight = t.targetWeight + tol;
             }
             return t;
         }
 
         int WaveLen => waveTemplates[0].values.Length;
 
-        /// <summary>Raw→felt multiplier for a board size (1 for sizes without a range, e.g. teach boards).</summary>
-        public float FeelFactor(int size)
-        {
-            foreach (var r in sizeWeightRanges)
-                if (r.size == size && r.feelFactor > 0f) return r.feelFactor;
-            return 1f;
-        }
-
         // Keep the rotation size when the target is feasible on it; otherwise the smallest
         // size whose range holds the target (so easy learning slots drop to small boards).
-        // targetWeight is FELT, so each size's raw range is compared through its feelFactor.
         public int FitSize(int targetWeight, int preferred)
         {
             foreach (var r in sizeWeightRanges)
-                if (r.size == preferred && targetWeight >= r.minWeight * r.feelFactor && targetWeight <= r.maxWeight * r.feelFactor)
+                if (r.size == preferred && targetWeight >= r.minWeight && targetWeight <= r.maxWeight)
                     return preferred;
             int best = preferred, bestSize = int.MaxValue;
             foreach (var r in sizeWeightRanges)
-                if (targetWeight >= r.minWeight * r.feelFactor && targetWeight <= r.maxWeight * r.feelFactor && r.size < bestSize)
+                if (targetWeight >= r.minWeight && targetWeight <= r.maxWeight && r.size < bestSize)
                 { best = r.size; bestSize = r.size; }
             return best;
         }

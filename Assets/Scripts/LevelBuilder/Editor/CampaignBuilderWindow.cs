@@ -756,8 +756,7 @@ namespace QueensPuzzle
             }
         }
 
-        // Graph the actual weights of the built level assets in the output folder,
-        // converted to FELT (10x10-equivalent) weight so they compare 1:1 with targets.
+        // Graph the actual weights of the built level assets in the output folder.
         // Missing levels show as 0 (gaps on the floor).
         void BuildDataFromLevels()
         {
@@ -771,8 +770,7 @@ namespace QueensPuzzle
             for (int i = 0; i < n; i++)
             {
                 var lvl = AssetDatabase.LoadAssetAtPath<LevelData>($"{OutputFolder}/{from + i}.asset");
-                weights[i] = lvl != null
-                    ? Mathf.RoundToInt(lvl.weight * (config != null ? config.FeelFactor(lvl.size) : 1f)) : 0;
+                weights[i] = lvl != null ? lvl.weight : 0;
                 roles[i] = (byte)(config != null && config.milestoneEvery > 0 && (from + i) % config.milestoneEvery == 0
                     ? CampaignCurveConfig.Role.Milestone : CampaignCurveConfig.Role.Normal);
                 if (weights[i] > maxW) maxW = weights[i];
