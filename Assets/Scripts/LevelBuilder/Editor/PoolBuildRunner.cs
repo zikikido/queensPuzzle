@@ -41,6 +41,8 @@ namespace QueensPuzzle
             {
                 var existing = AssetDatabase.LoadAssetAtPath<LevelData>($"{outputFolder}/{t.level}.asset");
                 if (existing == null) { r.open.Add(t); r.newCount++; }
+                // revealed-queen (teach) levels play by different rules — never rebuilt by tolerance
+                else if (existing.revealedRows != null && existing.revealedRows.Length > 0) { }
                 else if (overrideOffTol && (existing.weight < t.minWeight || existing.weight > t.maxWeight)) { r.open.Add(t); r.offTol++; }
                 else if (!skipExisting) { r.open.Add(t); r.overwrite++; }
             }
