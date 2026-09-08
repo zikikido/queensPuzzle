@@ -41,8 +41,6 @@ namespace QueensPuzzle
             {
                 var existing = AssetDatabase.LoadAssetAtPath<LevelData>($"{outputFolder}/{t.level}.asset");
                 if (existing == null) { r.open.Add(t); r.newCount++; }
-                // revealed-queen (teach) levels play by different rules — never rebuilt by tolerance
-                else if (existing.revealedRows != null && existing.revealedRows.Length > 0) { }
                 else if (overrideOffTol && (existing.weight < t.minWeight || existing.weight > t.maxWeight)) { r.open.Add(t); r.offTol++; }
                 else if (!skipExisting) { r.open.Add(t); r.overwrite++; }
             }
@@ -170,15 +168,6 @@ namespace QueensPuzzle
             data.solutionColumns = cols;
             data.weight = weight;
             data.seed = seed;
-            // colour at birth (same rules + seeding as the campaign recolor pass) — a fresh
-            // build must never ship colourless levels
-            var colors = CampaignBuilderWindow.RecolorSingle(data, t.level);
-            if (colors != null)
-            {
-                bool identity = true;
-                for (int r = 0; r < colors.Length; r++) if (colors[r] != r) { identity = false; break; }
-                data.regionColors = identity ? null : colors;
-            }
             AssetDatabase.CreateAsset(data, $"{outputFolder}/{t.level}.asset");
         }
 
