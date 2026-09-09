@@ -1,0 +1,1378 @@
+fileFormatVersion: 2
+guid: b9c2ec0dd514c1f4bb3d193f4c237cc9
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3135508435786576132
+    second: LoseDog_0
+  - first:
+      213: 7491687259009103975
+    second: LoseDog_1
+  - first:
+      213: 8188482143577361666
+    second: LoseDog_2
+  - first:
+      213: 2698320303757693136
+    second: LoseDog_3
+  - first:
+      213: -4032287170766160636
+    second: LoseDog_4
+  - first:
+      213: 3170078291401170768
+    second: LoseDog_5
+  - first:
+      213: -3278650458536007756
+    second: LoseDog_6
+  - first:
+      213: 738926248375611408
+    second: LoseDog_7
+  - first:
+      213: -2750521001172562558
+    second: LoseDog_8
+  - first:
+      213: -4669413369987903801
+    second: LoseDog_9
+  - first:
+      213: 553803564478490856
+    second: LoseDog_10
+  - first:
+      213: -1846557185545509482
+    second: LoseDog_11
+  - first:
+      213: 2337667549305113904
+    second: LoseDog_12
+  - first:
+      213: -5414547770308356805
+    second: LoseDog_13
+  - first:
+      213: 7375760367632803017
+    second: LoseDog_14
+  - first:
+      213: -8399001318200351798
+    second: LoseDog_15
+  - first:
+      213: -4365300591844087471
+    second: LoseDog_16
+  - first:
+      213: -7408830365709581443
+    second: LoseDog_17
+  - first:
+      213: -5620636776914208860
+    second: LoseDog_18
+  - first:
+      213: 1979603045709858136
+    second: LoseDog_19
+  - first:
+      213: 1257205356650227655
+    second: LoseDog_20
+  - first:
+      213: -3290309584520662081
+    second: LoseDog_21
+  - first:
+      213: -2643842030686000985
+    second: LoseDog_22
+  - first:
+      213: 6204704411199027254
+    second: LoseDog_23
+  - first:
+      213: -2616180931622354943
+    second: LoseDog_24
+  - first:
+      213: 1603434433997133757
+    second: LoseDog_25
+  - first:
+      213: 8869058946689565133
+    second: LoseDog_26
+  - first:
+      213: -4311968836472191041
+    second: LoseDog_27
+  - first:
+      213: 188760604514156477
+    second: LoseDog_28
+  - first:
+      213: -8303802250239024099
+    second: LoseDog_29
+  - first:
+      213: 6082714778976550707
+    second: LoseDog_30
+  - first:
+      213: 1027261513417600039
+    second: LoseDog_31
+  - first:
+      213: -5567052600723603347
+    second: LoseDog_32
+  - first:
+      213: -7609118465302125847
+    second: LoseDog_33
+  - first:
+      213: -4091576196168406350
+    second: LoseDog_34
+  - first:
+      213: -111852550522661480
+    second: LoseDog_35
+  - first:
+      213: -3606118663720802258
+    second: LoseDog_36
+  - first:
+      213: -8817629018365407437
+    second: LoseDog_37
+  - first:
+      213: -8603347006679230618
+    second: LoseDog_38
+  - first:
+      213: 2608050957958502752
+    second: LoseDog_39
+  - first:
+      213: -173282227511110545
+    second: LoseDog_40
+  - first:
+      213: 8763082100754106224
+    second: LoseDog_41
+  - first:
+      213: 3527720266542210420
+    second: LoseDog_42
+  - first:
+      213: -6018000908114754178
+    second: LoseDog_43
+  - first:
+      213: -3474665274500801042
+    second: LoseDog_44
+  - first:
+      213: 6378566875744939591
+    second: LoseDog_45
+  - first:
+      213: -1571336116917589071
+    second: LoseDog_46
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 0
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 1
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 48
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 48
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 1
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: LoseDog_0
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 976
+        width: 123
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cfe43b6b0bf6c74d0800000000000000
+      internalID: -3135508435786576132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_1
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 977
+        width: 110
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 768be819ed1d7f760800000000000000
+      internalID: 7491687259009103975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_2
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 973
+        width: 84
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20dce89002553a170800000000000000
+      internalID: 8188482143577361666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_3
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 972
+        width: 22
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d093bb150c527520800000000000000
+      internalID: 2698320303757693136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_4
+      rect:
+        serializedVersion: 2
+        x: 349
+        y: 972
+        width: 21
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40d3e12ae207a08c0800000000000000
+      internalID: -4032287170766160636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_5
+      rect:
+        serializedVersion: 2
+        x: 392
+        y: 901
+        width: 198
+        height: 117
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05fd42509616efb20800000000000000
+      internalID: 3170078291401170768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_6
+      rect:
+        serializedVersion: 2
+        x: 590
+        y: 894
+        width: 175
+        height: 118
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b72a4c67c4ef72d0800000000000000
+      internalID: -3278650458536007756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_7
+      rect:
+        serializedVersion: 2
+        x: 765
+        y: 889
+        width: 144
+        height: 126
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 010f3a50281314a00800000000000000
+      internalID: 738926248375611408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_8
+      rect:
+        serializedVersion: 2
+        x: 910
+        y: 883
+        width: 126
+        height: 127
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28d8bd9e8bf24d9d0800000000000000
+      internalID: -2750521001172562558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_9
+      rect:
+        serializedVersion: 2
+        x: 1037
+        y: 872
+        width: 237
+        height: 150
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ce49649749e23fb0800000000000000
+      internalID: -4669413369987903801
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_10
+      rect:
+        serializedVersion: 2
+        x: 1274
+        y: 850
+        width: 200
+        height: 154
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e8e51068618fa700800000000000000
+      internalID: 553803564478490856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_11
+      rect:
+        serializedVersion: 2
+        x: 1474
+        y: 836
+        width: 196
+        height: 187
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6956d12f506bf56e0800000000000000
+      internalID: -1846557185545509482
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_12
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 469
+        width: 388
+        height: 502
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03d0a472040117020800000000000000
+      internalID: 2337667549305113904
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_13
+      rect:
+        serializedVersion: 2
+        x: 392
+        y: 469
+        width: 257
+        height: 424
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b35136b8d79abd4b0800000000000000
+      internalID: -5414547770308356805
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_14
+      rect:
+        serializedVersion: 2
+        x: 650
+        y: 815
+        width: 153
+        height: 74
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c46825d9f6fb5660800000000000000
+      internalID: 7375760367632803017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_15
+      rect:
+        serializedVersion: 2
+        x: 803
+        y: 815
+        width: 120
+        height: 67
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac361a80dc0c07b80800000000000000
+      internalID: -8399001318200351798
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_16
+      rect:
+        serializedVersion: 2
+        x: 923
+        y: 815
+        width: 121
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 159a4557d365b63c0800000000000000
+      internalID: -4365300591844087471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_17
+      rect:
+        serializedVersion: 2
+        x: 1044
+        y: 815
+        width: 117
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d73c0ca390c8e2990800000000000000
+      internalID: -7408830365709581443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_18
+      rect:
+        serializedVersion: 2
+        x: 1162
+        y: 790
+        width: 96
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a7388c71ac7ff1b0800000000000000
+      internalID: -5620636776914208860
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_19
+      rect:
+        serializedVersion: 2
+        x: 1260
+        y: 789
+        width: 95
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85541df4b76f87b10800000000000000
+      internalID: 1979603045709858136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_20
+      rect:
+        serializedVersion: 2
+        x: 1356
+        y: 789
+        width: 87
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c7ead46c9d727110800000000000000
+      internalID: 1257205356650227655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_21
+      rect:
+        serializedVersion: 2
+        x: 1447
+        y: 615
+        width: 185
+        height: 221
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb3359d9dd87652d0800000000000000
+      internalID: -3290309584520662081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_22
+      rect:
+        serializedVersion: 2
+        x: 651
+        y: 632
+        width: 508
+        height: 182
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a8a6b64eaf2f4bd0800000000000000
+      internalID: -2643842030686000985
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_23
+      rect:
+        serializedVersion: 2
+        x: 1160
+        y: 615
+        width: 287
+        height: 174
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63831ddb9c98b1650800000000000000
+      internalID: 6204704411199027254
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_24
+      rect:
+        serializedVersion: 2
+        x: 1633
+        y: 680
+        width: 89
+        height: 108
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 100cf76cd4571bbd0800000000000000
+      internalID: -2616180931622354943
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_25
+      rect:
+        serializedVersion: 2
+        x: 651
+        y: 420
+        width: 491
+        height: 210
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db757035f1b804610800000000000000
+      internalID: 1603434433997133757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_26
+      rect:
+        serializedVersion: 2
+        x: 1143
+        y: 412
+        width: 307
+        height: 203
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc18e692f1a351b70800000000000000
+      internalID: 8869058946689565133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_27
+      rect:
+        serializedVersion: 2
+        x: 1451
+        y: 389
+        width: 142
+        height: 160
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb74583603fc824c0800000000000000
+      internalID: -4311968836472191041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_28
+      rect:
+        serializedVersion: 2
+        x: 1632
+        y: 546
+        width: 104
+        height: 133
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbf77ab05cc9e9200800000000000000
+      internalID: 188760604514156477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_29
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 2
+        width: 440
+        height: 465
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d14e96d49d7f2cc80800000000000000
+      internalID: -8303802250239024099
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_30
+      rect:
+        serializedVersion: 2
+        x: 444
+        y: 2
+        width: 257
+        height: 416
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33f7ae62dd42a6450800000000000000
+      internalID: 6082714778976550707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_31
+      rect:
+        serializedVersion: 2
+        x: 702
+        y: 329
+        width: 98
+        height: 90
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72cafae57e0914e00800000000000000
+      internalID: 1027261513417600039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_32
+      rect:
+        serializedVersion: 2
+        x: 800
+        y: 329
+        width: 83
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6084f7b72bddb2b0800000000000000
+      internalID: -5567052600723603347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_33
+      rect:
+        serializedVersion: 2
+        x: 883
+        y: 329
+        width: 96
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e22dc5121bf66690800000000000000
+      internalID: -7609118465302125847
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_34
+      rect:
+        serializedVersion: 2
+        x: 1118
+        y: 293
+        width: 115
+        height: 118
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ba20ffa02dc737c0800000000000000
+      internalID: -4091576196168406350
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_35
+      rect:
+        serializedVersion: 2
+        x: 1595
+        y: 389
+        width: 144
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89510eaa2be927ef0800000000000000
+      internalID: -111852550522661480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_36
+      rect:
+        serializedVersion: 2
+        x: 702
+        y: 1
+        width: 202
+        height: 328
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e28e30f6e2e74fdc0800000000000000
+      internalID: -3606118663720802258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_37
+      rect:
+        serializedVersion: 2
+        x: 904
+        y: 1
+        width: 217
+        height: 291
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33f4727202d71a580800000000000000
+      internalID: -8817629018365407437
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_38
+      rect:
+        serializedVersion: 2
+        x: 984
+        y: 292
+        width: 133
+        height: 90
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 667d67bda75ca9880800000000000000
+      internalID: -8603347006679230618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_39
+      rect:
+        serializedVersion: 2
+        x: 1234
+        y: 242
+        width: 188
+        height: 142
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 069db393788a13420800000000000000
+      internalID: 2608050957958502752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_40
+      rect:
+        serializedVersion: 2
+        x: 1423
+        y: 198
+        width: 173
+        height: 189
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f64df4f6bb0689df0800000000000000
+      internalID: -173282227511110545
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_41
+      rect:
+        serializedVersion: 2
+        x: 1597
+        y: 179
+        width: 146
+        height: 152
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0774809edb8bc9970800000000000000
+      internalID: 8763082100754106224
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_42
+      rect:
+        serializedVersion: 2
+        x: 1125
+        y: 2
+        width: 238
+        height: 239
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47dd13a44eaf4f030800000000000000
+      internalID: 3527720266542210420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_43
+      rect:
+        serializedVersion: 2
+        x: 1364
+        y: 1
+        width: 189
+        height: 196
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7587dd0f04cb7ca0800000000000000
+      internalID: -6018000908114754178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_44
+      rect:
+        serializedVersion: 2
+        x: 1554
+        y: 1
+        width: 171
+        height: 175
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eed9ef7a75287cfc0800000000000000
+      internalID: -3474665274500801042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_45
+      rect:
+        serializedVersion: 2
+        x: 1657
+        y: 167
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74ea9d447c8358850800000000000000
+      internalID: 6378566875744939591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LoseDog_46
+      rect:
+        serializedVersion: 2
+        x: 1726
+        y: 2
+        width: 140
+        height: 145
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bba260802e713ae0800000000000000
+      internalID: -1571336116917589071
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      LoseDog_0: -3135508435786576132
+      LoseDog_1: 7491687259009103975
+      LoseDog_10: 553803564478490856
+      LoseDog_11: -1846557185545509482
+      LoseDog_12: 2337667549305113904
+      LoseDog_13: -5414547770308356805
+      LoseDog_14: 7375760367632803017
+      LoseDog_15: -8399001318200351798
+      LoseDog_16: -4365300591844087471
+      LoseDog_17: -7408830365709581443
+      LoseDog_18: -5620636776914208860
+      LoseDog_19: 1979603045709858136
+      LoseDog_2: 8188482143577361666
+      LoseDog_20: 1257205356650227655
+      LoseDog_21: -3290309584520662081
+      LoseDog_22: -2643842030686000985
+      LoseDog_23: 6204704411199027254
+      LoseDog_24: -2616180931622354943
+      LoseDog_25: 1603434433997133757
+      LoseDog_26: 8869058946689565133
+      LoseDog_27: -4311968836472191041
+      LoseDog_28: 188760604514156477
+      LoseDog_29: -8303802250239024099
+      LoseDog_3: 2698320303757693136
+      LoseDog_30: 6082714778976550707
+      LoseDog_31: 1027261513417600039
+      LoseDog_32: -5567052600723603347
+      LoseDog_33: -7609118465302125847
+      LoseDog_34: -4091576196168406350
+      LoseDog_35: -111852550522661480
+      LoseDog_36: -3606118663720802258
+      LoseDog_37: -8817629018365407437
+      LoseDog_38: -8603347006679230618
+      LoseDog_39: 2608050957958502752
+      LoseDog_4: -4032287170766160636
+      LoseDog_40: -173282227511110545
+      LoseDog_41: 8763082100754106224
+      LoseDog_42: 3527720266542210420
+      LoseDog_43: -6018000908114754178
+      LoseDog_44: -3474665274500801042
+      LoseDog_45: 6378566875744939591
+      LoseDog_46: -1571336116917589071
+      LoseDog_5: 3170078291401170768
+      LoseDog_6: -3278650458536007756
+      LoseDog_7: 738926248375611408
+      LoseDog_8: -2750521001172562558
+      LoseDog_9: -4669413369987903801
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

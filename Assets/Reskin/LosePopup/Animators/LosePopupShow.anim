@@ -124,10 +124,10 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    attribute: m_Color.a
-    path: SafeArea/UIContainer/Scaler/Container/Queen/$Char
-    classID: 114
-    script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+    attribute: m_Alpha
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$LoseDog
+    classID: 225
+    script: {fileID: 0}
     flags: 16
   - serializedVersion: 2
     curve:
@@ -808,10 +808,10 @@ AnimationClip:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    attribute: m_Color.a
-    path: SafeArea/UIContainer/Scaler/Container/Queen/$Char
-    classID: 114
-    script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+    attribute: m_Alpha
+    path: SafeArea/UIContainer/Scaler/Container/Queen/$LoseDog
+    classID: 225
+    script: {fileID: 0}
     flags: 16
   - serializedVersion: 2
     curve:

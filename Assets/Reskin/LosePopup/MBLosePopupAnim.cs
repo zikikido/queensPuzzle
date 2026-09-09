@@ -13,18 +13,18 @@ namespace qp {
         static readonly int ShowState = Animator.StringToHash("Show");
 
         Animator _animator;
-        MBSpriteFlipbook _char;
+        MBSpinePlayer _char;
 
         void Awake() {
             _animator = GetComponent<Animator>();
-            _char = transform.RecursiveFindChild<MBSpriteFlipbook>("$Char");
+            _char = transform.RecursiveFindChild<MBSpinePlayer>("$LoseDog");
         }
 
         /// <summary>Rewinds and plays the show cascade. Driven by MBFailPopup.Show.</summary>
         public void PlayIn() {
-            // Clear the previous run's last frame so the dog opens on the neutral "In" first frame
-            // instead of flashing the stale pose until PlayCharIn fires later in the cascade.
-            if (_char != null) _char.StartFrame("In");
+            // Clear the previous run's last frame so the dog opens on the neutral "LoseIn" first
+            // frame instead of flashing the stale pose until PlayCharIn fires later in the cascade.
+            if (_char != null) _char.StartFrame("LoseIn");
 
             _animator.Play(ShowState, 0, 0f);
 
@@ -41,9 +41,9 @@ namespace qp {
             return !st.IsName("Show") || st.normalizedTime >= 1f;
         }
 
-        /// <summary>Animation event. Starts the character flipbook; the lose "In" state loops.</summary>
+        /// <summary>Animation event. Starts the character; its controller chains LoseIn -> LoseIdle.</summary>
         public void PlayCharIn() {
-            if (_char != null) _char.Play("In");
+            if (_char != null) _char.Play("LoseIn");
         }
 
         /// <summary>Animation event. Whines the lose puppy. Silent while the clip is still a placeholder.</summary>
