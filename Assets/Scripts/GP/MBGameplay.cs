@@ -791,6 +791,9 @@ namespace qp {
                 CommonSFX.Play(GPSFX.Instance.Error);
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
+                // which rule did it break against the queens already down? flicker that card
+                var broken = RuleBreak.Find(_n, _level.regions, QueenIndices(), cell.Y * _n + cell.X);
+                if (broken.rule != Rule.None) _topBar?.BlinkRule(broken.rule);
                 if (!countBones) return;
                 if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) {   // last bone gone
                     if (allowFail) Fail();
@@ -849,6 +852,15 @@ namespace qp {
 #endif
 
         // Queens correctly placed (they only ever land on solution cells).
+        // Board indices of every queen on the board, right AND wrong — what a new queen must not clash with.
+        List<int> QueenIndices() {
+            var queens = new List<int>();
+            foreach (var cell in _cells)
+                if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN)
+                    queens.Add(cell.Y * _n + cell.X);
+            return queens;
+        }
+
         public int CountQueens() {
             int placed = 0;
             foreach (var cell in _cells)

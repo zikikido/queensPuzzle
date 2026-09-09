@@ -1519,7 +1519,7 @@ GameObject:
   - component: {fileID: 325928827}
   - component: {fileID: 325928826}
   m_Layer: 0
-  m_Name: BG
+  m_Name: $RuleBG
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1594,7 +1594,7 @@ GameObject:
   - component: {fileID: 327926359}
   - component: {fileID: 327926358}
   m_Layer: 0
-  m_Name: BG
+  m_Name: $RuleBG
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11431,7 +11431,7 @@ GameObject:
   - component: {fileID: 1190225630}
   - component: {fileID: 1190225631}
   m_Layer: 0
-  m_Name: 2
+  m_Name: $RuleRowCol
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -13117,7 +13117,7 @@ GameObject:
   - component: {fileID: 1428165090}
   - component: {fileID: 1428165091}
   m_Layer: 0
-  m_Name: 3
+  m_Name: $RuleColor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -13723,7 +13723,7 @@ GameObject:
   - component: {fileID: 1583815751}
   - component: {fileID: 1583815752}
   m_Layer: 0
-  m_Name: 1
+  m_Name: $RuleTouch
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15472,7 +15472,7 @@ GameObject:
   - component: {fileID: 2035753932}
   - component: {fileID: 2035753931}
   m_Layer: 0
-  m_Name: BG
+  m_Name: $RuleBG
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

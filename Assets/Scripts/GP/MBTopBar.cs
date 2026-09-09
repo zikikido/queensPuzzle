@@ -1,5 +1,6 @@
 using Common;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,6 +30,12 @@ namespace qp {
 
         private GameObject _levelStrech, _dateStrech;   // top row: "Level <n>" (campaign) / the date (daily)
         private TMPro.TMP_Text _levelText, _dateText;
+
+        // The three rule cards' backgrounds ($RuleTouch / $RuleRowCol / $RuleColor → their BG image)
+        private Dictionary<QueensPuzzle.Rule, Image> _ruleBGs;
+        private Coroutine _ruleBlink;
+        private Image _blinkingBG;
+        private Color _blinkingBGColor;   // the BG's own color, restored after the blink
 
         private void Awake() {
             transform.RecursiveFindChild("$QueensProgressText", out _queensProgressText);
@@ -71,6 +78,37 @@ namespace qp {
             // wrong move hides a bone in whichever layout is visible. Rightmost lost first.
             _boneRoots = new[] { withoutTime.RecursiveFindChild("$Bones"), withTime.RecursiveFindChild("Bones") };
             _boneRows = Array.ConvertAll(_boneRoots, _collectBones);
+
+            _ruleBGs = new Dictionary<QueensPuzzle.Rule, Image> {
+                { QueensPuzzle.Rule.Touch,  transform.RecursiveFindChild("$RuleTouch").RecursiveFindChild<Image>("$RuleBG") },
+                { QueensPuzzle.Rule.RowCol, transform.RecursiveFindChild("$RuleRowCol").RecursiveFindChild<Image>("$RuleBG") },
+                { QueensPuzzle.Rule.Color,  transform.RecursiveFindChild("$RuleColor").RecursiveFindChild<Image>("$RuleBG") },
+            };
+        }
+
+        // Red flicker on the card of the rule the player just broke — three quick pulses.
+        public void BlinkRule(QueensPuzzle.Rule rule) {
+            if (!_ruleBGs.TryGetValue(rule, out var bg) || bg == null) return;
+            if (_ruleBlink != null) {
+                StopCoroutine(_ruleBlink);
+                _blinkingBG.color = _blinkingBGColor;   // a new blink never inherits a half-red card
+            }
+            _blinkingBG = bg;
+            _blinkingBGColor = bg.color;
+            _ruleBlink = StartCoroutine(_blinkRule(bg, _blinkingBGColor));
+        }
+
+        IEnumerator _blinkRule(Image bg, Color baseColor) {
+            const int pulses = 3;
+            const float pulseDur = 0.3f;
+            var red = new Color(1f, 0.25f, 0.25f, baseColor.a);
+            for (float e = 0f; e < pulses * pulseDur; e += Time.unscaledDeltaTime) {
+                float k = Mathf.Abs(Mathf.Sin(e / pulseDur * Mathf.PI));   // 0 → 1 → 0 per pulse
+                bg.color = Color.Lerp(baseColor, red, k);
+                yield return null;
+            }
+            bg.color = baseColor;
+            _ruleBlink = null;
         }
 
         private static GameObject[] _collectBones(Transform bonesRoot) {
