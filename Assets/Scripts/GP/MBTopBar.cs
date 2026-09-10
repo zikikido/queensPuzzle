@@ -86,7 +86,27 @@ namespace qp {
             };
         }
 
-        // Red flicker on the card of the rule the player just broke — three quick pulses.
+        // The rule-break blink: shared by the card here and the board cells (MBCell.FlashRule).
+        // Soft by design — two slow breaths toward a pastel coral, never a full red.
+        public const int BlinkPulses = 2;
+        public const float BlinkPulseDur = 0.5f;
+        public static readonly Color BlinkTint = new Color(1f, 0.55f, 0.55f);
+        public const float BlinkStrength = 0.6f;   // how far toward the tint a pulse peaks
+
+        /// <summary>The blink colour at time <paramref name="e"/> — a smooth 0 → peak → 0 per pulse.</summary>
+        public static Color BlinkColor(Color baseColor, float e) {
+            float k = Mathf.Abs(Mathf.Sin(e / BlinkPulseDur * Mathf.PI));
+            k = Mathf.SmoothStep(0f, 1f, k) * BlinkStrength;
+            var tint = BlinkTint; tint.a = baseColor.a;
+            return Color.Lerp(baseColor, tint, k);
+        }
+
+        // The card alone lingers after the breaths — the eye is on the board when the mistake
+        // lands, so the small card at the top needs time to be noticed.
+        const float CardHoldDur = 1.5f;        // held at the breaths' peak colour
+        const float CardFadeDur = 0.5f;
+
+        // Soft flicker on the card of the rule the player just broke: two breaths, a hold, a fade.
         public void BlinkRule(QueensPuzzle.Rule rule) {
             if (!_ruleBGs.TryGetValue(rule, out var bg) || bg == null) return;
             if (_ruleBlink != null) {
@@ -99,12 +119,22 @@ namespace qp {
         }
 
         IEnumerator _blinkRule(Image bg, Color baseColor) {
-            const int pulses = 3;
-            const float pulseDur = 0.3f;
-            var red = new Color(1f, 0.25f, 0.25f, baseColor.a);
-            for (float e = 0f; e < pulses * pulseDur; e += Time.unscaledDeltaTime) {
-                float k = Mathf.Abs(Mathf.Sin(e / pulseDur * Mathf.PI));   // 0 → 1 → 0 per pulse
-                bg.color = Color.Lerp(baseColor, red, k);
+            var tint = BlinkTint; tint.a = baseColor.a;
+            var hold = Color.Lerp(baseColor, tint, BlinkStrength);
+
+            // breaths — the last one lands on the hold colour instead of returning to base
+            float breaths = BlinkPulses * BlinkPulseDur;
+            for (float e = 0f; e < breaths; e += Time.unscaledDeltaTime) {
+                float settle = Mathf.Clamp01((e - (breaths - BlinkPulseDur * 0.5f)) / (BlinkPulseDur * 0.5f));
+                bg.color = Color.Lerp(BlinkColor(baseColor, e), hold, settle);
+                yield return null;
+            }
+
+            bg.color = hold;
+            yield return new WaitForSecondsRealtime(CardHoldDur);
+
+            for (float e = 0f; e < CardFadeDur; e += Time.unscaledDeltaTime) {
+                bg.color = Color.Lerp(hold, baseColor, Mathf.SmoothStep(0f, 1f, e / CardFadeDur));
                 yield return null;
             }
             bg.color = baseColor;

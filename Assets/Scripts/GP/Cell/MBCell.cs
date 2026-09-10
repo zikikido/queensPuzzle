@@ -35,6 +35,8 @@ namespace qp {
         MBABSMarkAnim _xMark, _wrongQueenMark;
         SpriteRenderer _cellSprite;
         Coroutine _pulseAnim;
+        Coroutine _ruleFlash;
+        Color _ruleFlashBase;   // the cell's own color, restored after the flash
         GameObject _hintQueen, _hintX;   // ghost previews of the mark a tutorial step wants here
         ECellType? _hintGhost;           // the wanted mark; the ghost shows only while State differs
 
@@ -162,6 +164,28 @@ namespace qp {
             var c = _cellSprite.color;
             c.a = a;
             _cellSprite.color = c;
+        }
+
+        // Red flicker of the cell colour — this cell is part of the rule the player just broke.
+        // Same pulses and timing as the rule card in the top bar.
+        public void FlashRule() {
+            if (_ruleFlash != null) {
+                StopCoroutine(_ruleFlash);
+                _cellSprite.color = _ruleFlashBase;   // never blend a new flash into a half-red cell
+            }
+            _ruleFlashBase = _cellSprite.color;
+            _ruleFlash = StartCoroutine(FlashRuleRoutine());
+        }
+
+        IEnumerator FlashRuleRoutine() {
+            var baseColor = _ruleFlashBase;
+            float total = MBTopBar.BlinkPulses * MBTopBar.BlinkPulseDur;
+            for (float e = 0f; e < total; e += Time.unscaledDeltaTime) {
+                _cellSprite.color = MBTopBar.BlinkColor(baseColor, e);
+                yield return null;
+            }
+            _cellSprite.color = baseColor;
+            _ruleFlash = null;
         }
 
         // Draw the eye to this cell (used by the hint boost): a couple of decaying scale bumps.

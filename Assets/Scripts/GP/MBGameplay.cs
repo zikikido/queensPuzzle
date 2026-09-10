@@ -791,9 +791,14 @@ namespace qp {
                 CommonSFX.Play(GPSFX.Instance.Error);
                 if (_shake != null) StopCoroutine(_shake);
                 _shake = StartCoroutine(ShakeBoard());
-                // which rule did it break against the queens already down? flicker that card
+                // which rule did it break against the queens already down? flicker that card,
+                // the cells the rule covers, and a "!" over every puppy it clashes with
                 var broken = RuleBreak.Find(_n, _level.regions, QueenIndices(), cell.Y * _n + cell.X);
-                if (broken.rule != Rule.None) _topBar?.BlinkRule(broken.rule);
+                if (broken.rule != Rule.None) {
+                    _topBar?.BlinkRule(broken.rule);
+                    foreach (int idx in broken.cells) _cells[idx / _n, idx % _n].FlashRule();
+                    foreach (int idx in broken.culprits) MBRuleAlert.Spawn(_cells[idx / _n, idx % _n].transform, _cellSize);
+                }
                 if (!countBones) return;
                 if (AppData.LastPlayData.bonesLost >= _topBar.MaxWrongMoves) {   // last bone gone
                     if (allowFail) Fail();
@@ -852,12 +857,12 @@ namespace qp {
 #endif
 
         // Queens correctly placed (they only ever land on solution cells).
-        // Board indices of every queen on the board, right AND wrong — what a new queen must not clash with.
+        // Board indices of the puppies on the board — what a new queen must not clash with.
+        // A wrong queen is a red X, not a puppy: it never counts as a culprit.
         List<int> QueenIndices() {
             var queens = new List<int>();
             foreach (var cell in _cells)
-                if (cell.State == MBCell.ECellType.QUEEN || cell.State == MBCell.ECellType.WRONG_QUEEN)
-                    queens.Add(cell.Y * _n + cell.X);
+                if (cell.State == MBCell.ECellType.QUEEN) queens.Add(cell.Y * _n + cell.X);
             return queens;
         }
 
