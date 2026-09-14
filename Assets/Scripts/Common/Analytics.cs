@@ -120,14 +120,39 @@ namespace qp {
             EventClient.Enqueue(p);
         }
 
-        // The EventBase head every events-server document carries.
+        // Snapshot of the EventBase head, captured once on the main thread.
+        //
+        // AdImpression runs on a BACKGROUND thread for interstitial/rewarded (MAX marks fullscreen
+        // revenue keepInBackground), and the values below used to be read live from there:
+        // Application.version, Application.platform, PlayerPrefs via UserData.FirstVersion, and
+        // PlayerPrefs via UserID.GetUserIDLocal() — all Unity APIs, none of them thread-safe.
+        //
+        // GetUserIDLocal was the dangerous one: it caches into a plain static with no memory
+        // barrier, so a background thread that misses the main thread's write falls through to
+        // the "no id yet" branch, MINTS A NEW GUID and PlayerPrefs.Save()s it over the real one —
+        // silently changing the user's identity mid-session and breaking every user_id join.
+        static string _appVersion, _userId, _platform;
+        static int _firstVersion;
+
+        /// <summary>Main thread, from MBStartup, before any SDK can fire a callback.</summary>
+        public static void CaptureCommon() {
+            _appVersion   = Application.version;
+            _firstVersion = UserData.Instance.FirstVersion;
+            _userId       = Common.UserID.GetUserIDLocal();
+            _platform     = Application.platform == RuntimePlatform.IPhonePlayer ? "IOS"
+                          : Application.platform == RuntimePlatform.Android      ? "Android"
+                          : Application.platform.ToString();
+        }
+
+        // The EventBase head every events-server document carries. Plain field reads only —
+        // safe from any thread.
         static void FillCommon(EventBase p) {
-            p.app_version     = Application.version;
-            p.first_version   = UserData.Instance.FirstVersion;
-            p.user_id         = Common.UserID.GetUserIDLocal();
-            p.platform        = Application.platform == RuntimePlatform.IPhonePlayer ? "IOS"
-                              : Application.platform == RuntimePlatform.Android      ? "Android"
-                              : Application.platform.ToString();
+            p.app_version     = _appVersion;
+            p.first_version   = _firstVersion;
+            p.user_id         = _userId;
+            p.platform        = _platform;
+            // ObjectHolder keeps its value in a cached field; Save() from the attribution callback
+            // is a reference assignment, so reading it off-thread is fine.
             p.singular_source = AppData.SingularSource.Value;
         }
 

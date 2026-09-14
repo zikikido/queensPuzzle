@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using Common;
 using UnityEngine;
@@ -83,9 +84,11 @@ namespace qp {
 
         // One buffered event: the payload + when it happened (realtime clock, so pause-safe).
         // Serialized at flush time so `age_sec` is fresh on every attempt, including retries.
+        // Stopwatch, not Time.realtimeSinceStartup: Add() runs on a background thread for fullscreen
+        // ad revenue, and Unity's clock is a Unity API. Stopwatch is a plain monotonic counter.
         struct Pending {
             public EventBase payload;
-            public float createdAt;
+            public long createdAt;   // Stopwatch ticks
         }
 
         static EventClient _instance;
@@ -116,8 +119,14 @@ namespace qp {
             if (string.IsNullOrEmpty(payload.event_id))
                 payload.event_id = Guid.NewGuid().ToString("N");
 
-            _buffer.Add(new Pending { payload = payload, createdAt = Time.realtimeSinceStartup });
-            while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);   // drop oldest
+            // MAX delivers fullscreen ad revenue on a background thread, so this runs off the main
+            // thread while Flush() may be reading the same List on it. List<T> is not thread-safe:
+            // new List<T>(_buffer) reads Count, allocates, then copies, and a concurrent Add
+            // between those steps throws — which would leave _sending latched (see Flush).
+            lock (_buffer) {
+                _buffer.Add(new Pending { payload = payload, createdAt = Stopwatch.GetTimestamp() });
+                while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);   // drop oldest
+            }
         }
 
         // ---- flushing ----
@@ -141,40 +150,52 @@ namespace qp {
 
             _sending = true;
 
-            // Take the current buffer out; new events that arrive mid-send stay for next tick.
-            var batch = new List<Pending>(_buffer);
-            _buffer.Clear();
-
-            long code = 0;
-            bool ok = false;
-            yield return SendBatch(BuildJsonArray(batch), (res, c) => { ok = res; code = c; });
-
-            if (!ok) {
-                bool permanent = code >= 400 && code < 500;
-                if (permanent) {
-                    // The server will never accept this batch — dropping it beats blocking every
-                    // newer event behind it forever.
-                    CDebug.LogError($"[EventClient] batch of {batch.Count} rejected with {code} — dropped");
-                } else {
-                    // Network / 5xx: requeue in front of anything queued during the send.
-                    batch.AddRange(_buffer);
+            // _sending gates every future flush (see the guard above), so it is a session-wide
+            // latch: if anything below throws, or the coroutine is stopped mid-send, leaving it
+            // true would silently stop ALL sending until the app restarts. finally guarantees it
+            // clears — it runs on disposal too, not just on a normal return.
+            try {
+                // Take the current buffer out; new events that arrive mid-send stay for next tick.
+                List<Pending> batch;
+                lock (_buffer) {
+                    batch = new List<Pending>(_buffer);
                     _buffer.Clear();
-                    _buffer.AddRange(batch);
-                    while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);
                 }
-            }
 
-            _sending = false;
+                long code = 0;
+                bool ok = false;
+                yield return SendBatch(BuildJsonArray(batch), (res, c) => { ok = res; code = c; });
+
+                if (!ok) {
+                    bool permanent = code >= 400 && code < 500;
+                    if (permanent) {
+                        // The server will never accept this batch — dropping it beats blocking every
+                        // newer event behind it forever.
+                        CDebug.LogError($"[EventClient] batch of {batch.Count} rejected with {code} — dropped");
+                    } else {
+                        // Network / 5xx: requeue in front of anything queued during the send.
+                        lock (_buffer) {
+                            batch.AddRange(_buffer);
+                            _buffer.Clear();
+                            _buffer.AddRange(batch);
+                            while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);
+                        }
+                    }
+                }
+            } finally {
+                _sending = false;
+            }
         }
 
         // Serializes NOW so age_sec reflects this attempt (a retried event keeps ageing).
         static string BuildJsonArray(List<Pending> items) {
-            float now = Time.realtimeSinceStartup;
+            long now = Stopwatch.GetTimestamp();
             var sb = new StringBuilder();
             sb.Append('[');
             bool first = true;
             foreach (var it in items) {
-                it.payload.age_sec = Mathf.Max(0, Mathf.RoundToInt(now - it.createdAt));
+                double waited = (now - it.createdAt) / (double)Stopwatch.Frequency;
+                it.payload.age_sec = (int)System.Math.Max(0, System.Math.Round(waited));
                 string json;
                 try { json = JsonUtility.ToJson(it.payload); }
                 catch (Exception e) { CDebug.LogError(e); continue; }

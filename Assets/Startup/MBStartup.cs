@@ -61,6 +61,7 @@ namespace qp {
             // Touch UserData at boot so Sessions is bumped and FirstVersion is stamped now
             // (it's otherwise lazy — created on first access).
             _ = UserData.Instance;
+            Analytics.CaptureCommon();   // main thread, before any SDK can call back off-thread
 
             Haptics.Enabled = AppData.Haptics.Value;
             DefineHaptics();
