@@ -1,8 +1,11 @@
 using System;
-using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Common;
 using UnityEngine;
 
@@ -59,12 +62,16 @@ namespace qp {
     }
 
     /// <summary>
-    /// Fire-and-forget event reporter. Events are appended to an in-memory rolling
-    /// buffer and flushed to the events server every <see cref="FLUSH_INTERVAL_SEC"/>
-    /// seconds (and once on app pause) as a single mixed batch — the server routes each
-    /// event by its `eventname`. Nothing is persisted between sessions; if it didn't send
-    /// before the app closes, it's dropped. Never blocks gameplay, never throws.
-    /// Auto-bootstraps, so no scene wiring is needed.
+    /// Fire-and-forget event reporter. Events are appended to an in-memory rolling buffer and
+    /// flushed to the events server every <see cref="FLUSH_INTERVAL_SEC"/> seconds as a single
+    /// mixed batch — the server routes each event by its `eventname`. Nothing is persisted
+    /// between sessions; if it didn't send before the app closes, it's dropped.
+    /// Never blocks gameplay, never throws. Auto-bootstraps, so no scene wiring is needed.
+    ///
+    /// Delivery runs on a background Task over HttpClient, NOT a coroutine over UnityWebRequest:
+    /// a fullscreen ad pauses the Unity activity on Android, which would stop a coroutine for the
+    /// ad's whole duration. Producers may therefore call Enqueue from any thread, and nothing
+    /// below Add() may touch a Unity API.
     ///
     /// Delivery: at-least-once. A batch is retried on network errors / 5xx (server dedups
     /// on `event_id`, so a retry after a lost response can't double-count) and DROPPED on
@@ -93,7 +100,9 @@ namespace qp {
 
         static EventClient _instance;
         readonly List<Pending> _buffer = new List<Pending>();
-        bool _sending;
+        readonly ConcurrentQueue<string> _diagnostics = new ConcurrentQueue<string>();
+        CancellationTokenSource _stop;
+        HttpClient _http;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap() {
@@ -104,7 +113,18 @@ namespace qp {
         }
 
         void Start() {
-            StartCoroutine(FlushLoop());
+            // Task + HttpClient, not coroutine + UnityWebRequest: both of those are driven by the
+            // player loop, and behind a fullscreen ad on Android the Unity activity is paused, so
+            // the loop stops and NOTHING can send for the ad's whole duration. Measured on live
+            // data, that left 95% of interstitial and 99% of rewarded impressions arriving with
+            // age_sec > 10s (banner: 0.15%) — and whatever the OS reclaimed inside that window was
+            // lost outright. A thread-pool task keeps running as long as the process does, so
+            // delivery no longer depends on the engine being awake.
+            _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            _http.DefaultRequestHeaders.Add("X-Api-Key", API_KEY);
+            _http.DefaultRequestHeaders.Add("X-Db-Name", DB_NAME);
+            _stop = new CancellationTokenSource();
+            _ = FlushLoop(_stop.Token);
         }
 
         // ---- public API ----
@@ -122,7 +142,7 @@ namespace qp {
             // MAX delivers fullscreen ad revenue on a background thread, so this runs off the main
             // thread while Flush() may be reading the same List on it. List<T> is not thread-safe:
             // new List<T>(_buffer) reads Count, allocates, then copies, and a concurrent Add
-            // between those steps throws — which would leave _sending latched (see Flush).
+            // between those steps throws.
             lock (_buffer) {
                 _buffer.Add(new Pending { payload = payload, createdAt = Stopwatch.GetTimestamp() });
                 while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);   // drop oldest
@@ -131,64 +151,72 @@ namespace qp {
 
         // ---- flushing ----
 
-        IEnumerator FlushLoop() {
-            var wait = new WaitForSecondsRealtime(FLUSH_INTERVAL_SEC);
-            while (true) {
-                yield return wait;
-                yield return Flush();
+        // One sequential loop owns delivery, so there is no _sending latch to get stuck any more.
+        // No Unity API below this point — it all runs off the main thread.
+        async Task FlushLoop(CancellationToken token) {
+            while (!token.IsCancellationRequested) {
+                try { await Task.Delay(TimeSpan.FromSeconds(FLUSH_INTERVAL_SEC), token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { return; }
+                try { await Flush(token).ConfigureAwait(false); }
+                catch (Exception e) { Report("flush failed: " + e.GetType().Name); }
             }
         }
 
-        IEnumerator Flush() {
-            if (_sending || _buffer.Count == 0) yield break;
+        async Task Flush(CancellationToken token) {
+            var http = _http;
+            if (http == null) return;
 
+            List<Pending> batch;
+            lock (_buffer) {
+                if (_buffer.Count == 0) return;
 #if UNITY_EDITOR
-            if (!SEND_FROM_EDITOR) { _buffer.Clear(); yield break; }
+                if (!SEND_FROM_EDITOR) { _buffer.Clear(); return; }
 #endif
-            // Best effort: skip while we believe we're offline; keep buffering (bounded).
-            if (InternetConnection.Instance != null && !InternetConnection.Instance.HasInternet) yield break;
+                // Taken out under the lock; events arriving mid-send stay for the next tick.
+                batch = new List<Pending>(_buffer);
+                _buffer.Clear();
+            }
 
-            _sending = true;
-
-            // _sending gates every future flush (see the guard above), so it is a session-wide
-            // latch: if anything below throws, or the coroutine is stopped mid-send, leaving it
-            // true would silently stop ALL sending until the app restarts. finally guarantees it
-            // clears — it runs on disposal too, not just on a normal return.
+            long code = 0;
+            bool ok = false;
             try {
-                // Take the current buffer out; new events that arrive mid-send stay for next tick.
-                List<Pending> batch;
-                lock (_buffer) {
-                    batch = new List<Pending>(_buffer);
-                    _buffer.Clear();
+                using (var content = new StringContent(BuildJsonArray(batch), Encoding.UTF8, "application/json"))
+                using (var res = await http.PostAsync(EVENTS_URL, content, token).ConfigureAwait(false)) {
+                    code = (int)res.StatusCode;
+                    ok = res.IsSuccessStatusCode;
                 }
+            } catch (Exception e) {
+                // Offline, DNS, timeout, shutdown — all retryable, so keep the batch.
+                if (!token.IsCancellationRequested)
+                    Report("delivery failed, retained " + batch.Count + ": " + e.GetType().Name);
+                Requeue(batch);
+                return;
+            }
 
-                long code = 0;
-                bool ok = false;
-                yield return SendBatch(BuildJsonArray(batch), (res, c) => { ok = res; code = c; });
+            if (ok) return;
+            if (code >= 400 && code < 500) {
+                // The server will never accept this batch — dropping it beats blocking every
+                // newer event behind it forever.
+                Report("batch of " + batch.Count + " rejected with " + code + " — dropped");
+                return;
+            }
+            Requeue(batch);   // 5xx and anything else: try again next tick
+        }
 
-                if (!ok) {
-                    bool permanent = code >= 400 && code < 500;
-                    if (permanent) {
-                        // The server will never accept this batch — dropping it beats blocking every
-                        // newer event behind it forever.
-                        CDebug.LogError($"[EventClient] batch of {batch.Count} rejected with {code} — dropped");
-                    } else {
-                        // Network / 5xx: requeue in front of anything queued during the send.
-                        lock (_buffer) {
-                            batch.AddRange(_buffer);
-                            _buffer.Clear();
-                            _buffer.AddRange(batch);
-                            while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);
-                        }
-                    }
-                }
-            } finally {
-                _sending = false;
+        // Put a failed batch back in front of whatever was queued while it was in flight.
+        void Requeue(List<Pending> batch) {
+            lock (_buffer) {
+                batch.AddRange(_buffer);
+                _buffer.Clear();
+                _buffer.AddRange(batch);
+                while (_buffer.Count > MAX_BUFFER) _buffer.RemoveAt(0);
             }
         }
 
         // Serializes NOW so age_sec reflects this attempt (a retried event keeps ageing).
-        static string BuildJsonArray(List<Pending> items) {
+        // JsonUtility.ToJson is documented as safe on background threads for plain serializable
+        // types, which is all EventBase and its subclasses are.
+        string BuildJsonArray(List<Pending> items) {
             long now = Stopwatch.GetTimestamp();
             var sb = new StringBuilder();
             sb.Append('[');
@@ -198,7 +226,7 @@ namespace qp {
                 it.payload.age_sec = (int)System.Math.Max(0, System.Math.Round(waited));
                 string json;
                 try { json = JsonUtility.ToJson(it.payload); }
-                catch (Exception e) { CDebug.LogError(e); continue; }
+                catch (Exception e) { Report("could not serialize event: " + e.GetType().Name); continue; }
                 if (!first) sb.Append(',');
                 sb.Append(json);
                 first = false;
@@ -207,19 +235,29 @@ namespace qp {
             return sb.ToString();
         }
 
-        IEnumerator SendBatch(string jsonArray, Action<bool, long> done) {
-            var req = new Server.RequestWithResult(EVENTS_URL);
-            req.WithParam(jsonArray);                    // pre-serialized array, sent as-is
-            req.WithHeader("X-Api-Key", API_KEY);
-            req.WithHeader("X-Db-Name", DB_NAME);
-            req.SetNoRetries();                          // our flush loop owns retry cadence
-
-            yield return req.SendRequest();
-            done?.Invoke(req.Successful, req.ResponseCode);
+        // CDebug.LogError files a Crashlytics non-fatal and is a Unity API, so the send loop cannot
+        // call it directly. Messages are queued here and logged from Update on the main thread.
+        void Report(string message) {
+            if (_diagnostics.Count < 50) _diagnostics.Enqueue(message);
         }
 
-        void OnApplicationPause(bool paused) {
-            if (paused && isActiveAndEnabled) StartCoroutine(Flush());
+        void Update() {
+            for (int i = 0; i < 5 && _diagnostics.TryDequeue(out var message); i++)
+                CDebug.LogError("[EventClient] " + message);
+        }
+
+        // No OnApplicationPause flush any more: the loop keeps running while the app is in the
+        // background, which is the entire point of moving off the coroutine.
+        void OnApplicationQuit() { Stop(); }
+        void OnDestroy() { Stop(); }
+
+        void Stop() {
+            var stop = _stop;
+            var http = _http;
+            _stop = null;
+            _http = null;
+            if (stop != null) { stop.Cancel(); stop.Dispose(); }
+            http?.Dispose();   // aborts anything in flight; FlushLoop catches and exits
         }
     }
 }
