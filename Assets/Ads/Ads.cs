@@ -30,6 +30,7 @@ namespace qp {
         static readonly Color BannerBg = new Color32(0xDF, 0xF0, 0xF5, 0xFF);   // #DFF0F5 — the game's banner strip
 
         static AdsRunner _runner;
+        static readonly object _singularGate = new object();   // see OnRevenuePaid
         static int _rewardedRetry, _interstitialRetry;
         static bool _rewardedEarned;
         static Action<bool> _onRewardedDone;
@@ -224,7 +225,15 @@ namespace qp {
                 .WithAdUnitId(info.AdUnitIdentifier)
                 .WithAdPlacmentName(info.Placement)
                 .WithPrecision(info.RevenuePrecision);
-            SingularSDK.AdRevenue(data);
+            // MAX delivers banner revenue on the main thread but fullscreen revenue on a background
+            // one, so this method runs on two threads at once. On iOS SingularSDK.Event builds each
+            // event into ONE global native NSDictionary (Init -> Push xN -> Send -> Free, none of
+            // them taking a handle), so two builds interleaving there produce an event with mixed
+            // values, or a crash on the free. This is the app's only caller that touches it, so
+            // serialising here is enough. Not a main-thread dispatch: Android pauses the Unity
+            // activity behind a fullscreen ad, which would park the report for the ad's whole
+            // duration and lose it if the process dies there.
+            lock (_singularGate) SingularSDK.AdRevenue(data);
 
             // Our events-server — per-user ad revenue, joinable to install source for ROAS.
             Analytics.AdImpression(info);
