@@ -41,6 +41,8 @@ namespace qp {
         }
 
         public static void Begin() {
+            // Match events-server and Singular so MAX revenue reports can join by user.
+            MaxSdk.SetUserId(Common.UserID.GetUserIDLocal());
             MaxSdkCallbacks.OnSdkInitializedEvent += OnInitialized;
             MaxSdk.InitializeSdk();   // async: the `max` stage polls Done (see class comment)
         }
