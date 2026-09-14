@@ -85,6 +85,9 @@ namespace qp {
         const string DB_NAME = "pawdoku_events";
         const float FLUSH_INTERVAL_SEC = 3f;   // short on purpose: session_start must land even in a 5s session
         const int MAX_BUFFER = 200;            // rolling cap — oldest dropped when exceeded
+        // The server accepts 1 MB bodies and 500 items; stay well inside both so a flush can never
+        // be rejected as too large and lose the whole batch. The remainder rides the next tick.
+        const int MAX_BATCH_BYTES = 256 * 1024;
 
         // Editor/dev play sessions are kept out of the production data.
         const bool SEND_FROM_EDITOR = false;
@@ -177,10 +180,20 @@ namespace qp {
                 _buffer.Clear();
             }
 
+            // Serializing caps the request at MAX_BATCH_BYTES; anything that did not fit goes
+            // straight back so the next tick carries it, rather than riding along and risking a
+            // 413 that would take the whole batch down with it.
+            string json = BuildJsonArray(batch, out int used);
+            if (used < batch.Count) {
+                Requeue(batch.GetRange(used, batch.Count - used));
+                batch.RemoveRange(used, batch.Count - used);
+            }
+            if (json.Length <= 2) return;   // "[]" — everything in it failed to serialize
+
             long code = 0;
             bool ok = false;
             try {
-                using (var content = new StringContent(BuildJsonArray(batch), Encoding.UTF8, "application/json"))
+                using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
                 using (var res = await http.PostAsync(EVENTS_URL, content, token).ConfigureAwait(false)) {
                     code = (int)res.StatusCode;
                     ok = res.IsSuccessStatusCode;
@@ -194,13 +207,18 @@ namespace qp {
             }
 
             if (ok) return;
-            if (code >= 400 && code < 500) {
-                // The server will never accept this batch — dropping it beats blocking every
-                // newer event behind it forever.
+
+            // 408 (request timeout) and 429 (rate limited) are 4xx but transient — retrying is
+            // exactly what the server is asking for. Everything else in the 4xx range means this
+            // batch is malformed and will never be accepted, so dropping it beats blocking every
+            // newer event behind it forever. 413 cannot come from our side any more (see the byte
+            // cap above), but if it ever does, the batch really is unsendable as built.
+            bool transient = code == 408 || code == 429;
+            if (code >= 400 && code < 500 && !transient) {
                 Report("batch of " + batch.Count + " rejected with " + code + " — dropped");
                 return;
             }
-            Requeue(batch);   // 5xx and anything else: try again next tick
+            Requeue(batch);   // 5xx, 408, 429, anything else: try again next tick
         }
 
         // Put a failed batch back in front of whatever was queued while it was in flight.
@@ -216,20 +234,34 @@ namespace qp {
         // Serializes NOW so age_sec reflects this attempt (a retried event keeps ageing).
         // JsonUtility.ToJson is documented as safe on background threads for plain serializable
         // types, which is all EventBase and its subclasses are.
-        string BuildJsonArray(List<Pending> items) {
+        //
+        // Stops once the request would exceed MAX_BATCH_BYTES and reports how many items it
+        // consumed, so the caller can hand the rest back. `used` counts items disposed of — an
+        // item that failed to serialize is counted, because it is being dropped, not deferred.
+        string BuildJsonArray(List<Pending> items, out int used) {
             long now = Stopwatch.GetTimestamp();
             var sb = new StringBuilder();
             sb.Append('[');
-            bool first = true;
-            foreach (var it in items) {
+            int appended = 0;
+            used = 0;
+            for (int i = 0; i < items.Count; i++) {
+                var it = items[i];
                 double waited = (now - it.createdAt) / (double)Stopwatch.Frequency;
                 it.payload.age_sec = (int)System.Math.Max(0, System.Math.Round(waited));
                 string json;
                 try { json = JsonUtility.ToJson(it.payload); }
-                catch (Exception e) { Report("could not serialize event: " + e.GetType().Name); continue; }
-                if (!first) sb.Append(',');
+                catch (Exception e) {
+                    Report("could not serialize event: " + e.GetType().Name);
+                    used = i + 1;   // unserializable: drop it rather than retry it forever
+                    continue;
+                }
+                // Always take at least one, even if it alone blows the budget: the server will
+                // reject that single event and it gets dropped, instead of wedging the queue.
+                if (appended > 0 && sb.Length + json.Length + 2 > MAX_BATCH_BYTES) break;
+                if (appended > 0) sb.Append(',');
                 sb.Append(json);
-                first = false;
+                appended++;
+                used = i + 1;
             }
             sb.Append(']');
             return sb.ToString();
