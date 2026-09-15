@@ -35,14 +35,32 @@ namespace qp {
             Done = true;
         }
 
-        // Outside a GDPR region → full attribution sharing. In a GDPR region → stays limited
-        // (LimitDataSharing = true = opted out).
-        // TODO tighten: read the exact UMP/TCF consent bit to flip LimitDataSharing precisely.
+        // Outside a GDPR region → full attribution sharing. Inside one, the consent flow already ran
+        // (MaxBoot resolves only after it finishes), so read what the user actually answered instead of
+        // blanket-blocking the whole region: TCF purpose 1 (store/access info on device) + purpose 7
+        // (measure ad performance) are the pair attribution needs. Either one missing — or no TC data on
+        // disk at all (null) — keeps sharing limited, same as before.
         static void ApplyConsent() {
-            bool limitSharing = MaxBoot.InGdprRegion;
+            bool limitSharing = MaxBoot.InGdprRegion && !_TcfAttributionConsented();
             if (!limitSharing) SingularSDK.TrackingOptIn();
             SingularSDK.LimitDataSharing(limitSharing);
             Debug.Log($"[SingularBoot] consent applied — geography {MaxBoot.Geography}, limitDataSharing {limitSharing}");
+        }
+
+        // Singular is not an IAB TCF vendor — it is a Google Additional Consent provider, so vendor-level
+        // consent lives in the AC string, not the TC string (verified in Google's ATP list: 1046 "Singular
+        // Labs Inc.", whose declared domains include i.sng.link, our own view-through link domain).
+        const int SingularAtpId = 1046;
+
+        // null (nothing on disk) counts as "not consented" — never as consent. The ATP bit is honored only
+        // when it exists: it comes back null when the CMP flow never listed Singular, which is a gap in the
+        // flow, not a refusal, and must not silently block users who did consent to the purposes.
+        static bool _TcfAttributionConsented() {
+            bool? atp = MaxSdkUtils.GetAdditionalConsentStatus(SingularAtpId);
+            if (atp == false) return false;
+
+            return MaxSdkUtils.GetPurposeConsentStatus(1) == true    // store/access info on device
+                && MaxSdkUtils.GetPurposeConsentStatus(7) == true;   // measure ad performance
         }
 
         // Persists the resolved attribution; Analytics attaches it to every events-server event.
