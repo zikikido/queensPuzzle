@@ -84,6 +84,10 @@ namespace qp {
         const string API_KEY = "42decc823d7c9a3d35b7d87dbccda5d48a98b0f77af2ad8b86ef1009f129ce3e";
         const string DB_NAME = "pawdoku_events";
         const float FLUSH_INTERVAL_SEC = 3f;   // short on purpose: session_start must land even in a 5s session
+        // Ceiling for the back-off while the server is unreachable. Kept fairly low on purpose:
+        // the buffer is in memory only, so every second an event waits is a second in which the
+        // OS could reclaim the process and take it with it. Battery against loss risk.
+        const float MAX_RETRY_SEC = 60f;
         const int MAX_BUFFER = 200;            // rolling cap — oldest dropped when exceeded
         // The server accepts 1 MB bodies and 500 items; stay well inside both so a flush can never
         // be rejected as too large and lose the whole batch. The remainder rides the next tick.
@@ -106,6 +110,8 @@ namespace qp {
         readonly ConcurrentQueue<string> _diagnostics = new ConcurrentQueue<string>();
         CancellationTokenSource _stop;
         HttpClient _http;
+        double _retryDelaySec = FLUSH_INTERVAL_SEC;   // grows only while the server is unreachable
+        bool _reportedFlushBug;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Bootstrap() {
@@ -158,22 +164,45 @@ namespace qp {
         // No Unity API below this point — it all runs off the main thread.
         async Task FlushLoop(CancellationToken token) {
             while (!token.IsCancellationRequested) {
-                try { await Task.Delay(TimeSpan.FromSeconds(FLUSH_INTERVAL_SEC), token).ConfigureAwait(false); }
+                try { await Task.Delay(TimeSpan.FromSeconds(_retryDelaySec), token).ConfigureAwait(false); }
                 catch (OperationCanceledException) { return; }
-                try { await Flush(token).ConfigureAwait(false); }
-                catch (Exception e) { Report("flush failed: " + e.GetType().Name); }
+
+                bool serverUnavailable;
+                try {
+                    serverUnavailable = await Flush(token).ConfigureAwait(false);
+                } catch (Exception e) {
+                    // Flush throwing is a bug in OUR code, not a server condition. Waiting longer
+                    // fixes nothing — it would throw again next tick — so keep the normal cadence
+                    // and just make sure one broken build cannot flood Crashlytics.
+                    if (!_reportedFlushBug) { _reportedFlushBug = true; Report("flush failed: " + e.GetType().Name); }
+                    serverUnavailable = false;
+                }
+
+                // Slow down ONLY while the server is out of reach. Any other outcome — delivered,
+                // nothing queued, or a malformed batch dropped — goes straight back to the normal
+                // interval, because none of those get better by waiting.
+                _retryDelaySec = serverUnavailable
+                    ? Math.Min(_retryDelaySec * 2, MAX_RETRY_SEC)
+                    : FLUSH_INTERVAL_SEC;
             }
         }
 
-        async Task Flush(CancellationToken token) {
+        /// <summary>
+        /// Sends one batch. Returns TRUE only when the server could not be reached or was not ready
+        /// — a connection failure, a timeout, 5xx, 408 or 429 — which is the single condition worth
+        /// slowing the loop down for. Everything else returns FALSE: an empty queue, a delivered
+        /// batch, an event that failed to serialize (dropped in place), and a malformed batch the
+        /// server will never accept (dropped). None of those get better by waiting longer.
+        /// </summary>
+        async Task<bool> Flush(CancellationToken token) {
             var http = _http;
-            if (http == null) return;
+            if (http == null) return false;
 
             List<Pending> batch;
             lock (_buffer) {
-                if (_buffer.Count == 0) return;
+                if (_buffer.Count == 0) return false;
 #if UNITY_EDITOR
-                if (!SEND_FROM_EDITOR) { _buffer.Clear(); return; }
+                if (!SEND_FROM_EDITOR) { _buffer.Clear(); return false; }
 #endif
                 // Taken out under the lock; events arriving mid-send stay for the next tick.
                 batch = new List<Pending>(_buffer);
@@ -188,7 +217,9 @@ namespace qp {
                 Requeue(batch.GetRange(used, batch.Count - used));
                 batch.RemoveRange(used, batch.Count - used);
             }
-            if (json.Length <= 2) return;   // "[]" — everything in it failed to serialize
+            // "[]" — every event in it failed to serialize. They were dropped, not deferred, so
+            // this is not a server problem and must not trigger a back-off.
+            if (json.Length <= 2) return false;
 
             long code = 0;
             bool ok = false;
@@ -199,14 +230,15 @@ namespace qp {
                     ok = res.IsSuccessStatusCode;
                 }
             } catch (Exception e) {
-                // Offline, DNS, timeout, shutdown — all retryable, so keep the batch.
+                // Offline, DNS, timeout, shutdown — the server is out of reach, so keep the batch
+                // and let the loop slow down.
                 if (!token.IsCancellationRequested)
                     Report("delivery failed, retained " + batch.Count + ": " + e.GetType().Name);
                 Requeue(batch);
-                return;
+                return true;
             }
 
-            if (ok) return;
+            if (ok) return false;
 
             // 408 (request timeout) and 429 (rate limited) are 4xx but transient — retrying is
             // exactly what the server is asking for. Everything else in the 4xx range means this
@@ -216,9 +248,10 @@ namespace qp {
             bool transient = code == 408 || code == 429;
             if (code >= 400 && code < 500 && !transient) {
                 Report("batch of " + batch.Count + " rejected with " + code + " — dropped");
-                return;
+                return false;   // the queue moved on; nothing to wait for
             }
-            Requeue(batch);   // 5xx, 408, 429, anything else: try again next tick
+            Requeue(batch);
+            return true;        // 5xx, 408, 429: the server is not ready — back off
         }
 
         // Put a failed batch back in front of whatever was queued while it was in flight.
@@ -279,7 +312,13 @@ namespace qp {
         }
 
         // No OnApplicationPause flush any more: the loop keeps running while the app is in the
-        // background, which is the entire point of moving off the coroutine.
+        // background, which is the entire point of moving off the coroutine. Coming back to the
+        // foreground does clear any accumulated back-off though — that is the moment connectivity
+        // has usually returned, so there is no reason to sit out a delay earned while away.
+        void OnApplicationPause(bool paused) {
+            if (!paused) _retryDelaySec = FLUSH_INTERVAL_SEC;
+        }
+
         void OnApplicationQuit() { Stop(); }
         void OnDestroy() { Stop(); }
 
