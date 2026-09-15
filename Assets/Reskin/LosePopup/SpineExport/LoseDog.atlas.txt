@@ -23,9 +23,9 @@ Bone
 bounds:859,73,357,218
 rotate:90
 BrowL
-bounds:859,11,96,60
+bounds:935,11,96,60
 BrowR
-bounds:1074,5,95,59
+bounds:1033,5,95,59
 offsets:0,4,95,63
 EyeL
 bounds:1079,66,115,118
@@ -37,14 +37,14 @@ EyeSpotR
 bounds:1816,444,173,189
 rotate:90
 EyelidClosedLowerL
-bounds:1887,625,118,65
-EyelidClosedLowerR
-bounds:736,7,119,55
+bounds:772,8,118,65
 rotate:90
+EyelidClosedLowerR
+bounds:87,32,119,55
 EyelidClosedUpperL
-bounds:1589,19,131,102
+bounds:1587,19,131,102
 EyelidClosedUpperR
-bounds:417,2,142,124
+bounds:453,2,142,124
 EyelidOpenL
 bounds:1866,302,140,145
 rotate:90
@@ -52,24 +52,21 @@ EyelidOpenR
 bounds:1386,181,156,144
 rotate:90
 FingerBigR_1
-bounds:793,32,94,64
+bounds:839,7,94,64
 offsets:0,1,95,65
-rotate:90
 FingerL_2
-bounds:1530,44,85,57
+bounds:1913,108,85,57
 rotate:90
 FingerR
-bounds:87,2,39,84
-rotate:90
+bounds:417,140,39,84
 Finger_L
-bounds:957,16,55,115
+bounds:1530,14,55,115
 offsets:1,1,57,117
-rotate:90
 Hair
 bounds:1208,167,176,170
 offsets:9,1,195,171
 HandL_2
-bounds:561,10,116,173
+bounds:597,10,116,173
 offsets:0,2,191,324
 rotate:90
 HandR_1
@@ -116,20 +113,21 @@ offsets:0,0,219,289
 rotate:90
 ear_r
 bounds:214,34,201,305
+t10
+bounds:417,85,34,53
+offsets:1,2,36,56
+tear/1
+bounds:1761,816,100,32
+tear/3
+bounds:1887,626,100,64
 Слой 52
 bounds:1079,315,197,127
 offsets:0,0,204,127
 rotate:90
-Слой 56
-bounds:87,43,123,44
-offsets:0,5,123,49
 Слой 57
 bounds:417,226,113,42
 offsets:3,0,116,42
 rotate:90
-Слой 59
-bounds:173,5,19,36
-offsets:1,2,21,39
 Слой 73
 bounds:1027,514,182,508
 Слой 74
