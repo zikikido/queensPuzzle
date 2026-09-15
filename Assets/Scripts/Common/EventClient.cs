@@ -107,7 +107,8 @@ namespace qp {
 
         static EventClient _instance;
         readonly List<Pending> _buffer = new List<Pending>();
-        readonly ConcurrentQueue<string> _diagnostics = new ConcurrentQueue<string>();
+        readonly ConcurrentQueue<(string Message, bool IsError)> _diagnostics
+            = new ConcurrentQueue<(string, bool)>();
         CancellationTokenSource _stop;
         HttpClient _http;
         double _retryDelaySec = FLUSH_INTERVAL_SEC;   // grows only while the server is unreachable
@@ -174,7 +175,7 @@ namespace qp {
                     // Flush throwing is a bug in OUR code, not a server condition. Waiting longer
                     // fixes nothing — it would throw again next tick — so keep the normal cadence
                     // and just make sure one broken build cannot flood Crashlytics.
-                    if (!_reportedFlushBug) { _reportedFlushBug = true; Report("flush failed: " + e.GetType().Name); }
+                    if (!_reportedFlushBug) { _reportedFlushBug = true; Report("flush failed: " + e.GetType().Name, true); }
                     serverUnavailable = false;
                 }
 
@@ -247,7 +248,7 @@ namespace qp {
             // cap above), but if it ever does, the batch really is unsendable as built.
             bool transient = code == 408 || code == 429;
             if (code >= 400 && code < 500 && !transient) {
-                Report("batch of " + batch.Count + " rejected with " + code + " — dropped");
+                Report("batch of " + batch.Count + " rejected with " + code + " — dropped", true);
                 return false;   // the queue moved on; nothing to wait for
             }
             Requeue(batch);
@@ -284,7 +285,7 @@ namespace qp {
                 string json;
                 try { json = JsonUtility.ToJson(it.payload); }
                 catch (Exception e) {
-                    Report("could not serialize event: " + e.GetType().Name);
+                    Report("could not serialize event: " + e.GetType().Name, true);
                     used = i + 1;   // unserializable: drop it rather than retry it forever
                     continue;
                 }
@@ -300,15 +301,24 @@ namespace qp {
             return sb.ToString();
         }
 
-        // CDebug.LogError files a Crashlytics non-fatal and is a Unity API, so the send loop cannot
-        // call it directly. Messages are queued here and logged from Update on the main thread.
-        void Report(string message) {
-            if (_diagnostics.Count < 50) _diagnostics.Enqueue(message);
+        // Both sinks are Unity APIs, so the send loop cannot call them directly. Messages are
+        // queued here and drained from Update on the main thread.
+        //
+        // isError decides WHICH sink. CDebug.LogError files a Crashlytics NON-FATAL — a crash
+        // report — so it must be reserved for actual faults. Losing network is not a fault: it is
+        // the single most ordinary thing that happens to a phone, and reporting it was filing a
+        // crash for every player who walked into a lift. Those go to CDebug.CrashLog instead,
+        // which is a breadcrumb: invisible on its own, but attached as context to any real crash
+        // report that follows.
+        void Report(string message, bool isError = false) {
+            if (_diagnostics.Count < 50) _diagnostics.Enqueue((message, isError));
         }
 
         void Update() {
-            for (int i = 0; i < 5 && _diagnostics.TryDequeue(out var message); i++)
-                CDebug.LogError("[EventClient] " + message);
+            for (int i = 0; i < 5 && _diagnostics.TryDequeue(out var d); i++) {
+                if (d.IsError) CDebug.LogError("[EventClient] " + d.Message);
+                else CDebug.CrashLog("[EventClient] " + d.Message);
+            }
         }
 
         // No OnApplicationPause flush any more: the loop keeps running while the app is in the
