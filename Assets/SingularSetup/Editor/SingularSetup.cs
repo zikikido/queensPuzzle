@@ -73,9 +73,21 @@ namespace Common {
         // ---- SDK object (the SingularSDKObject prefab in the boot scene) -----------------
         // Deliberate settings: InitializeOnAwake = OFF because init must run AFTER the consent
         // flow (GDPR) and the ATT prompt on iOS — the bootstrap calls InitializeSingularSDK().
+        //
+        // waitForTrackingAuthorizationWithTimeoutInterval = 300 (the prefab default is 0; the
+        // override lives on the SingularSDKObject in the boot scene). Sequencing ATT ourselves
+        // is NOT enough: when the `max` boot stage hits its 5s cap before the user answered the
+        // prompt (slow network / offline), init runs with ATT still undetermined and a 0 here
+        // fires the install WITHOUT an IDFA — attribution lost for that user, permanently.
+        // The wait costs nothing in the normal path: the native side polls
+        // isTrackingAuthorizationUndetermined once a second on Singular's own API thread (never
+        // the main thread) and returns on the first check when ATT is already answered, so the
+        // boot is never held. Events queue in Singular's sqlite store meanwhile, so nothing is
+        // lost even if the app dies mid-wait. 300s is Singular's own documented recommendation.
+        //
         // Everything else stays at the prefab defaults on purpose: SKANEnabled=true (iOS
-        // attribution), waitForTrackingAuthorization=0 (we sequence ATT ourselves), ODM off,
-        // clipboardAttribution/collectOAID/limitAdvertisingIdentifiers=false, timeouts default.
+        // attribution), ODM off, clipboardAttribution/collectOAID/limitAdvertisingIdentifiers
+        // =false, timeouts default.
         // The API key/secret can't be automated — the fix selects the object for pasting.
         const string PrefabPath = "Packages/" + PackageName + "/SingularSDK/Prefabs/SingularSDKObject.prefab";
         const string KeyPlaceholder = "<YourAPIKey>";
