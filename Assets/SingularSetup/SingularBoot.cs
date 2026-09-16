@@ -68,7 +68,6 @@ namespace qp {
             public void OnSingularDeviceAttributionCallback(Dictionary<string, object> info) {
                 var source = SingularSource.FromCallback(info);
                 AppData.SingularSource.Save(source);
-                Analytics.SingularAttribution(info);   // after Save — the event's singular_source is the resolved one
 #if !IGNORE_FIREBASE
                 Analytics.SetSourceProperty(source);
 #endif

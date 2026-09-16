@@ -106,18 +106,6 @@ namespace qp {
             Firebase.Analytics.FirebaseAnalytics.SetUserProperty("src_network", network);
         }
 #endif
-        /// <summary>The raw Singular attribution callback, every key as delivered → events-server
-        /// `singular_attribution`. Temporary: to learn what the callback really carries before
-        /// deciding which keys become Firebase user properties.</summary>
-        public static void SingularAttribution(System.Collections.Generic.Dictionary<string, object> info) {
-            string raw;
-            try { raw = Newtonsoft.Json.JsonConvert.SerializeObject(info); }
-            catch (System.Exception e) { raw = "unserializable: " + e.GetType().Name; }
-            var p = new SingularAttributionPayload { eventname = "singular_attribution", attribution = raw };
-            FillCommon(p);
-            EventClient.Enqueue(p);
-        }
-
         /// <summary>One paid ad impression → events-server `ad_impression` (revenue per user).
         /// Called from Ads.OnRevenuePaid, alongside the Singular/Firebase reporting.</summary>
         public static void AdImpression(MaxSdkBase.AdInfo info) {
