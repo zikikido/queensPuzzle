@@ -100,10 +100,12 @@ namespace qp {
         /// <summary>Reusable "watch to earn": show a rewarded ad and run onEarned only if the
         /// reward was actually granted. Use anywhere a rewarded video grants something (boosters,
         /// bones, …).</summary>
-        public static void WatchToEarn(Action onEarned) => ShowRewarded(earned => { if (earned) onEarned?.Invoke(); });
+        public static void WatchToEarn(string placement, Action onEarned) => ShowRewarded(placement, earned => { if (earned) onEarned?.Invoke(); });
 
-        /// <summary>Show a rewarded ad. onDone(true) if the reward was earned, else onDone(false).</summary>
-        public static void ShowRewarded(Action<bool> onDone) {
+        /// <summary>Show a rewarded ad. onDone(true) if the reward was earned, else onDone(false).
+        /// `placement` names where in the game it was shown — MAX echoes it back on the revenue
+        /// callback (AdInfo.Placement), so every impression's revenue carries its source.</summary>
+        public static void ShowRewarded(string placement, Action<bool> onDone) {
             if (!IsRewardedReady) { onDone?.Invoke(false); return; }
 
             // our flag can't see expiry — one SDK check right before the show (a load was
@@ -122,7 +124,7 @@ namespace qp {
             // player would glimpse this screen again before the callback swaps to the next one.
             MBAdCurtain.Instance.FadeIn(() => {
                 PauseGameAudio();
-                MaxSdk.ShowRewardedAd(RewardedId);
+                MaxSdk.ShowRewardedAd(RewardedId, placement);
             });
         }
 
@@ -152,8 +154,9 @@ namespace qp {
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent        += (id, info) => FinishInterstitial(displayed: true);
         }
 
-        /// <summary>Show an interstitial; onClosed fires when it's dismissed (or immediately if none ready).</summary>
-        public static void ShowInterstitial(Action onClosed = null) {
+        /// <summary>Show an interstitial; onClosed fires when it's dismissed (or immediately if none ready).
+        /// `placement` — same as ShowRewarded.</summary>
+        public static void ShowInterstitial(string placement, Action onClosed = null) {
             if (!IsInterstitialReady) { onClosed?.Invoke(); return; }
 
             // same expiry guard as ShowRewarded
@@ -169,7 +172,7 @@ namespace qp {
             // Curtain first — same reason as ShowRewarded.
             MBAdCurtain.Instance.FadeIn(() => {
                 PauseGameAudio();
-                MaxSdk.ShowInterstitial(InterstitialId);
+                MaxSdk.ShowInterstitial(InterstitialId, placement);
             });
         }
 
@@ -245,6 +248,8 @@ namespace qp {
                     new Firebase.Analytics.Parameter("ad_source", info.NetworkName ?? ""),
                     new Firebase.Analytics.Parameter("ad_format", info.AdFormat ?? ""),
                     new Firebase.Analytics.Parameter("ad_unit_name", info.AdUnitIdentifier ?? ""),
+                    new Firebase.Analytics.Parameter("placement", info.Placement ?? ""),
+                    new Firebase.Analytics.Parameter("precision", info.RevenuePrecision ?? ""),
                     new Firebase.Analytics.Parameter("currency", "USD"),
                     new Firebase.Analytics.Parameter("value", info.Revenue));
             }

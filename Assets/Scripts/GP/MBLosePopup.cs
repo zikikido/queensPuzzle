@@ -92,7 +92,7 @@ namespace qp {
             // Interstitial on restart, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
             // Show it first, then go to the lobby when it closes.
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial) {
-                Ads.ShowInterstitial(() => _replay());
+                Ads.ShowInterstitial("lose_restart", () => _replay());
             }
             else {
                 _replay();
@@ -113,7 +113,7 @@ namespace qp {
 
         // Continue — watch a rewarded ad; only revive (bones refill) if the reward is granted.
         void Continue() {
-            Ads.WatchToEarn(() => {
+            Ads.WatchToEarn("lose_continue", () => {
                 _showing = false;
                 gameObject.SetActive(false);
                 MBGameplay.instance?.ContinueAfterFail();

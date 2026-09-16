@@ -84,6 +84,9 @@ namespace qp {
 
             Register(
                 Task("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f),
+#if !IGNORE_FIREBASE
+                Task("firebase", FirebaseBootstrap.Init, () => FirebaseBootstrap.FBSetupFinished, timeoutSec: 3f),
+#endif
                 // iOS: the consent form is an in-app modal — the engine keeps running under it,
                 // so the cap would fire mid-consent; hold it while any modal is presented.
                 // (Android pauses the whole activity instead; NativeModal is always false there.)
@@ -97,15 +100,14 @@ namespace qp {
             Register("notif-permission", RequestNotificationPermission, () => true);
 #endif
 
-            // Stage 2 (parallel): Firebase + Singular. Singular inits with partner sharing off and
+            // Stage 2: Singular (Firebase moved to stage 1). Singular inits with partner sharing off and
             // updates via MaxBoot.WhenResolved, so it no longer depends on consent being ready here
             // (matters when stage 1 hit its cap offline).
-            Register(
-#if !IGNORE_FIREBASE
-                Task("firebase", FirebaseBootstrap.Init, () => FirebaseBootstrap.FBSetupFinished),
-#endif
-                Task("singular", SingularBoot.Begin, () => SingularBoot.Done)
-            );
+            Register("singular", SingularBoot.Begin, () => SingularBoot.Done);
+
+            // Stage 2b: Firebase is up (unless stage 1 hit its 3s cap) — pd_session_start + user
+            // properties. Instant-done.
+            Register("firebase-launch", Analytics.FirebaseLaunch, () => true);
 
             // Stage 3: start loading ads. Instant-done — ad loading runs in the background, so
             // the loading screen never waits on it.

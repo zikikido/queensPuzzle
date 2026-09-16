@@ -46,6 +46,13 @@ namespace qp {
         public string precision;     // AdInfo.RevenuePrecision — exact / estimated / ...
     }
 
+    /// <summary>The Singular device-attribution callback exactly as delivered, as a JSON string
+    /// (JsonUtility can't serialize a Dictionary).</summary>
+    [Serializable]
+    public class SingularAttributionPayload : EventBase {
+        public string attribution;
+    }
+
     /// <summary>Serialized shape of one level event document sent to the events server.</summary>
     [Serializable]
     public class EventPayload : EventBase {

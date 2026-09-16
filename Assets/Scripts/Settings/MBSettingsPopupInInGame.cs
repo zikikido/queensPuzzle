@@ -31,7 +31,7 @@ namespace qp {
             _restarting = true;
 
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
-                Ads.ShowInterstitial(Restart);
+                Ads.ShowInterstitial("settings_restart", Restart);
             else
                 Restart();
         }

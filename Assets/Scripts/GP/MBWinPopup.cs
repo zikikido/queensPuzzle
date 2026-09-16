@@ -108,7 +108,7 @@ namespace qp {
             // Interstitial between levels, from GameConfig.StartShowInterAtLevel (+ 1-min cooldown).
             // Show it first, then continue when it closes.
             if (AppData.LevelIdx.Value + 1 >= GameConfig.StartShowInterAtLevel && Ads.CanShowInterstitial)
-                Ads.ShowInterstitial(Continue);
+                Ads.ShowInterstitial("win_next", Continue);
             else
                 Continue();
         }

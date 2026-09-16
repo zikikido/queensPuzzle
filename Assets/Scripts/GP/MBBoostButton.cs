@@ -65,9 +65,11 @@ namespace qp {
             if (boost.Value > 0) {
                 if (UseAction != null && UseAction()) boost.Value--;
             } else {
-                Ads.WatchToEarn(() => {
+                // Invariant: a culture-aware ToLower turns "HINT" into "hınt" on Turkish devices.
+                string name = BoostType.ToString().ToLowerInvariant();
+                Ads.WatchToEarn("boost_" + name, () => {
                     boost.Value += GameConfig.BoosterAddedAfterRewarded;
-                    Analytics.BoostEarned(BoostType.ToString().ToLower());
+                    Analytics.BoostEarned(name);
                 });
             }
         }

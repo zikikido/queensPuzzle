@@ -79,6 +79,45 @@ namespace qp {
             EventClient.Enqueue(p);
         }
 
+        /// <summary>
+        /// Firebase side of the launch — run from the boot stage AFTER Firebase is up (logs before
+        /// that are dropped). `pd_session_start` mirrors events-server `session_start` (the name
+        /// `session_start` is reserved by Firebase), and the user properties ride on every
+        /// BigQuery row so it joins to our users without going through GAID.
+        /// </summary>
+#if !IGNORE_FIREBASE
+        public static void FirebaseLaunch() {
+
+            if (!FirebaseBootstrap.FBAvailable) return;
+            Firebase.Analytics.FirebaseAnalytics.SetUserProperty("uid", _userId);
+            Firebase.Analytics.FirebaseAnalytics.SetUserProperty("first_version", _firstVersion.ToString());
+            SetSourceProperty(AppData.SingularSource.Value);
+            CDebug.Log("pd_session_start",
+                new Firebase.Analytics.Parameter("session", UserData.Instance.Sessions),
+                new Firebase.Analytics.Parameter("lvl_idx", AppData.LevelIdx.Value));
+        }
+
+        /// <summary>Install network as a Firebase user property — at launch, and again when the
+        /// Singular attribution callback resolves it (it can land after the launch stage).</summary>
+        public static void SetSourceProperty(SingularSource source) {
+
+            if (!FirebaseBootstrap.FBAvailable || string.IsNullOrEmpty(source?.network)) return;
+            var network = source.network.Length > 36 ? source.network.Substring(0, 36) : source.network;   // Firebase value cap
+            Firebase.Analytics.FirebaseAnalytics.SetUserProperty("src_network", network);
+        }
+#endif
+        /// <summary>The raw Singular attribution callback, every key as delivered → events-server
+        /// `singular_attribution`. Temporary: to learn what the callback really carries before
+        /// deciding which keys become Firebase user properties.</summary>
+        public static void SingularAttribution(System.Collections.Generic.Dictionary<string, object> info) {
+            string raw;
+            try { raw = Newtonsoft.Json.JsonConvert.SerializeObject(info); }
+            catch (System.Exception e) { raw = "unserializable: " + e.GetType().Name; }
+            var p = new SingularAttributionPayload { eventname = "singular_attribution", attribution = raw };
+            FillCommon(p);
+            EventClient.Enqueue(p);
+        }
+
         /// <summary>One paid ad impression → events-server `ad_impression` (revenue per user).
         /// Called from Ads.OnRevenuePaid, alongside the Singular/Firebase reporting.</summary>
         public static void AdImpression(MaxSdkBase.AdInfo info) {

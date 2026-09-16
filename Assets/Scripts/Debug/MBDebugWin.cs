@@ -100,9 +100,9 @@ namespace qp {
             GUILayout.Label("Ads (AppLovin MAX)");
             if (Button("Mediation Debugger")) MaxSdk.ShowMediationDebugger();
             if (Button($"Show Rewarded  (ready: {Ads.IsRewardedReady})"))
-                Ads.ShowRewarded(earned => Debug.Log($"[Debug] rewarded closed — earned: {earned}"));
+                Ads.ShowRewarded("debug", earned =>Debug.Log($"[Debug] rewarded closed — earned: {earned}"));
             if (Button($"Show Interstitial  (ready: {Ads.IsInterstitialReady})"))
-                Ads.ShowInterstitial(() => Debug.Log("[Debug] interstitial closed"));
+                Ads.ShowInterstitial("debug", () =>Debug.Log("[Debug] interstitial closed"));
             if (Button($"Banner: {(Ads.BannerVisible ? "HIDE" : "SHOW")}")) {
                 if (Ads.BannerVisible) Ads.HideBanner(); else Ads.ShowBanner();
             }
