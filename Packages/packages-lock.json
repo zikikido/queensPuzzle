@@ -185,7 +185,7 @@
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp": {
-      "version": "0.88.0",
+      "version": "0.91.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -196,21 +196,21 @@
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.animation": {
-      "version": "1.2.24",
+      "version": "1.2.32",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.82.4",
+        "com.ivanmurzak.unity.mcp": "0.88.0",
         "com.unity.modules.animation": "1.0.0"
       },
       "url": "https://package.openupm.com"
     },
     "com.ivanmurzak.unity.mcp.particlesystem": {
-      "version": "1.2.24",
+      "version": "1.2.31",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.ivanmurzak.unity.mcp": "0.82.4",
+        "com.ivanmurzak.unity.mcp": "0.88.0",
         "com.unity.modules.particlesystem": "1.0.0"
       },
       "url": "https://package.openupm.com"
