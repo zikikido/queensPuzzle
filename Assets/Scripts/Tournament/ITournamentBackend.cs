@@ -19,9 +19,10 @@ namespace qp {
         /// one round trip. Wins count for the tournament running when they arrive, so a package
         /// sent after end time belongs to the next tournament; the first win puts the player in a
         /// group; a batchId already applied is ignored, so a retry is just a refresh.
-        /// With <see cref="TournamentSyncRequest.includeLastClosed"/> the answer also carries the
-        /// last closed tournament the player took part in — the final ranking, which is the only
-        /// thing the server has to confirm (the prize for it is granted locally).</summary>
+        /// The answer also carries the last closed tournament the player took part in — the final
+        /// ranking, which is the only thing the server has to confirm (the prize for it is granted
+        /// locally). It comes back on every sync; remembering that its popup was already shown is
+        /// the client's job.</summary>
         Task<TournamentSyncResult> Sync(TournamentSyncRequest req);
     }
 }

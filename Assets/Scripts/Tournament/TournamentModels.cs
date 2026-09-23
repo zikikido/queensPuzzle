@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace qp {
 
     /// <summary>A tournament as the server describes it — window and group size. The prizes are
-    /// the client's business: the server only ranks players (see <see cref="TournamentManager.PrizePlaces"/>).
+    /// the client's business: the server only ranks players (see <see cref="TournamentConfig.prizePlaces"/>).
     /// Times are UTC ticks (JsonUtility can't serialize DateTime).</summary>
     [Serializable]
     public class TournamentInfo {
@@ -12,7 +12,8 @@ namespace qp {
         public long startTicks;
         public long endTicks;
         public int groupSize;     // players per group, set by the server
-        public bool isFinal;      // the server closed it: the table that comes with it is the final ranking
+        public bool isFinal;      // the server closed it — its table is the final ranking. Closing is
+                                  // instant at end time, so there is no "results are being calculated"
 
         public DateTime StartUtc => new DateTime(startTicks, DateTimeKind.Utc);
         public DateTime EndUtc => new DateTime(endTicks, DateTimeKind.Utc);
@@ -22,9 +23,14 @@ namespace qp {
     /// the running tournament and the last closed one, so the two can never disagree.</summary>
     [Serializable]
     public class TournamentSnapshot {
+
+        public string etag = "";
+
         public TournamentInfo info = new TournamentInfo();
         public TournamentStandings standings = new TournamentStandings();
 
+        /// <summary>There is content here. No content + an etag = "still the same as yours",
+        /// so the client simply keeps what it already holds.</summary>
         public bool Exists => !string.IsNullOrEmpty(info.id);
     }
 
@@ -33,13 +39,19 @@ namespace qp {
     public class TournamentSyncRequest {
         public string batchId = "";                    // empty = nothing to report
         public TournamentWin[] wins = new TournamentWin[0];
-        public bool includeLastClosed;                 // ask for the last closed tournament too
+
+        // The etags of the snapshots the client already holds, exactly as the server sent them.
+        // The server skips the payload of anything that hasn't changed since.
+        public string currentEtag = "";
+        public string closedEtag = "";
     }
 
-    /// <summary>Everything the server answers in one sync: the tournament running now, and — only
-    /// when asked — the last closed tournament the player took part in.</summary>
+    /// <summary>Everything the server answers in one sync: the tournament running now, and the last
+    /// closed tournament the player took part in. Both always come back — whether the player has
+    /// already been shown the closed one is the client's business, not the server's.</summary>
     [Serializable]
     public class TournamentSyncResult {
+
         public TournamentSnapshot current = new TournamentSnapshot();
         public TournamentSnapshot lastClosed = new TournamentSnapshot();
     }

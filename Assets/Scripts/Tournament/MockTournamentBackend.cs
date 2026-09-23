@@ -28,6 +28,8 @@ namespace qp {
         static readonly TimeSpan Duration = TimeSpan.FromHours(48);
         static readonly DateTime Epoch = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        static long _seq;   // answer counter, like a real server's
+
         // ---- debug knobs ----
         public static int DebugDelayMs;       // every call waits this long (simulates a slow server)
         public static bool DebugFail;         // every call throws (simulates server down)
@@ -77,17 +79,45 @@ namespace qp {
             }
 
             var res = new TournamentSyncResult {
-                current = new TournamentSnapshot { info = info, standings = _standings(info, rec) },
+                current = _snapshot(info, rec, req.currentEtag),
             };
 
-            if (req.includeLastClosed) {
-                var closed = _lastClosedPlayed(data, info);
-                if (closed != null)
-                    res.lastClosed = new TournamentSnapshot {
-                        info = closed, standings = _standings(closed, _record(data, closed.id)),
-                    };
-            }
+            var closed = _lastClosedPlayed(data, info);   // always sent; the client tracks what it showed
+            if (closed != null)
+                res.lastClosed = _snapshot(closed, _record(data, closed.id), req.closedEtag);
             return res;
+        }
+
+        /// <summary>A snapshot + its etag — or, when the client already has this exact content,
+        /// just the etag, so the table doesn't travel again.</summary>
+        TournamentSnapshot _snapshot(TournamentInfo info, Record rec, string clientEtag) {
+            var st = _standings(info, rec);          // sets info.isFinal too
+            var etag = _etag(info, st);
+            return etag == clientEtag
+                ? new TournamentSnapshot { etag = etag }
+                : new TournamentSnapshot { etag = etag, info = info, standings = st };
+        }
+
+        /// <summary>Signature of what the client would see: the tournament, and every row in it.</summary>
+        static string _etag(TournamentInfo info, TournamentStandings st) {
+            unchecked {
+                int h = 17;                       // no string.GetHashCode: it isn't stable across runs,
+                h = _hash(h, info.id);            // and the client keeps etags between sessions
+                h = h * 31 + (info.isFinal ? 1 : 0);
+                h = h * 31 + st.myIndex;
+                foreach (var e in st.entries) {
+                    h = _hash(h, e.name);
+                    h = h * 31 + e.score;
+                }
+                return h.ToString("x8");
+            }
+        }
+
+        static int _hash(int h, string s) {
+            unchecked {
+                foreach (char c in s) h = h * 31 + c;
+                return h;
+            }
         }
 
         /// <summary>The most recent tournament that is over and that the player actually played.</summary>

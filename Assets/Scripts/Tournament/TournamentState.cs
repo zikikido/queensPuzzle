@@ -6,8 +6,8 @@ namespace qp {
 
     /// <summary>
     /// The client's tournament blob (PlayerPrefs JSON). Holds only what can't be derived: the two
-    /// snapshots the server sent (the tournament running now, and the last closed one still waiting
-    /// for its popup) and the wins not sent yet. The player's score / index / joined are derived
+    /// snapshots the last sync brought back (the tournament running now, and the last closed one
+    /// still waiting for its popup) and the wins not sent yet. The player's score / index / joined are derived
     /// from these (see <see cref="TournamentManager"/>). Mutated only by TournamentManager.
     /// Note: JsonUtility never stores null for nested classes — "none" is a snapshot with no id.
     /// </summary>
@@ -17,15 +17,25 @@ namespace qp {
         static readonly PlayerPrefsHelper.ObjectHolder<TournamentState> _holder
             = new PlayerPrefsHelper.ObjectHolder<TournamentState>("qp_tournament_state");
 
-        /// <summary>The tournament running now + the player's table in it.</summary>
-        public TournamentSnapshot current = new TournamentSnapshot();
+        /// <summary>The tournament running now + the player's table in it, exactly as the last
+        /// sync returned it.</summary>
+        public TournamentSnapshot lastSyncCurrent = new TournamentSnapshot();
 
-        /// <summary>The last closed tournament the player took part in, with its final table —
-        /// waiting for the Tournament Ended popup. Stored only once the server confirmed it.</summary>
-        public TournamentSnapshot ended = new TournamentSnapshot();
+        /// <summary>The last closed tournament the player took part in, with its final table, as a
+        /// sync returned it — what the Tournament Ended popup shows.</summary>
+        public TournamentSnapshot lastSyncClosed = new TournamentSnapshot();
+
+        /// <summary>The Tournament Ended popup for <see cref="lastSyncClosed"/> was already shown.
+        /// The only thing here the server can't tell us: it keeps sending that closed tournament on
+        /// every sync, so without this the popup would come back every 30 seconds. Reset by a sync
+        /// that brings a different closed tournament.</summary>
+        public bool closedShown;
 
         /// <summary>Wins not sent yet (offline / server down).</summary>
         public List<TournamentWin> pending = new List<TournamentWin>();
+
+        /// <summary>The seq of the last answer applied — anything older is ignored.</summary>
+        public long lastSeq;
 
         // The package currently being sent: fixed when the send starts, so every retry repeats the
         // exact same wins under the same id. Wins added meanwhile simply go in the next package.
@@ -41,7 +51,7 @@ namespace qp {
         // ---- reading the blob ---------------------------------------------------------
 
         /// <summary>The player's score as the server confirmed it in the current tournament.</summary>
-        public int ConfirmedScore => current.standings.Me?.score ?? 0;
+        public int ConfirmedScore => lastSyncCurrent.standings.Me?.score ?? 0;
 
         /// <summary>Score of the wins not sent yet.</summary>
         public int PendingScore {
