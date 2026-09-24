@@ -9,6 +9,7 @@ namespace qp {
     /// on. Set by the server's answer, not by the local clock, so a clock that runs fast only makes
     /// the timer hit zero early and never changes the state.</summary>
     public enum ETournamentStatus {
+        None,         // no tournament running at all (server says so) — the card is hidden
         Locked,       // campaign hasn't reached the unlock level yet
         Offline,      // no internet / no trusted clock — wins are kept and sent later
         NotJoined,    // tournament running, no win in it yet
@@ -61,7 +62,9 @@ namespace qp {
 
         /// <summary>A campaign level was won with <paramref name="score"/> left. Counted locally at
         /// once and queued; which tournament it lands in is the server's call (the one running when
-        /// it arrives). Called from the win flow, before the win popup.</summary>
+        /// it arrives). Called from the win flow, before the win popup.
+        /// The queue holds at most <see cref="TournamentConfig.maxPendingWins"/> wins; past that the
+        /// oldest are dropped — they belong to a tournament that has closed anyway.</summary>
         public static void OnLevelWin(int score) => throw new NotImplementedException();
 
         /// <summary>Background sync — one line over <see cref="TournamentSyncer"/>, which owns

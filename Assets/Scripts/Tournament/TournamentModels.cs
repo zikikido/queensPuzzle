@@ -24,13 +24,16 @@ namespace qp {
     [Serializable]
     public class TournamentSnapshot {
 
+        /// <summary>The server's signature for this exact content — always set, including for
+        /// "there is no tournament", which has an etag of its own. The client hands it back on the
+        /// next sync: the same etag means nothing changed and the payload is left out; a different
+        /// one is the new truth, an empty payload included.</summary>
         public string etag = "";
 
         public TournamentInfo info = new TournamentInfo();
         public TournamentStandings standings = new TournamentStandings();
 
-        /// <summary>There is content here. No content + an etag = "still the same as yours",
-        /// so the client simply keeps what it already holds.</summary>
+        /// <summary>There is a tournament here. False after a sync = there is none.</summary>
         public bool Exists => !string.IsNullOrEmpty(info.id);
     }
 

@@ -29,6 +29,10 @@ namespace qp {
         [Tooltip("How many top places get a gift. The prizes themselves are ours, not the server's.")]
         public int prizePlaces = 3;
 
+        [Tooltip("Most wins kept while offline. Past this the oldest are dropped — they belong to a " +
+                 "tournament that has closed anyway, and the feature is online-only by design.")]
+        public int maxPendingWins = 200;
+
         public TimeSpan EndingSoonTime => TimeSpan.FromMinutes(endingSoonMinutes);
 
         // ---- singleton ------------------------------------------------------------------
