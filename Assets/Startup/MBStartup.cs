@@ -82,6 +82,13 @@ namespace qp {
             // buffers it and sends async, so the boot never waits on the network.
             Register("session_start", Analytics.SessionStart, () => true);
 
+            // Tournament, as early as possible so its first request leaves while the loading screen
+            // is still up. Instant-done, and deliberately NOT behind the stage that waits for MAX:
+            // Init only loads the local blob and starts the background runner, and that runner
+            // holds its first sync until the clock is trusted (MBServerTimeManagerV2.IsTimeSynced),
+            // so it fires the moment server time lands instead of after the consent form.
+            Register("tournament", TournamentManager.Init, () => true);
+
             Register(
                 Task("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f),
 #if !IGNORE_FIREBASE

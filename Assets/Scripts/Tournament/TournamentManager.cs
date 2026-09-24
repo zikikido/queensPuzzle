@@ -5,92 +5,57 @@ using UnityEngine;
 
 namespace qp {
 
-    /// <summary>Where the tournament stands for THIS player — drives the lobby card.</summary>
-    /// <summary>Set by the server's answer, not by the local clock: a clock that runs fast only
-    /// makes the timer hit zero early, never changes the state.</summary>
+    /// <summary>Where the tournament stands for THIS player — the one value the lobby card switches
+    /// on. Set by the server's answer, not by the local clock, so a clock that runs fast only makes
+    /// the timer hit zero early and never changes the state.</summary>
     public enum ETournamentStatus {
         Locked,       // campaign hasn't reached the unlock level yet
-        Offline,      // no internet — wins are kept and sent later
+        Offline,      // no internet / no trusted clock — wins are kept and sent later
         NotJoined,    // tournament running, no win in it yet
         Active,       // joined — timer + rank
-        EndingSoon,   // joined, less than EndingSoonTime left
+        EndingSoon,   // joined, less than the config's threshold left
         Calculating,  // the local timer hit zero — waiting for the next sync to bring the result
-        Ended,        // the server closed a tournament the player played — Claim Prize / See Results
+        Ended,        // a tournament the player played is closed — Claim Prize / See Results
     }
 
     /// <summary>
     /// Everything Tournament in one place — API only, for review. Logic comes next.
     ///
-    /// Shape: local first. A win counts at once and is queued; <see cref="Sync"/> (background,
-    /// every ~30s and on resume) sends the queue and brings back the server's picture. The only
-    /// thing that must come from the server is the final ranking; the prize for it is granted here.
+    /// Shape: local first. A win counts at once and is queued; <see cref="Sync"/> (background, every
+    /// ~30s and on resume) sends the queue and takes back the server's picture. The only thing that
+    /// must come from the server is the final ranking; the prize for it is granted here.
     ///
-    /// Persisted: <see cref="TournamentState"/> — two snapshots (current, ended) + unsent wins.
-    /// Everything below is derived on read, nothing is stored twice.
-    /// Server: <see cref="Backend"/>. Time: <see cref="Now"/>.
+    /// What the UI reads is <see cref="State"/> — the snapshots exactly as the last sync returned
+    /// them — plus the four values below, which can't live there because they need the clock, the
+    /// config and the connection. Everything else (time, config, backend, sync bookkeeping) is
+    /// internal.
     /// </summary>
     public static class TournamentManager {
 
-        // ---- config ---------------------------------------------------------------------
+        /// <summary>Boot (MBStartup, right after the server-time stage — the feature needs a
+        /// trusted clock). Loads the blob, builds the syncer and starts the background sync.
+        /// Main thread, instant: it never waits on the network.</summary>
+        public static void Init() => throw new NotImplementedException();
 
-        /// <summary>Unlock level, "ending soon" threshold and prize places. Loaded once at boot on
-        /// the main thread (see <see cref="TournamentConfig"/>); null = the feature is off.</summary>
-        public static TournamentConfig Config => TournamentConfig.Instance;
+        /// <summary>The blob: the tournament running now + the last closed one, and the wins not
+        /// sent yet. Written only here — the UI reads.</summary>
+        public static TournamentState State => throw new NotImplementedException();
 
-        /// <summary>The server. Swapped for the real one later; nothing else changes.</summary>
-        public static ITournamentBackend Backend = new MockTournamentBackend(UserID.GetUserIDLocal());
+        // ---- derived: needs the clock / config / connection, so it can't sit in State ----
 
-        // ---- time -----------------------------------------------------------------------
-
-        /// <summary>Server UTC (+ the debug offset) — the clock the whole feature runs on.</summary>
-        public static DateTime Now => throw new NotImplementedException();
-
-        // ---- what the UI reads ----------------------------------------------------------
-
-        /// <summary>The tournament running now (id, window, group size).</summary>
-        public static TournamentInfo Info => throw new NotImplementedException();
-
-        /// <summary>Its table, as the server last sent it.</summary>
-        public static TournamentStandings Standings => throw new NotImplementedException();
-
-        /// <summary>The closed tournament waiting for its popup (Exists = something to show).</summary>
-        public static TournamentSnapshot Ended => throw new NotImplementedException();
-
-        public static bool HasEnded => throw new NotImplementedException();
-
-        /// <summary>The player's final place there (1-based; 0 = nothing waiting).</summary>
-        public static int EndedRank => throw new NotImplementedException();
-
-        /// <summary>Did that place win a prize — our rule, not the server's.</summary>
-        public static bool EndedWon => throw new NotImplementedException();
-
-        // Inputs to Status, not API: unlocked = campaign reached Config.unlockLevel; online =
-        // network AND a trusted clock (MBServerTimeManagerV2.IsTimeSynced) — without server time
-        // nothing here can be trusted, so the card goes Offline and wins simply wait.
-        static bool IsUnlocked => throw new NotImplementedException();
-        static bool IsOnline => throw new NotImplementedException();
-
-        /// <summary>Countdown to the end of the current tournament (zero when it is over).</summary>
-        public static TimeSpan TimeLeft => throw new NotImplementedException();
-
-        /// <summary>The player's score in the current tournament: server-confirmed + unsent wins.</summary>
-        public static int MyScore => throw new NotImplementedException();
-
-        /// <summary>At least one win in the current tournament.</summary>
-        public static bool Joined => throw new NotImplementedException();
-
-        /// <summary>The player's row in the table, re-evaluated with the local score so an unsent
-        /// win already moves the player up. 0-based; -1 = not joined. Rank shown = this + 1.</summary>
-        public static int MyIndex => throw new NotImplementedException();
-
-        /// <summary>The one value the lobby card switches on.</summary>
         public static ETournamentStatus Status => throw new NotImplementedException();
 
-        /// <summary>Wins still waiting to be sent — the Offline card shows this.</summary>
-        public static int PendingCount => throw new NotImplementedException();
+        /// <summary>Countdown to the end of the current tournament (zero once it is over).</summary>
+        public static TimeSpan TimeLeft => throw new NotImplementedException();
 
-        public static bool LastSyncOk => throw new NotImplementedException();
-        public static DateTime LastSyncUtc => throw new NotImplementedException();
+        /// <summary>The player's score in the current tournament: what the server confirmed plus
+        /// the wins still waiting to be sent. With an empty queue this is exactly the score in
+        /// <see cref="State"/>; it differs only between a win and its sync, or while offline.</summary>
+        public static int MyScoreWithPending => throw new NotImplementedException();
+
+        /// <summary>The player's row in the table, re-evaluated with that score — so a win that
+        /// hasn't been sent yet already moves the player up. 0-based; -1 = not joined.</summary>
+        public static int MyIndexWithPending => throw new NotImplementedException();
 
         // ---- what the game calls ---------------------------------------------------------
 
@@ -99,15 +64,14 @@ namespace qp {
         /// it arrives). Called from the win flow, before the win popup.</summary>
         public static void OnLevelWin(int score) => throw new NotImplementedException();
 
-        /// <summary>Background sync: send the queued wins, take back the current snapshot and —
-        /// while nothing is waiting for the Ended popup — the last closed tournament too.
-        /// Safe to call any time: overlapping calls are skipped and a failure just retries later.</summary>
+        /// <summary>Background sync — one line over <see cref="TournamentSyncer"/>, which owns
+        /// the request, the answer and how they change <see cref="State"/>.</summary>
         public static Task Sync() => throw new NotImplementedException();
 
         /// <summary>The Tournament Ended popup's button (Claim / Continue). The rank was already
-        /// confirmed during sync, so the prize is granted here and nothing is sent. Returns true
-        /// when the ended tournament was cleared.</summary>
-        public static bool CompleteEnded() => throw new NotImplementedException();
+        /// confirmed during sync, so the prize is granted here and nothing is sent. Marks the result
+        /// as shown, so it never pops again.</summary>
+        public static void CompleteEnded() => throw new NotImplementedException();
 
         // ---- debug (MBDebugWin) ----------------------------------------------------------
 
@@ -120,7 +84,17 @@ namespace qp {
         /// <summary>Wipe the client blob, the mock server and the clock offset.</summary>
         public static void DebugResetAll() => throw new NotImplementedException();
 
-        /// <summary>Dump the current table + the ended result to the console.</summary>
+        /// <summary>Dump both snapshots to the console, plus the sync bookkeeping.</summary>
         public static void DebugLogTable() => throw new NotImplementedException();
+
+        // ---- internal --------------------------------------------------------------------
+        //
+        // Config   — Resources/TournamentConfig, loaded once on the main thread; null = feature off.
+        // Backend  — the server (mock until the real one exists).
+        // Syncer   — TournamentSyncer: builds the request, calls the backend, applies the answer.
+        // Now      — server UTC + the debug offset; the clock the feature (and the mock) runs on.
+        // IsUnlocked / IsOnline — inputs to Status: the campaign reached Config.unlockLevel, and
+        //            there is a network AND a trusted clock (MBServerTimeManagerV2.IsTimeSynced).
+        // LastSyncOk / LastSyncUtc — sync bookkeeping, shown in the debug window only.
     }
 }

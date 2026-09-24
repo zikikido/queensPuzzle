@@ -96,30 +96,7 @@ namespace qp {
             if (Button("DC: reset today (playable)")) DailyChallengeManager.DebugResetToday();
             if (Button("DC: mark solved today")) DailyChallengeManager.DebugMarkSolvedToday();
 
-            GUILayout.Space(16);
-            var ti = TournamentManager.Info;
-            GUILayout.Label($"Tournament {ti.id} ({TournamentManager.Status}) | left {TournamentManager.TimeLeft:d\\.hh\\:mm\\:ss} | score {TournamentManager.MyScore} | rank {TournamentManager.MyIndex + 1}/{TournamentManager.Standings.entries.Length} | pending {TournamentManager.PendingCount}");
-            GUILayout.Label($"  ended: {(TournamentManager.HasEnded ? $"{TournamentManager.Ended.info.id} rank={TournamentManager.EndedRank} won={TournamentManager.EndedWon}" : "none")} | last sync {(TournamentManager.LastSyncOk ? "OK" : "FAILED")} {TournamentManager.LastSyncUtc:HH:mm:ss}");
-            GUILayout.BeginHorizontal();
-            if (Button("T: win +2")) TournamentManager.DebugWin(2);
-            if (Button("T: win +3")) TournamentManager.DebugWin(3);
-            if (Button("T: sync now")) _ = TournamentManager.Sync();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (Button("T: 5 min left")) TournamentManager.DebugSetTimeLeft(TimeSpan.FromMinutes(5));
-            if (Button("T: end now")) TournamentManager.DebugSetTimeLeft(TimeSpan.FromSeconds(-1));
-            if (Button("T: claim / close ended")) TournamentManager.CompleteEnded();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (Button($"T mock: delay {(MockTournamentBackend.DebugDelayMs > 0 ? "5s" : "OFF")}"))
-                MockTournamentBackend.DebugDelayMs = MockTournamentBackend.DebugDelayMs > 0 ? 0 : 5000;
-            if (Button($"T mock: server {(MockTournamentBackend.DebugFail ? "DOWN" : "UP")}"))
-                MockTournamentBackend.DebugFail = !MockTournamentBackend.DebugFail;
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (Button("T: log table")) TournamentManager.DebugLogTable();
-            if (Button("T: reset all")) TournamentManager.DebugResetAll();
-            GUILayout.EndHorizontal();
+            // Tournament: the panel comes back once the manager is implemented.
 
             GUILayout.Space(16);
             GUILayout.Label("Ads (AppLovin MAX)");

@@ -34,9 +34,6 @@ namespace qp {
         /// <summary>Wins not sent yet (offline / server down).</summary>
         public List<TournamentWin> pending = new List<TournamentWin>();
 
-        /// <summary>The seq of the last answer applied — anything older is ignored.</summary>
-        public long lastSeq;
-
         // The package currently being sent: fixed when the send starts, so every retry repeats the
         // exact same wins under the same id. Wins added meanwhile simply go in the next package.
         public string batchId = "";
