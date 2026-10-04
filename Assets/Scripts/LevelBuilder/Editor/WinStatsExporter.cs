@@ -32,7 +32,6 @@ namespace QueensPuzzle
     {
         const string ServerUrl = "https://pawdoku-winstats-server-production.up.railway.app/winstats/build";
         const string AdminKey = "1ebe3fd24ea52fe8c2d02874182168c979959de36c2b67d2";   // editor-only; never ships
-        const string DbName = "pawdoku_events";
 
         const string BlobPath = "Assets/Reskin/Resources/winstats.bytes";
         const string LevelsFolder = "Assets/Reskin/Resources/Levels";
@@ -244,7 +243,6 @@ namespace QueensPuzzle
             using (var content = new StringContent(body, Encoding.UTF8, "application/json"))
             {
                 content.Headers.Add("X-Admin-Key", AdminKey);
-                content.Headers.Add("X-Db-Name", DbName);
 
                 HttpResponseMessage http;
                 try { http = client.PostAsync(ServerUrl, content).Result; }

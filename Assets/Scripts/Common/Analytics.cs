@@ -41,12 +41,10 @@ namespace qp {
 
         public static void GameStart() {
             GameEvent("game_start");
-            SendLevelEvent("level_start");
         }
 
         public static void GameWin() {
             GameEvent("game_win");
-            SendLevelEvent("level_won");
             // Milestone conversion events — campaign only (daily day indices would pollute them).
             // GameWin fires before LevelIdx++, so LevelIdx.Value is the just-solved level (0-based).
             if (!DailyChallengeManager.InDailyRun) {
@@ -58,31 +56,16 @@ namespace qp {
 
         public static void GameLose() {
             GameEvent("game_lose");
-            SendLevelEvent("level_lost");
         }
 
-        /// <summary>
-        /// One app launch (cold start) → events-server `session_start`. Fired from the boot
-        /// stage right after `user_id` resolves, so it carries the id. Retention is derived
-        /// server-side: install day = the user's first session_start (`session == 1`), and a
-        /// user is retained on day N if any session_start of theirs lands on install day + N.
-        /// </summary>
-        public static void SessionStart() {
-            int session = UserData.Instance.Sessions;
-            CrashLog($"[session] start #{session}");
-            var p = new SessionStartPayload {
-                eventname = "session_start",
-                session   = session,
-                lvl_idx   = AppData.LevelIdx.Value,
-            };
-            FillCommon(p);
-            EventClient.Enqueue(p);
-        }
+        /// <summary>Breadcrumb for the cold start, from the boot stage. The launch EVENT is
+        /// `pd_session_start` in FirebaseLaunch, which runs once Firebase is up.</summary>
+        public static void SessionStart() => CrashLog($"[session] start #{UserData.Instance.Sessions}");
 
         /// <summary>
         /// Firebase side of the launch — run from the boot stage AFTER Firebase is up (logs before
-        /// that are dropped). `pd_session_start` mirrors events-server `session_start` (the name
-        /// `session_start` is reserved by Firebase), and the user properties ride on every
+        /// that are dropped). `pd_session_start` is the launch event retention is derived from (the
+        /// name `session_start` is reserved by Firebase), and the user properties ride on every
         /// BigQuery row so it joins to our users without going through GAID.
         /// </summary>
 #if !IGNORE_FIREBASE
@@ -106,81 +89,21 @@ namespace qp {
             Firebase.Analytics.FirebaseAnalytics.SetUserProperty("src_network", network);
         }
 #endif
-        /// <summary>One paid ad impression → events-server `ad_impression` (revenue per user).
-        /// Called from Ads.OnRevenuePaid, alongside the Singular/Firebase reporting.</summary>
-        public static void AdImpression(MaxSdkBase.AdInfo info) {
-            var p = new AdImpressionPayload {
-                eventname   = "ad_impression",
-                ad_platform = "AppLovin",
-                network     = info.NetworkName,
-                format      = info.AdFormat,
-                ad_unit     = info.AdUnitIdentifier,
-                placement   = info.Placement,
-                revenue     = info.Revenue,
-                precision   = info.RevenuePrecision,
-            };
-            FillCommon(p);
-            EventClient.Enqueue(p);
-        }
-
-        // Mirror of the game_start/win/lose events into the events server. Reads the same
-        // statics as GameEvent (correct here — fires before LevelIdx++ / Invalidate), then
-        // hands off to EventClient which buffers + sends async (never blocks, never throws).
-        static void SendLevelEvent(string eventname) {
-            bool daily = DailyChallengeManager.InDailyRun;
-            int timeSec = daily ? (int)DailyChallengeManager.State.timeSec : AppData.LevelTimeSec.Value;
-            var d = AppData.LastPlayData;
-            var p = new EventPayload {
-                eventname     = eventname,
-                lvl_idx       = LevelIdx,
-                lvl_hash      = LevelLoader.CurrentLevelHash,
-                level_set_id  = LevelLoader.CurrentLevelSetId,
-                lvl_attempts  = Attempts,
-                lvl_time_sec  = timeSec,
-                daily         = daily,
-                lives_lost    = d.bonesLost,
-                lives_added   = d.livesAdded,
-                hints_used    = d.hintsUsed,
-                queen_boosts_used = d.queenBoostsUsed,
-            };
-            FillCommon(p);
-            EventClient.Enqueue(p);
-        }
-
-        // Snapshot of the EventBase head, captured once on the main thread.
+        // The user identity FirebaseLaunch reports, read once on the main thread.
         //
-        // AdImpression runs on a BACKGROUND thread for interstitial/rewarded (MAX marks fullscreen
-        // revenue keepInBackground), and the values below used to be read live from there:
-        // Application.version, Application.platform, PlayerPrefs via UserData.FirstVersion, and
-        // PlayerPrefs via UserID.GetUserIDLocal() — all Unity APIs, none of them thread-safe.
-        //
-        // GetUserIDLocal was the dangerous one: it caches into a plain static with no memory
-        // barrier, so a background thread that misses the main thread's write falls through to
-        // the "no id yet" branch, MINTS A NEW GUID and PlayerPrefs.Save()s it over the real one —
-        // silently changing the user's identity mid-session and breaking every user_id join.
-        static string _appVersion, _userId, _platform;
+        // Both values come from PlayerPrefs (UserData.FirstVersion, UserID.GetUserIDLocal()),
+        // which is a Unity API and not thread-safe, and GetUserIDLocal is the dangerous one: it
+        // caches into a plain static with no memory barrier, so a thread that misses the main
+        // thread's write falls through to the "no id yet" branch, MINTS A NEW GUID and
+        // PlayerPrefs.Save()s it over the real one — silently changing the user's identity
+        // mid-session and breaking every user_id join. Captured at boot, never read live.
+        static string _userId;
         static int _firstVersion;
 
         /// <summary>Main thread, from MBStartup, before any SDK can fire a callback.</summary>
         public static void CaptureCommon() {
-            _appVersion   = Application.version;
             _firstVersion = UserData.Instance.FirstVersion;
             _userId       = Common.UserID.GetUserIDLocal();
-            _platform     = Application.platform == RuntimePlatform.IPhonePlayer ? "IOS"
-                          : Application.platform == RuntimePlatform.Android      ? "Android"
-                          : Application.platform.ToString();
-        }
-
-        // The EventBase head every events-server document carries. Plain field reads only —
-        // safe from any thread.
-        static void FillCommon(EventBase p) {
-            p.app_version     = _appVersion;
-            p.first_version   = _firstVersion;
-            p.user_id         = _userId;
-            p.platform        = _platform;
-            // ObjectHolder keeps its value in a cached field; Save() from the attribution callback
-            // is a reference assignment, so reading it off-thread is fine.
-            p.singular_source = AppData.SingularSource.Value;
         }
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>

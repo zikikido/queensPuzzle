@@ -78,8 +78,8 @@ namespace qp {
             new GameObject("Notifications").AddComponent<MBNotifications>();
 #endif
 
-            // Stage 0: session_start → events server (retention). Instant-done — EventClient
-            // buffers it and sends async, so the boot never waits on the network.
+            // Stage 0: the cold-start breadcrumb. The launch EVENT is pd_session_start, logged by
+            // the firebase-launch stage below once Firebase is up.
             Register("session_start", Analytics.SessionStart, () => true);
 
             Register(
