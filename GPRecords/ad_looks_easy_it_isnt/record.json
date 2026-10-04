@@ -723,7 +723,7 @@
     },
     "adTextHeight": 0.17000000178813935,
     "adTextPos": 0.04500000178813934,
-    "showEndCard": true,
+    "showEndCard": false,
     "endCardBg": {
         "r": 0.874509871006012,
         "g": 0.9411765336990356,

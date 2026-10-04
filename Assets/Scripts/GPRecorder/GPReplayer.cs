@@ -3,6 +3,7 @@ using Common;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using QueensPuzzle;
 using UnityEngine;
@@ -24,6 +25,14 @@ namespace qp {
 
         public static bool IsReplaying { get; private set; }
         public static float PlayheadTime { get; private set; }   // current replay clock, for the window
+
+        /// <summary>The replay clock is moving (IsReplaying also covers the wait before it
+        /// starts). Card videos play only while this is on.</summary>
+        public static bool ClockRunning { get; private set; }
+
+        /// <summary>Fired when the replay clock starts — with a hook that is after the hook is
+        /// on screen and its video prepared, so a capture started here opens on its first frame.</summary>
+        public static System.Action ClockStarted;
         public static string RecordFolder;   // where the record's voices/wavs live — window keeps it fresh
 
         static Coroutine _run;
@@ -62,21 +71,8 @@ namespace qp {
         public static void Seek(GPRecord record, float t) {
             var gp = MBGameplay.instance;
             if (gp == null || !gp.Ready) return;
-            // hand, spotlight and voices run whenever their tracks have keys; all follow PlayheadTime
-            if (record.handKeys.Count > 0) GPHand.Ensure(record);
-            else GPHand.Remove();
-            if (record.spotKeys.Count > 0) GPSpotlight.Ensure(record);
-            else GPSpotlight.Remove();
-            if (record.voiceKeys.Count > 0 && !string.IsNullOrEmpty(RecordFolder)) GPVoicePlayer.Ensure(record, RecordFolder);
-            else GPVoicePlayer.Remove();
-            if (record.showAdText && !string.IsNullOrEmpty(RecordFolder)) GPAdText.Ensure(record, RecordFolder);
-            else GPAdText.Remove();
-            if (record.adImages.Count > 0) GPAdImages.Ensure(record);
-            else GPAdImages.Remove();
-            if (record.music) GPMusic.Ensure(record);
-            else GPMusic.Remove();
-            if (record.showEndCard) GPEndCard.Ensure(record);
-            else GPEndCard.Remove();
+            record = record.Resolved();   // a template plays its referenced gameplay
+            EnsureOverlays(record);
             int n = record.level.size;
             var states = new MBCell.ECellType[n * n];
             if (record.level.revealedRows != null)
@@ -90,11 +86,37 @@ namespace qp {
             gp.ReplaySetBoard(states);
         }
 
+        /// <summary>Bring the record's overlays (hand, spotlight, voices, subtitles, images,
+        /// music, end card, hook) in line with it. Needs no board — the hook must already cover
+        /// the screen while the board is still blooming in.</summary>
+        static void EnsureOverlays(GPRecord record) {
+            // hand, spotlight and voices run whenever their tracks have keys; all follow PlayheadTime
+            if (record.handKeys.Count > 0) GPHand.Ensure(record);
+            else GPHand.Remove();
+            if (record.spotKeys.Count > 0) GPSpotlight.Ensure(record);
+            else GPSpotlight.Remove();
+            // a resolved template's voices live in the referenced record's folder
+            string folder = !string.IsNullOrEmpty(record.voicesFolder) ? record.voicesFolder : RecordFolder;
+            record.voicesFile = GPRecord.PickVoiceSet(folder, record.voicesFile);   // unset/missing = the first set
+            if (record.voiceKeys.Count > 0 && !string.IsNullOrEmpty(folder)) GPVoicePlayer.Ensure(record, folder);
+            else GPVoicePlayer.Remove();
+            if (record.showAdText && !string.IsNullOrEmpty(folder)) GPAdText.Ensure(record, folder);
+            else GPAdText.Remove();
+            if (record.adImages.Count > 0) GPAdImages.Ensure(record);
+            else GPAdImages.Remove();
+            if (record.music) GPMusic.Ensure(record);
+            else GPMusic.Remove();
+            if (record.showEndCard) GPEndCard.Ensure(record);
+            else GPEndCard.Remove();
+            if (record.showHook) GPHook.Ensure(record);
+            else GPHook.Remove();
+        }
+
         /// <summary>Play the record from <paramref name="fromTime"/> to its end: the board jumps
         /// to that point instantly (Seek), then the remaining actions fire at their times.</summary>
         public static void Play(GPRecord record, float fromTime) {
             Stop();
-            _run = MBGameplay.instance.StartCoroutine(Run(record, fromTime));
+            _run = MBGameplay.instance.StartCoroutine(Run(record.Resolved(), fromTime));
         }
 
         public static void Stop() {
@@ -102,18 +124,41 @@ namespace qp {
             _run = null;
             if (IsReplaying && MBGameplay.instance != null) MBGameplay.instance.InputLocks--;
             IsReplaying = false;
+            ClockRunning = false;
         }
 
         static IEnumerator Run(GPRecord record, float fromTime) {
             var gp = MBGameplay.instance;
             IsReplaying = true;
             gp.InputLocks++;   // the replay drives the board — block real touches
-            while (!gp.Ready) yield return null;   // wait out the bloom reveal
 
-            Seek(record, fromTime);
+            // a hook covers the bloom reveal: wait until it is on screen with its video
+            // prepared, then the clock (and video) run from the hook's first frame while the
+            // board blooms underneath. Without a hook the clock waits for the board as before.
+            EnsureOverlays(record);
+            PlayheadTime = fromTime;
+            bool hookFirst = record.showHook && fromTime < record.hookTime;
+            if (hookFirst) {
+                float giveUp = Time.realtimeSinceStartup + 5f;
+                while (!GPHook.IsReady && Time.realtimeSinceStartup < giveUp) yield return null;
+                ClockRunning = true;
+                ClockStarted?.Invoke();
+            }
             float t0 = Time.time - fromTime;
+            while (!gp.Ready) {   // wait out the bloom reveal
+                if (hookFirst) PlayheadTime = Time.time - t0;
+                yield return null;
+            }
+            if (!hookFirst) {
+                t0 = Time.time - fromTime;
+                ClockRunning = true;
+                ClockStarted?.Invoke();
+            }
+
+            float seekT = Time.time - t0;
+            Seek(record, seekT);
             foreach (var a in record.actions) {
-                if (a.time <= fromTime) continue;   // baked in by the seek
+                if (a.time <= seekT) continue;   // baked in by the seek
                 while (Time.time - t0 < a.time) { PlayheadTime = Time.time - t0; yield return null; }
                 PlayheadTime = a.time;
                 // one bad action (an edited record can hold anything) must not kill the run —
@@ -129,6 +174,7 @@ namespace qp {
             PlayheadTime = end;
 
             IsReplaying = false;
+            ClockRunning = false;
             gp.InputLocks--;
             _run = null;
         }
@@ -250,11 +296,12 @@ namespace qp {
                 Instance._source = Instance.gameObject.AddComponent<AudioSource>();
                 Instance._source.spatialBlend = 0f;
             }
-            if (Instance._record != record || Instance._folder != folder) {
-                Instance._record = record;
-                Instance._folder = folder;
-                Instance.ReloadClips();
-            }
+            // a template's resolved copy is a new object on every seek — reload only when the
+            // folder moved (a voices-file swap is caught by Update)
+            bool reload = Instance._record == null || Instance._folder != folder;
+            Instance._record = record;
+            Instance._folder = folder;
+            if (reload) Instance.ReloadClips();
         }
 
         public static void Remove() {
@@ -509,7 +556,11 @@ namespace qp {
             else if (visible && _record.endCardAnim == GPRecord.EEndCardAnim.SlideDown) slide = Mathf.Lerp(1f, 0f, e);
             _card.anchorMin = new Vector2(_homeMin.x, _homeMin.y + slide);
             _card.anchorMax = new Vector2(_homeMax.x, _homeMax.y + slide);
+
+            _video?.Update(_record.endCardVideo, _record.endCardVideoSound, GPReplayer.PlayheadTime - start, visible);
         }
+
+        GPCardVideo _video;
 
         void EnsureScene() {
             string path = FindScene();
@@ -534,6 +585,7 @@ namespace qp {
                 _cg.alpha = 0f;   // hidden until its moment
                 _homeMin = _card.anchorMin;
                 _homeMax = _card.anchorMax;
+                _video = new GPCardVideo(gameObject, bg);
                 break;
             }
         }
@@ -546,6 +598,304 @@ namespace qp {
 
         void OnDestroy() {
             if (Instance == this) Instance = null;
+            _video?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The hook (AdsHookSimpleVideoPortrait scene — just $BG + a swappable $Video): the end card in reverse — covers the screen from t=0 and
+    /// LEAVES at its own key with the chosen animation, revealing the board. Purely a function
+    /// of the playhead, like the end card.
+    /// </summary>
+    public class GPHook : MonoBehaviour {
+
+        public static GPHook Instance { get; private set; }
+        const string SceneName = "AdsHookSimpleVideoPortrait";
+
+        /// <summary>On screen and its video (if any) prepared — the replay clock waits for this.</summary>
+        public static bool IsReady => Instance != null && Instance._card != null
+            && (Instance._video == null || Instance._video.IsReady(Instance._record.hookVideo));
+
+        static string _scenePath;
+        static string FindScene() {
+            if (!string.IsNullOrEmpty(_scenePath) && File.Exists(_scenePath)) return _scenePath;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Scene " + SceneName)) {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(p) == SceneName) return _scenePath = p;
+            }
+            Common.CDebug.LogError($"[GPHook] scene '{SceneName}' not found");
+            return null;
+        }
+
+        public static void Ensure(GPRecord record) {
+            if (Instance == null) Instance = new GameObject("$GPHook").AddComponent<GPHook>();
+            Instance._record = record;
+        }
+
+        public static void Remove() {
+            if (Instance != null) {
+                Instance.UnloadScene();
+                Destroy(Instance.gameObject);
+            }
+            Instance = null;
+        }
+
+        GPRecord _record;
+        RectTransform _card;
+        CanvasGroup _cg;
+        UnityEngine.UI.Image _bg;
+        Vector2 _homeMin, _homeMax;
+        GPCardVideo _video;
+        bool _loading;
+
+        void Update() {
+            if (_record == null) return;
+            if (_card == null) { EnsureScene(); return; }
+
+            if (_bg != null) _bg.color = _record.hookBg;
+
+            // it leaves at its own key on the timeline
+            float t = GPReplayer.PlayheadTime;
+            float k = Mathf.Clamp01((t - _record.hookTime) / Mathf.Max(0.05f, _record.hookAnimTime));
+            float e = k < 0.5f ? 2f * k * k : 1f - Mathf.Pow(-2f * k + 2f, 2f) * 0.5f;   // ease in-out
+
+            bool visible = k < 1f;
+            var anim = _record.hookAnim;
+            // ScaleUp exits as a zoom-through (grows while fading) — a full-screen card that
+            // only grew would show nothing new and then pop
+            _cg.alpha = !visible ? 0f
+                : anim == GPRecord.EEndCardAnim.Fade || anim == GPRecord.EEndCardAnim.ScaleUp ? 1f - e : 1f;
+            _card.localScale = Vector3.one * (visible && anim == GPRecord.EEndCardAnim.ScaleUp
+                ? Mathf.Lerp(1f, 1.25f, e) : 1f);
+
+            float slide = 0f;
+            if (visible && anim == GPRecord.EEndCardAnim.SlideUp) slide = Mathf.Lerp(0f, 1f, e);
+            else if (visible && anim == GPRecord.EEndCardAnim.SlideDown) slide = Mathf.Lerp(0f, -1f, e);
+            _card.anchorMin = new Vector2(_homeMin.x, _homeMin.y + slide);
+            _card.anchorMax = new Vector2(_homeMax.x, _homeMax.y + slide);
+
+            _video?.Update(_record.hookVideo, _record.hookVideoSound, t, visible);
+        }
+
+        void EnsureScene() {
+            string path = FindScene();
+            if (string.IsNullOrEmpty(path)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
+            if (!scene.isLoaded) {
+                if (!_loading) {
+                    _loading = true;
+                    UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode(path,
+                        new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Additive));
+                }
+                return;
+            }
+            _loading = false;
+            foreach (var root in scene.GetRootGameObjects()) {
+                var bg = root.transform.RecursiveFindChild("$BG");
+                if (bg == null) continue;
+                _card = bg as RectTransform;
+                _bg = bg.GetComponent<UnityEngine.UI.Image>();
+                _cg = bg.GetComponent<CanvasGroup>() ?? bg.gameObject.AddComponent<CanvasGroup>();
+                _cg.blocksRaycasts = false;
+                _homeMin = _card.anchorMin;
+                _homeMax = _card.anchorMax;
+                _video = new GPCardVideo(gameObject, bg);
+                // the hook covers EVERYTHING — the other overlay scenes (images, subtitles) sit
+                // at order 0 too, and equal orders draw in load order
+                var canvas = bg.GetComponentInParent<Canvas>();
+                if (canvas != null) canvas.sortingOrder = 100;
+                break;
+            }
+        }
+
+        void UnloadScene() {
+            if (string.IsNullOrEmpty(_scenePath)) return;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(_scenePath);
+            if (scene.isLoaded) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(scene);
+        }
+
+        void OnDestroy() {
+            if (Instance == this) Instance = null;
+            _video?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// A card's BG video (hook / end card), drawn into the card's $Video RawImage (added under
+    /// $BG, behind everything, when the scene has none), cover-fitted and looped.
+    ///
+    /// No VideoPlayer — it runs on its own clock, can't redraw a paused seek and freezes under
+    /// the Recorder's fixed-step capture. Instead ffmpeg splits the video ONCE into jpg frames +
+    /// a wav (cached in HookVideos/.cache/&lt;name&gt;/), and every frame shows exactly the frame
+    /// for the playhead: Play, scrubbing and capture all land on the same picture. The sound
+    /// plays only while the replay clock runs.
+    /// </summary>
+    public class GPCardVideo {
+
+        public const int Fps = 30;   // frames are extracted at this rate
+
+        readonly UnityEngine.UI.RawImage _image;
+        readonly UnityEngine.UI.AspectRatioFitter _fit;
+        readonly AudioSource _audio;
+        string _file;
+        byte[][] _frames;   // jpg bytes — decoded only when the shown frame changes
+        Texture2D _tex;
+        int _shown = -1;
+        float _lastLocal = -1f;
+
+        public GPCardVideo(GameObject host, Transform bg) {
+            var v = bg.RecursiveFindChild("$Video");
+            if (v == null) {
+                v = new GameObject("$Video", typeof(RectTransform)).transform;
+                v.SetParent(bg, false);
+                v.SetAsFirstSibling();   // behind the logo / PLAY NOW
+            }
+            _image = v.GetComponent<UnityEngine.UI.RawImage>() ?? v.gameObject.AddComponent<UnityEngine.UI.RawImage>();
+            _image.raycastTarget = false;
+            _image.enabled = false;
+            _fit = v.GetComponent<UnityEngine.UI.AspectRatioFitter>() ?? v.gameObject.AddComponent<UnityEngine.UI.AspectRatioFitter>();
+            _fit.aspectMode = UnityEngine.UI.AspectRatioFitter.AspectMode.EnvelopeParent;   // cover, no bars
+            _audio = host.AddComponent<AudioSource>();
+            _audio.playOnAwake = false;
+            _audio.loop = true;
+            _audio.spatialBlend = 0f;
+        }
+
+        /// <summary><paramref name="localTime"/> = seconds since the card's video starts.</summary>
+        public void Update(string file, bool sound, float localTime, bool visible) {
+            if ((file ?? "") != _file) Load(file ?? "");
+            if (_frames == null || _frames.Length == 0 || !visible) {
+                _image.enabled = false;
+                if (_audio.isPlaying) _audio.Stop();
+                _lastLocal = -1f;
+                return;
+            }
+            _image.enabled = true;
+
+            float local = Mathf.Max(0f, localTime);
+            int idx = (int)(local * Fps) % _frames.Length;   // loops
+            if (idx != _shown) {
+                _tex.LoadImage(_frames[idx]);
+                _shown = idx;
+                _fit.aspectRatio = _tex.height > 0 ? (float)_tex.width / _tex.height : 1f;
+            }
+
+            // sound: only while the replay clock runs — scrubbing stays silent, like the voices.
+            // Started at the playhead's spot; re-placed only on a real jump, never nudged.
+            bool wantSound = sound && GPReplayer.ClockRunning && _audio.clip != null;
+            if (!wantSound) { if (_audio.isPlaying) _audio.Stop(); }
+            else if (!_audio.isPlaying || local < _lastLocal || local - _lastLocal > 0.5f) {
+                _audio.time = local % _audio.clip.length;
+                if (!_audio.isPlaying) _audio.Play();
+            }
+            _lastLocal = local;
+        }
+
+        /// <summary>The card's video is loaded (or there's nothing to play).</summary>
+        public bool IsReady(string file) => string.IsNullOrEmpty(file) || _file == file;
+
+        void Load(string file) {
+            _file = file;
+            _frames = null;
+            _shown = -1;
+            _audio.Stop();
+            _audio.clip = null;
+            if (string.IsNullOrEmpty(file)) return;
+
+            string cache = EnsureCache(file);
+            if (cache == null) return;
+            _frames = Directory.GetFiles(cache, "f_*.jpg")
+                .OrderBy(p => p, System.StringComparer.Ordinal)
+                .Select(File.ReadAllBytes).ToArray();
+            if (_tex == null) _tex = new Texture2D(2, 2, TextureFormat.RGB24, false);
+            _image.texture = _tex;
+            string wav = Path.Combine(cache, "audio.wav");
+            if (File.Exists(wav)) _audio.clip = LoadWav(wav);
+        }
+
+        public void Dispose() {
+            if (_tex != null) UnityEngine.Object.Destroy(_tex);
+            _tex = null;
+        }
+
+        // ---- the frame cache ------------------------------------------------------------
+
+        /// <summary>The video's extracted frames + wav — built with ffmpeg on first use (or when
+        /// the video changed). The window calls this as soon as a video is picked, so a replay
+        /// never stalls on it. Returns the cache folder, null on failure.</summary>
+        public static string EnsureCache(string file) {
+            string video = Path.Combine(GPRecord.VideosDir, file);
+            if (!File.Exists(video)) { Common.CDebug.LogError($"[GPCardVideo] missing {video}"); return null; }
+            string cache = Path.Combine(GPRecord.VideosDir, ".cache", Path.GetFileNameWithoutExtension(file));
+            string done = Path.Combine(cache, "done");
+            if (File.Exists(done) && File.GetLastWriteTimeUtc(done) >= File.GetLastWriteTimeUtc(video)) return cache;
+
+            string ffmpeg = FindFfmpeg();
+            if (ffmpeg == null) {
+                Common.CDebug.LogError("[GPCardVideo] ffmpeg not found — install it (winget install Gyan.FFmpeg) or put it on PATH");
+                return null;
+            }
+            if (Directory.Exists(cache)) Directory.Delete(cache, true);
+            Directory.CreateDirectory(cache);
+            UnityEditor.EditorUtility.DisplayProgressBar("GP Recorder", $"Preparing {file}…", 0.5f);
+            try {
+                if (!RunFfmpeg(ffmpeg, $"-y -v error -i \"{video}\" -vf fps={Fps} -q:v 2 \"{Path.Combine(cache, "f_%05d.jpg")}\"")) return null;
+                RunFfmpeg(ffmpeg, $"-y -v error -i \"{video}\" -vn -ac 2 -ar 48000 -c:a pcm_s16le \"{Path.Combine(cache, "audio.wav")}\"");   // no audio track = no wav, fine
+            } finally { UnityEditor.EditorUtility.ClearProgressBar(); }
+            File.WriteAllText(done, "");
+            return cache;
+        }
+
+        public static string FindFfmpeg() {
+            foreach (var dir in (System.Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator)) {
+                try {
+                    string p = Path.Combine(dir.Trim('"'), "ffmpeg.exe");
+                    if (File.Exists(p)) return p;
+                } catch (System.ArgumentException) { }
+            }
+            // winget installs without touching an already-running editor's PATH
+            string winget = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "WinGet", "Packages");
+            if (Directory.Exists(winget))
+                foreach (var d in Directory.GetDirectories(winget, "*FFmpeg*"))
+                    foreach (var p in Directory.GetFiles(d, "ffmpeg.exe", SearchOption.AllDirectories)) return p;
+            return null;
+        }
+
+        static bool RunFfmpeg(string exe, string args) {
+            var psi = new System.Diagnostics.ProcessStartInfo(exe, args) {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true
+            };
+            using (var p = System.Diagnostics.Process.Start(psi)) {
+                string err = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode != 0) Debug.LogWarning($"[GPCardVideo] ffmpeg {args}\n{err}");
+                return p.ExitCode == 0;
+            }
+        }
+
+        /// <summary>16-bit PCM wav → AudioClip (ffmpeg writes exactly that).</summary>
+        static AudioClip LoadWav(string path) {
+            var b = File.ReadAllBytes(path);
+            int channels = 2, rate = 48000, pos = 12;
+            while (pos + 8 <= b.Length) {
+                string id = Encoding.ASCII.GetString(b, pos, 4);
+                int size = System.BitConverter.ToInt32(b, pos + 4);
+                if (id == "fmt ") {
+                    channels = System.BitConverter.ToInt16(b, pos + 10);
+                    rate = System.BitConverter.ToInt32(b, pos + 12);
+                } else if (id == "data") {
+                    size = Mathf.Min(size, b.Length - pos - 8);
+                    var samples = new float[size / 2];
+                    for (int i = 0; i < samples.Length; i++)
+                        samples[i] = System.BitConverter.ToInt16(b, pos + 8 + i * 2) / 32768f;
+                    var clip = AudioClip.Create(Path.GetFileName(path), samples.Length / channels, channels, rate, false);
+                    clip.SetData(samples, 0);
+                    return clip;
+                }
+                pos += 8 + size + (size & 1);
+            }
+            return null;
         }
     }
 

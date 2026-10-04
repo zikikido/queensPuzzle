@@ -113,8 +113,10 @@ namespace qp {
             // a queued run starts once the board finished its bloom
             // RecordVideo must not wait for Ready — the capture has to include the bloom intro
             // (GPReplayer.Play waits for the bloom internally before firing actions)
+            // A replay with a hook doesn't wait either — the hook covers the bloom
             if (_pending != EPending.None && EditorApplication.isPlaying && MBGameplay.instance != null
-                && (MBGameplay.instance.Ready || _pending == EPending.RecordVideo)
+                && (MBGameplay.instance.Ready || _pending == EPending.RecordVideo
+                    || (_pending == EPending.Replay && _record.showHook))
                 && !GPReplayer.IsReplaying && !GPRecorder.IsRecording) {
                 var mode = _pending;
                 _pending = EPending.None;
@@ -139,7 +141,15 @@ namespace qp {
                         string baseNoExt = Path.Combine(Path.GetFullPath(outDir), _saveName);
                         _captureOutput = baseNoExt;
                         for (int i = 1; File.Exists(_captureOutput + ".mp4"); i++) _captureOutput = baseNoExt + "_" + i;
-                        GPVideoCapture.Start(_captureOutput);
+                        // with a hook the take opens on its first frame: capture starts with the
+                        // replay clock, once the hook is up and its video prepared
+                        // the capture is a heavy MASTER; ffmpeg turns it into <name>.mp4 afterwards
+                        string master = _captureOutput + "_master";
+                        if (_record.showHook) {
+                            System.Action start = null;
+                            start = () => { GPReplayer.ClockStarted -= start; GPVideoCapture.Start(master); };
+                            GPReplayer.ClockStarted += start;
+                        } else GPVideoCapture.Start(master);
                         GPReplayer.Play(_record, 0f);
                         _captureWaiting = true;
                         _replayDoneAt = 0;
@@ -165,12 +175,19 @@ namespace qp {
                         GPVideoCapture.Stop();
                         _captureWaiting = false;
                         _replayDoneAt = 0;
+                        _compressPending = _captureOutput;   // picked up back in edit mode, after the domain reload
                         EditorApplication.isPlaying = false;
-                        EditorUtility.RevealInFinder(_captureOutput + ".mp4");
                     }
                 } else _replayDoneAt = 0;
             }
             if (_captureWaiting) Repaint();
+
+            // a finished take: compress its master once play mode is fully gone (a domain reload
+            // would kill a compression started before it)
+            if (!string.IsNullOrEmpty(_compressPending) && !EditorApplication.isPlayingOrWillChangePlaymode) {
+                GPVideoCapture.Compress(_compressPending + "_master.mp4", _compressPending + ".mp4");
+                _compressPending = "";
+            }
 
             // the record file changed on disk (script, git, hand edit) — reload it, keeping the view
             if (_pending == EPending.None && !GPRecorder.IsRecording && !GPReplayer.IsReplaying
@@ -222,6 +239,22 @@ namespace qp {
 
         string VoicesPath => string.IsNullOrEmpty(_path) ? null : Path.Combine(GPRecord.FolderOf(_path), _record.voicesFile);
 
+        // the voice-set picks are session state, NOT record data: kept on the window (survives the
+        // play-mode domain reload), never written to the json. Empty = the folder's first set.
+        [SerializeField] string _voicesPick = "";
+        [SerializeField] string _refVoicesPick = "";   // template: the gameplay's voice set
+
+        /// <summary>Push the session picks into the record (its voicesFile isn't serialized, so a
+        /// domain reload or a load leaves it empty).</summary>
+        void SyncVoicePick() {
+            if (!string.IsNullOrEmpty(_path)) {
+                string pick = GPRecord.PickVoiceSet(GPRecord.FolderOf(_path), _voicesPick);
+                if (pick == "") pick = "voices1.json";   // no set yet — the first one gets this name
+                if (pick != _record.voicesFile) { _record.voicesFile = pick; _voices = null; }
+            }
+            _record.gpRefVoices = _refVoicesPick;
+        }
+
         System.DateTime _voicesStamp;
 
         // reloads whenever the file on disk changes (edited by hand, git pull, generated…)
@@ -247,6 +280,7 @@ namespace qp {
                     "saves under a new name.", "Record", "Cancel"))
                 return;
 
+            HideGameViewStats();
             if (EditorApplication.isPlaying) { ArmFreshRecord(); return; }   // record the level being played
             if (!EnsureGameplayScene()) return;
             SessionState.SetBool(GPReplayer.FreshBoardKey, true);            // no saved-board restore
@@ -260,13 +294,77 @@ namespace qp {
             if (!SaveRecord()) return;   // the run reads the record from its file — no file, no run
             if (!EditorApplication.isPlaying && !EnsureGameplayScene()) return;
             SessionState.SetString(GPReplayer.ReplayRecordKey, _path);
+            HideGameViewStats();
             _pending = mode;
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;   // OnPlayMode relaunches
             else EditorApplication.isPlaying = true;
         }
 
+        /// <summary>Turn off the Game view's Stats panel — it sits over the take. No public API,
+        /// so the GameView's m_Stats flag is flipped by reflection (a no-op if Unity renames it).</summary>
+        static void HideGameViewStats() {
+            var type = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+            var field = type?.GetField("m_Stats", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field == null) return;
+            foreach (var w in Resources.FindObjectsOfTypeAll(type)) {
+                field.SetValue(w, false);
+                ((EditorWindow)w).Repaint();
+            }
+        }
+
+        // ---- templates: hook + end card around another record's gameplay ---------------
+
+        /// <summary>Records a template can reference — real gameplay, not other templates.</summary>
+        static System.Collections.Generic.IEnumerable<string> GameplayRecordNames() =>
+            GPRecord.ListPaths()
+                .Where(p => Path.GetFileName(p) == "record.json")
+                .Select(GPRecord.NameOf)
+                .Where(n => { var r = GPRecord.LoadRef(n); return r != null && r.IsValid && !r.IsTemplate; });
+
+        void NewTemplate(string refName) {
+            var src = GPRecord.LoadRef(refName);
+            if (src == null || !src.IsValid) return;
+            if (GPRecorder.IsRecording) { GPRecorder.End(); SaveRecord(); }
+            _record = new GPRecord { showEndCard = true };
+            _path = "";
+            _voices = null;
+            _voicesPick = "";
+            ClearSelection();
+            _undoStack.Clear(); _redoStack.Clear();
+            _playhead = _viewStart = 0f;
+            _saveName = refName + "_template";
+            for (int i = 2; Directory.Exists(Path.Combine(GPRecord.Dir, _saveName)); i++) _saveName = refName + "_template" + i;
+            SetReference(refName);
+        }
+
+        /// <summary>Point the record at <paramref name="refName"/>'s gameplay. A template has no
+        /// gameplay of its own — any keys it carried are dropped (undo brings them back).</summary>
+        void SetReference(string refName) {
+            var src = GPRecord.LoadRef(refName);
+            if (src == null || !src.IsValid) return;
+            PushUndo();
+            _record.gpRef = refName;
+            _refVoicesPick = "";   // the new gameplay opens on its first voice set
+            _record.level = src.level;
+            _record.gpRefLength = src.Duration;
+            _record.actions.Clear();
+            _record.handKeys.Clear();
+            _record.spotKeys.Clear();
+            _record.voiceKeys.Clear();
+            ClearSelection();
+            SnapEndCard();
+            ScrubPreview();
+        }
+
+        /// <summary>The end card follows the gameplay's end (drag its marker to adjust after).</summary>
+        void SnapEndCard() {
+            if (_record.IsTemplate && _record.showEndCard)
+                _record.endCardTime = _record.GpStart + _record.GpLength;
+        }
+
         void EnsureRecordLoaded() {
             if (!_record.IsValid && File.Exists(_path)) _record = GPRecord.Load(_path);
+            SyncVoicePick();   // a queued run starts from Update — before any OnGUI re-applied the picks
         }
 
         // ---- files ---------------------------------------------------------------------
@@ -303,6 +401,7 @@ namespace qp {
             _savedJson = JsonUtility.ToJson(_record);
             _saveName = GPRecord.NameOf(path);
             _voices = null;
+            _voicesPick = _refVoicesPick = "";   // each record opens on its first voice set
             ClearSelection();
             _playhead = _viewStart = 0f;
         }
@@ -310,6 +409,7 @@ namespace qp {
         // ---- GUI -----------------------------------------------------------------------
 
         void OnGUI() {
+            SyncVoicePick();
             GPRecorder.FailMode = _record.failMode;   // statics reset on domain reload — the record is the source
             GPRecorder.NoWin = _record.noWin;
             // ✎ Edit (insert) keeps the timeline fully editable — only a running record/replay locks it
@@ -478,8 +578,19 @@ namespace qp {
                     _record = new GPRecord();
                     _path = "";
                     _voices = null;
+                    _voicesPick = _refVoicesPick = "";
                     ClearSelection();
                     _playhead = _viewStart = 0f;
+                }
+                if (GUILayout.Button(new GUIContent("Template ▾",
+                        "New TEMPLATE: hook + end card around another record's gameplay"),
+                        EditorStyles.toolbarDropDown, GUILayout.Width(76f))) {
+                    var m = new GenericMenu();
+                    foreach (var n in GameplayRecordNames()) {
+                        string name = n;
+                        m.AddItem(new GUIContent(name), false, () => NewTemplate(name));
+                    }
+                    m.ShowAsContext();
                 }
 
                 GUILayout.FlexibleSpace();
@@ -497,15 +608,12 @@ namespace qp {
                     GUILayout.Label("—", EditorStyles.miniLabel, GUILayout.Width(90f));
                 } else {
                     // convention: <voiceName>.voices.json (legacy voicesN.json still listed)
-                    var files = Directory.GetFiles(GPRecord.FolderOf(_path), "*.json")
-                        .Select(Path.GetFileName)
-                        .Where(n => n.EndsWith(".voices.json") || (n.StartsWith("voices") && n != "record.json"))
-                        .ToArray();
+                    var files = GPRecord.VoiceSets(GPRecord.FolderOf(_path));
                     int vcur = System.Array.IndexOf(files, _record.voicesFile);
                     int vpick = EditorGUILayout.Popup(vcur, files, EditorStyles.toolbarPopup, GUILayout.Width(110f));
                     if (vpick != vcur && vpick >= 0) {
-                        _record.voicesFile = files[vpick];   // swap the whole voice set
-                        _voices = null;
+                        _voicesPick = files[vpick];   // swap the whole voice set — session only, not saved
+                        SyncVoicePick();
                     }
                 }
             }
@@ -633,9 +741,28 @@ namespace qp {
                     m.AddItem(new GUIContent("End card"), _record.showEndCard, () => {
                         _record.showEndCard = !_record.showEndCard;
                         // first time on: its key lands at the current end, and the record's end
-                        // then follows it (Duration keeps EndCardHold seconds after the card)
+                        // then follows it (Duration keeps endCardHold seconds after the card)
                         if (_record.showEndCard && _record.endCardTime <= 0f)
                             _record.endCardTime = _record.Duration;
+                    });
+                    // the hook plays BEFORE the gameplay: turning it on pushes the whole take
+                    // right by its length, turning it off pulls it back
+                    // TEMPLATE: the gameplay comes from another record
+                    m.AddItem(new GUIContent("Gameplay from/None (own keys)"), !_record.IsTemplate, () => {
+                        PushUndo();
+                        _record.gpRef = "";
+                        ScrubPreview();
+                    });
+                    foreach (var n in GameplayRecordNames()) {
+                        string name = n;
+                        if (string.IsNullOrEmpty(_path) || GPRecord.NameOf(_path) != name)
+                            m.AddItem(new GUIContent("Gameplay from/" + name), _record.gpRef == name, () => SetReference(name));
+                    }
+                    m.AddItem(new GUIContent("Hook"), _record.showHook, () => {
+                        PushUndo();
+                        _record.showHook = !_record.showHook;
+                        _record.ShiftAll(_record.showHook ? _record.hookTime : -_record.hookTime);
+                        ScrubPreview();
                     });
                     // BG music: off, or one of the game's playlist tracks (volume in the row below)
                     m.AddItem(new GUIContent("Music/Off"), !_record.music, () => _record.music = false);
@@ -656,7 +783,7 @@ namespace qp {
                     m.AddSeparator("");
                     m.AddItem(new GUIContent("Capture/Quality: Low"), GPVideoCapture.Quality == 0, () => GPVideoCapture.Quality = 0);
                     m.AddItem(new GUIContent("Capture/Quality: Medium"), GPVideoCapture.Quality == 1, () => GPVideoCapture.Quality = 1);
-                    m.AddItem(new GUIContent("Capture/Quality: High"), GPVideoCapture.Quality == 2, () => GPVideoCapture.Quality = 2);
+                    m.AddItem(new GUIContent("Capture/Quality: High (20 Mbps)"), GPVideoCapture.Quality == 2, () => GPVideoCapture.Quality = 2);
                     m.AddSeparator("Capture/");
                     m.AddItem(new GUIContent("Capture/30 FPS"), GPVideoCapture.Fps == 30, () => GPVideoCapture.Fps = 30);
                     m.AddItem(new GUIContent("Capture/60 FPS"), GPVideoCapture.Fps == 60, () => GPVideoCapture.Fps = 60);
@@ -708,6 +835,73 @@ namespace qp {
                         _record.endCardAnim, EditorStyles.toolbarPopup, GUILayout.Width(84f));
                     GUILayout.Label($"{_record.endCardAnimTime:0.00}s", EditorStyles.miniLabel, GUILayout.Width(38f));
                     _record.endCardAnimTime = GUILayout.HorizontalSlider(_record.endCardAnimTime, 0.05f, 2f, GUILayout.Width(90f));
+                    GUILayout.Space(8f);
+                    // how long the take runs on once the card starts entering (incl. its entrance)
+                    GUILayout.Label($"hold {_record.endCardHold:0.0}s", EditorStyles.miniLabel, GUILayout.Width(52f));
+                    _record.endCardHold = Mathf.Round(GUILayout.HorizontalSlider(_record.endCardHold, 0.5f, 10f, GUILayout.Width(90f)) * 10f) / 10f;
+                    GUILayout.Space(8f);
+                    _record.endCardVideo = VideoField(_record.endCardVideo, ref _record.endCardVideoSound);
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            // template: the referenced gameplay and its speed
+            if (_record.IsTemplate && _record.IsValid) {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    GUILayout.Label("Gameplay", EditorStyles.miniBoldLabel, GUILayout.Width(54f));
+                    GUILayout.Label(_record.gpRef, EditorStyles.miniLabel, GUILayout.Width(170f));
+                    GUILayout.Label("Speed", EditorStyles.miniLabel, GUILayout.Width(36f));
+                    EditorGUI.BeginChangeCheck();
+                    float speed = GUILayout.HorizontalSlider(_record.gpRefSpeed, 0.5f, 2f, GUILayout.Width(120f));
+                    if (GUILayout.Button("1×", EditorStyles.toolbarButton, GUILayout.Width(24f))) speed = 1f;
+                    if (EditorGUI.EndChangeCheck()) {
+                        _record.gpRefSpeed = Mathf.Round(speed * 20f) / 20f;   // 0.05 steps
+                        SnapEndCard();
+                    }
+                    GUILayout.Label($"×{_record.gpRefSpeed:0.00}   {_record.GpLength:0.0}s of {_record.gpRefLength:0.0}s",
+                        EditorStyles.miniLabel, GUILayout.Width(150f));
+                    GUILayout.Space(8f);
+                    // which of the gameplay's voice sets plays — session only, first set by default
+                    var sets = GPRecord.VoiceSets(GPRecord.FolderOf(GPRecord.PathOf(_record.gpRef)));
+                    GUILayout.Label("voices", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    int scur = System.Array.IndexOf(sets, GPRecord.PickVoiceSet(GPRecord.FolderOf(GPRecord.PathOf(_record.gpRef)), _refVoicesPick));
+                    int spick = EditorGUILayout.Popup(scur, sets, EditorStyles.toolbarPopup, GUILayout.Width(140f));
+                    if (spick != scur && spick >= 0) {
+                        _refVoicesPick = sets[spick];
+                        SyncVoicePick();
+                        ScrubPreview();
+                    }
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            // hook settings, present only while it is on
+            if (_record.showHook && _record.IsValid) {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar)) {
+                    GUILayout.Label("Hook", EditorStyles.miniBoldLabel, GUILayout.Width(54f));
+                    GUILayout.Label("BG", EditorStyles.miniLabel, GUILayout.Width(20f));
+                    _record.hookBg = EditorGUILayout.ColorField(_record.hookBg, GUILayout.Width(44f));
+                    GUILayout.Space(8f);
+                    GUILayout.Label($"out at {_record.hookTime:0.00}s (drag its marker)", EditorStyles.miniLabel, GUILayout.Width(150f));
+                    GUILayout.Space(8f);
+                    _record.hookAnim = (GPRecord.EEndCardAnim)EditorGUILayout.EnumPopup(
+                        _record.hookAnim, EditorStyles.toolbarPopup, GUILayout.Width(84f));
+                    GUILayout.Label($"{_record.hookAnimTime:0.00}s", EditorStyles.miniLabel, GUILayout.Width(38f));
+                    _record.hookAnimTime = GUILayout.HorizontalSlider(_record.hookAnimTime, 0.05f, 2f, GUILayout.Width(90f));
+                    GUILayout.Space(8f);
+                    string hookVideo = VideoField(_record.hookVideo, ref _record.hookVideoSound);
+                    if (hookVideo != _record.hookVideo) {
+                        PushUndo();
+                        _record.hookVideo = hookVideo;
+                        // the hook lasts as long as its video: the exit ends on the last frame
+                        // (still draggable after — the take rides along either way)
+                        float len = GPRecord.VideoLength(hookVideo);
+                        if (len > 0f) {
+                            float want = Mathf.Max(0f, len - _record.hookAnimTime);
+                            _record.hookTime += _record.ShiftAll(want - _record.hookTime);
+                            ScrubPreview();
+                        }
+                    }
                     GUILayout.FlexibleSpace();
                 }
             }
@@ -778,6 +972,28 @@ namespace qp {
             }
         }
 
+        /// <summary>A card's BG video picker (GPRecords/HookVideos) + its sound toggle.</summary>
+        static string VideoField(string video, ref bool sound) {
+            var files = GPRecord.ListVideos();
+            var options = new string[files.Length + 1];
+            options[0] = "No video";
+            files.CopyTo(options, 1);
+            int cur = string.IsNullOrEmpty(video) ? 0 : System.Array.IndexOf(files, video) + 1;
+            if (cur == 0 && !string.IsNullOrEmpty(video)) {   // picked file is gone — keep it visible
+                options = options.Concat(new[] { video + " (missing)" }).ToArray();
+                cur = options.Length - 1;
+            }
+            GUILayout.Label("Video", EditorStyles.miniLabel, GUILayout.Width(34f));
+            int pick = EditorGUILayout.Popup(cur, options, EditorStyles.toolbarPopup, GUILayout.Width(120f));
+            sound = GUILayout.Toggle(sound, new GUIContent("Sound", "Play the video's own audio"),
+                EditorStyles.toolbarButton, GUILayout.Width(46f));
+            if (pick == cur) return video;
+            if (pick == 0) return "";
+            if (pick > files.Length) return video;
+            GPCardVideo.EnsureCache(files[pick - 1]);   // split into frames now, not mid-replay
+            return files[pick - 1];
+        }
+
         void TimelineGUI(bool live) {
             Rect r = GUILayoutUtility.GetRect(100, 100000, 210, 210, GUILayout.ExpandWidth(true));
             var e = Event.current;
@@ -803,6 +1019,13 @@ namespace qp {
                     && Mathf.Abs(TimeToX(r, _record.endCardTime) - e.mousePosition.x) < 7f) {
                     PushUndo();
                     _dragEndCardKey = true;   // the END CARD key also lives on the ruler
+                    GUI.FocusControl(null);
+                    e.Use();
+                } else if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && onRuler
+                    && _record.showHook
+                    && Mathf.Abs(TimeToX(r, _record.hookTime) - e.mousePosition.x) < 7f) {
+                    PushUndo();
+                    _dragHookKey = true;   // so does the HOOK's exit key
                     GUI.FocusControl(null);
                     e.Use();
                 } else if (e.type == EventType.MouseDown && e.button == 0 && !e.alt && onRuler
@@ -902,6 +1125,11 @@ namespace qp {
                     if (_dragEndCardKey) {
                         _record.endCardTime = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
                         e.Use();
+                    } else if (_dragHookKey) {
+                        // everything after the hook rides along with its exit key
+                        float want = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
+                        _record.hookTime += _record.ShiftAll(want - _record.hookTime);
+                        e.Use();
                     } else if (_dragEndKey) {
                         _record.endTime = Mathf.Max(0f, XToTime(r, e.mousePosition.x));
                         e.Use();
@@ -929,7 +1157,8 @@ namespace qp {
                         e.Use();
                     } else if (_scrubbing) { _playhead = Mathf.Max(0f, XToTime(r, e.mousePosition.x)); ScrubPreview(); e.Use(); }
                 } else if (e.type == EventType.MouseUp && e.button == 0) {
-                    _dragEndKey = _dragEndCardKey = false;
+                    if (_dragHookKey) ScrubPreview();   // the board at the playhead moved under it
+                    _dragEndKey = _dragEndCardKey = _dragHookKey = false;
                     if (_dragging != null) { _record.Sort(); _dragging = null; e.Use(); }
                     if (_dragHand != null) { _record.Sort(); _dragHand = null; ScrubPreview(); e.Use(); }
                     if (_dragSpot != null) { _record.Sort(); _dragSpot = null; ScrubPreview(); e.Use(); }
@@ -1050,6 +1279,19 @@ namespace qp {
                 }
             }
 
+            // template: the referenced gameplay as one block (edited in its own record)
+            if (_record.IsValid && _record.IsTemplate) {
+                float x0 = Mathf.Max(TimeToX(r, _record.GpStart), r.x);
+                float x1 = Mathf.Min(TimeToX(r, _record.GpStart + _record.GpLength), r.xMax);
+                if (x1 > x0) {
+                    var block = new Rect(x0, r.y + RulerH + 4f, x1 - x0, HandStrip(r).y - r.y - RulerH - 8f);
+                    EditorGUI.DrawRect(block, new Color(0.30f, 0.55f, 0.85f, 0.35f));
+                    EditorGUI.DrawRect(new Rect(block.x, block.y, block.width, 2f), new Color(0.45f, 0.7f, 1f));
+                    GUI.Label(new Rect(block.x + 6f, block.y + 4f, Mathf.Max(0f, block.width - 8f), 16f),
+                        $"GP: {_record.gpRef}  ×{_record.gpRefSpeed:0.00}", EditorStyles.whiteMiniLabel);
+                }
+            }
+
             // ruler markers: the END, and the end card's own key when it is on
             if (_record.IsValid) {
                 if (_record.showEndCard) {
@@ -1057,6 +1299,13 @@ namespace qp {
                     if (cx >= r.x && cx <= r.xMax) {
                         EditorGUI.DrawRect(new Rect(cx - 1f, r.y, 2f, RulerH), new Color(0.45f, 0.85f, 1f));
                         GUI.Label(new Rect(cx + 3f, r.y + 1f, 64f, 14f), "END CARD", EditorStyles.miniLabel);
+                    }
+                }
+                if (_record.showHook) {
+                    float hx = TimeToX(r, _record.hookTime);
+                    if (hx >= r.x && hx <= r.xMax) {
+                        EditorGUI.DrawRect(new Rect(hx - 1f, r.y, 2f, RulerH), new Color(1f, 0.7f, 0.3f));
+                        GUI.Label(new Rect(hx + 3f, r.y + 1f, 40f, 14f), "HOOK", EditorStyles.miniLabel);
                     }
                 }
                 float ex = TimeToX(r, _record.Duration);
@@ -1072,10 +1321,11 @@ namespace qp {
                 EditorGUI.DrawRect(new Rect(px2, r.y, 2f, r.height), new Color(1f, 0.25f, 0.25f));
         }
 
-        bool _dragEndKey, _dragEndCardKey;
+        bool _dragEndKey, _dragEndCardKey, _dragHookKey;
         bool _captureWaiting;
         double _replayDoneAt;
         string _captureOutput;   // capture target, extensionless — uniquified per take
+        [SerializeField] string _compressPending = "";   // a take whose master still needs compressing
 
         void StartRecordVideo() {
             if (!SaveRecord()) return;

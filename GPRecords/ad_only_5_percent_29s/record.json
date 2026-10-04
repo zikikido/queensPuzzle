@@ -500,7 +500,6 @@
             "name": "cta"
         }
     ],
-    "voicesFile": "male_will.voices.json",
     "endTime": 29.75815200805664,
     "failMode": 0,
     "noWin": true,
@@ -523,7 +522,7 @@
     },
     "adTextHeight": 0.17000000178813935,
     "adTextPos": 0.04500000178813934,
-    "showEndCard": true,
+    "showEndCard": false,
     "endCardBg": {
         "r": 0.874509871006012,
         "g": 0.9411765336990356,
@@ -533,6 +532,23 @@
     "endCardTime": 26.920822143554689,
     "endCardAnim": 0,
     "endCardAnimTime": 0.5,
+    "endCardVideo": "",
+    "endCardVideoSound": false,
+    "showHook": false,
+    "hookBg": {
+        "r": 0.0,
+        "g": 0.0,
+        "b": 0.0,
+        "a": 1.0
+    },
+    "hookTime": 2.0,
+    "hookAnim": 0,
+    "hookAnimTime": 0.5,
+    "hookVideo": "",
+    "hookVideoSound": true,
+    "gpRef": "",
+    "gpRefSpeed": 1.0,
+    "gpRefLength": 0.0,
     "music": true,
     "musicTrack": 1,
     "musicVolume": 0.3499999940395355,
