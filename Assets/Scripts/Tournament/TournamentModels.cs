@@ -40,7 +40,9 @@ namespace qp {
     /// <summary>Everything the client tells the server in one sync.</summary>
     [Serializable]
     public class TournamentSyncRequest {
-        public string batchId = "";                    // empty = nothing to report
+
+        /// <summary>Every win the client still holds — the ones it has, every time. Ids the server
+        /// already applied are ignored, so there is nothing to freeze and nothing to count twice.</summary>
         public TournamentWin[] wins = new TournamentWin[0];
 
         // The etags of the snapshots the client already holds, exactly as the server sent them.
@@ -55,15 +57,22 @@ namespace qp {
     [Serializable]
     public class TournamentSyncResult {
 
+        /// <summary>The ids of the wins the server now holds — both the ones it just applied and
+        /// the ones it had already seen. The client drops exactly these and keeps the rest.</summary>
+        public string[] acceptedWinIds = new string[0];
+
         public TournamentSnapshot current = new TournamentSnapshot();
         public TournamentSnapshot lastClosed = new TournamentSnapshot();
     }
 
-    /// <summary>One level win as reported to the server. The time it happened is sent too — the
-    /// server doesn't rank by it (a win counts for the tournament running when it arrives), it is
-    /// there as data: pacing for the bots later, and analytics.</summary>
+    /// <summary>One level win as reported to the server. <see cref="id"/> is what makes a resend
+    /// harmless: the server applies a win once and ignores an id it has already seen, so the client
+    /// can simply send everything it still holds, newest wins included.
+    /// The time it happened is sent too — the server doesn't rank by it (a win counts for the
+    /// tournament running when it arrives), it is there as data: bot pacing later, and analytics.</summary>
     [Serializable]
     public class TournamentWin {
+        public string id;         // unique, made when the level was won
         public int score;
         public long wonAtTicks;   // UTC
     }

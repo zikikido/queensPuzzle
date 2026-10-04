@@ -31,13 +31,10 @@ namespace qp {
         /// that brings a different closed tournament.</summary>
         public bool closedShown;
 
-        /// <summary>Wins not sent yet (offline / server down).</summary>
+        /// <summary>Wins the server hasn't confirmed yet (offline / server down / in flight).
+        /// Every sync sends all of them; each carries its own id, so resending is free and a win
+        /// leaves this list only once the server says it holds it.</summary>
         public List<TournamentWin> pending = new List<TournamentWin>();
-
-        // The package currently being sent: fixed when the send starts, so every retry repeats the
-        // exact same wins under the same id. Wins added meanwhile simply go in the next package.
-        public string batchId = "";
-        public int batchCount;
 
         public static TournamentState Load() => _holder.Value ?? new TournamentState();
 

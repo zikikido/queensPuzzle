@@ -63,6 +63,7 @@ namespace qp {
         /// <summary>A campaign level was won with <paramref name="score"/> left. Counted locally at
         /// once and queued; which tournament it lands in is the server's call (the one running when
         /// it arrives). Called from the win flow, before the win popup.
+        /// Each win gets its own id, so it can be sent again freely until the server confirms it.
         /// The queue holds at most <see cref="TournamentConfig.maxPendingWins"/> wins; past that the
         /// oldest are dropped — they belong to a tournament that has closed anyway.</summary>
         public static void OnLevelWin(int score) => throw new NotImplementedException();

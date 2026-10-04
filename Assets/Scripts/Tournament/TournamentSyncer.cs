@@ -12,8 +12,9 @@ namespace qp {
     /// sees a request or a response — it just calls <see cref="Run"/>.
     ///
     /// The rules that live here:
-    ///   - the package of unsent wins is fixed when the first attempt starts, so a retry repeats
-    ///     exactly the same wins under the same id and can never count twice
+    ///   - every sync sends every win the client still holds; each carries its own id, so the
+    ///     server applies it once and a resend is free — nothing is frozen, and wins made while a
+    ///     request is in flight simply ride along on the next one
     ///   - etags go out as they came in, and every answer carries one — including "there is no
     ///     tournament", which has its own etag. Same etag = keep what we hold; a different etag
     ///     with no payload = there really is nothing, so drop it
@@ -45,9 +46,8 @@ namespace qp {
             if (Running) return;
             Running = true;
             try {
-                var req = _request();
-                var res = await _backend.Sync(req);
-                _apply(req, res);
+                var res = await _backend.Sync(_request());
+                _apply(res);
                 LastOk = true;
                 LastUtc = MBServerTimeManagerV2.UTCNow;   // server time, like everything else here
             } catch (Exception e) {
@@ -58,35 +58,19 @@ namespace qp {
             }
         }
 
-        // Build the request: the locked package of wins + the etags of what we already hold.
-        TournamentSyncRequest _request() {
-            var req = new TournamentSyncRequest {
-                currentEtag = _state.lastSyncCurrent.etag,
-                closedEtag = _state.lastSyncClosed.etag,
-            };
+        // Build the request: every win we still hold + the etags of what we already have.
+        TournamentSyncRequest _request() => new TournamentSyncRequest {
+            wins = _state.pending.ToArray(),
+            currentEtag = _state.lastSyncCurrent.etag,
+            closedEtag = _state.lastSyncClosed.etag,
+        };
 
-            if (_state.pending.Count > 0) {
-                // First attempt for this package: lock what goes in it. Anything won from here on
-                // waits for the next package, so a retry can't grow (and double-count) this one.
-                if (string.IsNullOrEmpty(_state.batchId)) {
-                    _state.batchId = Guid.NewGuid().ToString("N");
-                    _state.batchCount = _state.pending.Count;
-                    _state.Save();
-                }
-                req.batchId = _state.batchId;
-                req.wins = _state.pending.GetRange(0, _state.batchCount).ToArray();
-            }
-            return req;
-        }
-
-        // Fold the answer in: drop the wins that arrived, replace the snapshots that came with
-        // content, reset "already shown" when the closed tournament is a different one.
-        void _apply(TournamentSyncRequest req, TournamentSyncResult res) {
-            if (!string.IsNullOrEmpty(req.batchId)) {
-                _state.pending.RemoveRange(0, _state.batchCount);   // the server has them now
-                _state.batchId = "";
-                _state.batchCount = 0;
-            }
+        // Fold the answer in: drop the wins the server now holds, replace the snapshots that came
+        // with content, reset "already shown" when the closed tournament is a different one.
+        void _apply(TournamentSyncResult res) {
+            // By id, never by position — wins made while the request was in flight stay put.
+            foreach (var id in res.acceptedWinIds)
+                _state.pending.RemoveAll(w => w.id == id);
 
             // Same etag = unchanged, keep what we hold. A different etag is the truth, whatever it
             // is: a new table, or nothing at all (no tournament running / none played yet).
