@@ -47,6 +47,10 @@ namespace qp {
         }
 
         void OnGUI() {
+#if UNITY_EDITOR
+            // never burn the counter into a GP Recorder take
+            if (GPRecorder.SessionActive || GPReplayer.WantsFreshBoard) return;
+#endif
             if (_style == null)
                 _style = new GUIStyle {
                     fontSize = Mathf.RoundToInt(16 * Mathf.Max(1f, Screen.dpi / 96f)),

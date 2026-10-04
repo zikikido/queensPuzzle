@@ -75,3 +75,5 @@ Assets/GeneratedLocalRepo.meta
 .agents/*
 .codex/*
 GPRecorderOutput/
+# hook/end-card video frames + wav, rebuilt from the mp4 by GPCardVideo.EnsureCache
+GPRecords/HookVideos/.cache/

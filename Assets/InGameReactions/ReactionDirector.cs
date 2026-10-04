@@ -122,6 +122,10 @@ namespace qp {
         // ---- playing ----
 
         void _fire(Vector3 pos, float now) {
+#if UNITY_EDITOR
+            // a GP Recorder take shows only what the record scripts — no random hearts/crowns
+            if (GPRecorder.SessionActive || GPReplayer.WantsFreshBoard) return;
+#endif
             _progressAnchor = now;   // a reaction acknowledges the progress — fresh stuck clock
             _fastStreak = 0f;
             _cleanStreak = 0;

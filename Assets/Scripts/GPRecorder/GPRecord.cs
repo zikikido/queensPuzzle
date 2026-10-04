@@ -142,7 +142,10 @@ namespace qp {
         public List<GPHandKey> handKeys = new List<GPHandKey>();
         public List<GPSpotKey> spotKeys = new List<GPSpotKey>();
         public List<GPVoiceKey> voiceKeys = new List<GPVoiceKey>();
-        public string voicesFile = "voices1.json";   // the active voice set in the record's folder
+        // the active voice set in the record's folder — a SESSION pick (the window keeps it across
+        // play mode), never saved: "" / missing = the folder's first set (see PickVoiceSet)
+        [NonSerialized] public string voicesFile = "";
+        [NonSerialized] public string gpRefVoices = "";   // template: the referenced gameplay's voice set (same rules)
         public float endTime;   // replay runs at least to here (END marker on the ruler) — 0 = last key
 
         /// <summary>What a wrong queen costs during a recorder session.</summary>
@@ -172,14 +175,38 @@ namespace qp {
         public enum EEndCardAnim { Fade, ScaleUp, SlideUp, SlideDown }
 
         // the AdsEndCardPortrait scene — its own key on the timeline; the replay always runs on
-        // past it (see EndCardHold), so the card is never cut off
+        // past it (see endCardHold), so the card is never cut off
         public bool showEndCard;
         public Color endCardBg = Color.white;
         public float endCardTime;                // when the card enters (its marker on the ruler)
         public EEndCardAnim endCardAnim = EEndCardAnim.Fade;
         public float endCardAnimTime = 0.5f;     // how long the entrance takes
 
-        public const float EndCardHold = 3f;     // seconds of card kept after it enters
+        public float endCardHold = 3f;           // seconds the take runs on after the card starts entering
+        public string endCardVideo = "";         // BG video from HookVideos/ ("" = plain BG color)
+        public bool endCardVideoSound;
+
+        // the AdsHookPortrait scene — the end card in reverse: covers the screen from 0 and
+        // LEAVES at its own key on the timeline, with the same animation set
+        public bool showHook;
+        public Color hookBg = Color.black;
+        public float hookTime = 2f;              // when the hook starts leaving (its marker on the ruler)
+        public EEndCardAnim hookAnim = EEndCardAnim.Fade;
+        public float hookAnimTime = 0.5f;        // how long the exit takes
+        public string hookVideo = "";            // BG video from HookVideos/ ("" = plain BG color)
+        public bool hookVideoSound = true;
+
+        // TEMPLATE: hook + end card around ANOTHER record's gameplay. The referenced record (its
+        // level, board/hand/spot/voice keys, subtitles, UI flags) plays from GpStart, its key
+        // times stretched by 1/gpRefSpeed. Edit the gameplay in the referenced record itself —
+        // every template using it follows. See Resolved().
+        public string gpRef = "";           // the referenced record's folder name ("" = not a template)
+        public float gpRefSpeed = 1f;       // >1 = faster: keys land sooner (voices keep their own pace)
+        public float gpRefLength;           // the reference's own Duration, cached for the timeline
+
+        public bool IsTemplate => !string.IsNullOrEmpty(gpRef);
+        public float GpStart => showHook ? hookTime : 0f;                       // the gameplay starts as the hook leaves
+        public float GpLength => gpRefLength / Mathf.Max(0.05f, gpRefSpeed);    // the stretched gameplay
 
         // the game's BG music under the take (recorder sessions start in Gameplay, where the
         // Loading scene's music player never exists)
@@ -224,9 +251,158 @@ namespace qp {
                 if (spotKeys.Count > 0) d = Mathf.Max(d, spotKeys[spotKeys.Count - 1].time);
                 if (voiceKeys.Count > 0) d = Mathf.Max(d, voiceKeys[voiceKeys.Count - 1].time);
                 d = Mathf.Max(d, endTime);
-                if (showEndCard) d = Mathf.Max(d, endCardTime + EndCardHold);   // the end follows the card
+                if (showEndCard) d = Mathf.Max(d, endCardTime + endCardHold);   // the end follows the card
+                if (showHook) d = Mathf.Max(d, hookTime + hookAnimTime);
+                if (IsTemplate) d = Mathf.Max(d, GpStart + GpLength);
                 return d;
             }
+        }
+
+        public static string PathOf(string name) => Path.Combine(Dir, name, "record.json");
+
+        /// <summary>The voice sets in a record folder: &lt;voiceName&gt;.voices.json (legacy
+        /// voicesN.json too), sorted.</summary>
+        public static string[] VoiceSets(string folder) {
+            if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return Array.Empty<string>();
+            return Directory.GetFiles(folder, "*.json").Select(Path.GetFileName)
+                .Where(n => n.EndsWith(".voices.json") || (n.StartsWith("voices") && n != "record.json"))
+                .OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        }
+
+        /// <summary><paramref name="want"/> when that set exists in the folder, else the first one.</summary>
+        public static string PickVoiceSet(string folder, string want) {
+            var sets = VoiceSets(folder);
+            return Array.IndexOf(sets, want) >= 0 ? want : sets.Length > 0 ? sets[0] : "";
+        }
+
+        /// <summary>Where this record's voice wavs live when it is a RESOLVED template (the
+        /// referenced record's folder); null = the record's own folder.</summary>
+        [NonSerialized] public string voicesFolder;
+
+        static readonly Dictionary<string, (DateTime stamp, GPRecord rec)> _refCache =
+            new Dictionary<string, (DateTime, GPRecord)>();
+
+        /// <summary>The referenced record, re-read only when its file changed.</summary>
+        public static GPRecord LoadRef(string name) {
+            if (string.IsNullOrEmpty(name)) return null;
+            string p = PathOf(name);
+            if (!File.Exists(p)) return null;
+            var stamp = File.GetLastWriteTimeUtc(p);
+            if (_refCache.TryGetValue(p, out var c) && c.stamp == stamp) return c.rec;
+            var r = Load(p);
+            _refCache[p] = (stamp, r);
+            return r;
+        }
+
+        /// <summary>What actually plays. A plain record plays itself; a TEMPLATE plays a copy of
+        /// itself (hook, end card, music, its images) with the referenced record's gameplay laid
+        /// in from GpStart, every key time stretched by 1/gpRefSpeed. Also refreshes this
+        /// template's cached level/length from the reference.</summary>
+        public GPRecord Resolved() {
+            if (!IsTemplate) return this;
+            var src = LoadRef(gpRef);
+            if (src == null || !src.IsValid) {
+                Debug.LogWarning($"[GPRecord] template reference '{gpRef}' not found");
+                return this;
+            }
+            level = src.level;
+            gpRefLength = src.Duration;
+
+            var r = JsonUtility.FromJson<GPRecord>(JsonUtility.ToJson(this));   // the template's own settings
+            r.gpRef = "";   // the result is a plain record
+            float t0 = GpStart, s = Mathf.Max(0.05f, gpRefSpeed);
+            float Map(float t) => t0 + t / s;
+
+            r.actions = src.actions.Select(a => new GPRecordAction { time = Map(a.time), x = a.x, y = a.y, to = a.to }).ToList();
+            r.handKeys = src.handKeys.Select(k => new GPHandKey { time = Map(k.time), x = k.x, y = k.y, kind = k.kind }).ToList();
+            r.spotKeys = src.spotKeys.Select(k => new GPSpotKey {
+                time = Map(k.time), x = k.x, y = k.y, kind = k.kind,
+                xs = (int[])k.xs?.Clone(), ys = (int[])k.ys?.Clone()
+            }).ToList();
+            r.voiceKeys = src.voiceKeys.Select(k => new GPVoiceKey { time = Map(k.time), name = k.name }).ToList();
+            r.voicesFolder = FolderOf(PathOf(gpRef));
+            r.voicesFile = PickVoiceSet(r.voicesFolder, gpRefVoices);
+
+            // the gameplay's session flags and subtitles come with it
+            r.failMode = src.failMode;
+            r.noWin = src.noWin;
+            r.hideTop = src.hideTop;
+            r.hideRules = src.hideRules;
+            r.hideBoosters = src.hideBoosters;
+            r.hideCounters = src.hideCounters;
+            r.showAdText = src.showAdText;
+            r.adTextBg = src.adTextBg;
+            r.adTextColor = src.adTextColor;
+            r.adTextHeight = src.adTextHeight;
+            r.adTextPos = src.adTextPos;
+            // images: the gameplay's AND the template's; music: the template's, else the gameplay's
+            r.adImages = src.adImages.Concat(adImages).ToList();
+            if (!music && src.music) {
+                r.music = true;
+                r.musicTrack = src.musicTrack;
+                r.musicVolume = src.musicVolume;
+            }
+            r.endTime = Mathf.Max(endTime, GpStart + GpLength);   // runs at least through the gameplay
+            return r;
+        }
+
+        /// <summary>Length in seconds of a video in HookVideos/ — read from the mp4/mov 'mvhd'
+        /// header, so it works in edit mode with no player. 0 when unknown (webm, bad file).</summary>
+        public static float VideoLength(string file) {
+            if (string.IsNullOrEmpty(file)) return 0f;
+            string path = Path.Combine(VideosDir, file);
+            if (!File.Exists(path)) return 0f;
+            try {
+                using (var br = new BinaryReader(File.OpenRead(path))) {
+                    long end = br.BaseStream.Length;
+                    // walk the boxes, descending into 'moov' until 'mvhd'
+                    while (br.BaseStream.Position + 8 <= end) {
+                        long start = br.BaseStream.Position;
+                        long size = ReadU32(br);
+                        string type = System.Text.Encoding.ASCII.GetString(br.ReadBytes(4));
+                        if (size == 1) size = (long)ReadU64(br);
+                        else if (size == 0) size = end - start;
+                        if (type == "moov") { end = start + size; continue; }   // step inside
+                        if (type == "mvhd") {
+                            byte version = br.ReadByte();
+                            br.ReadBytes(3);   // flags
+                            if (version == 1) { br.ReadBytes(16); uint ts = ReadU32(br); return ts > 0 ? (float)((double)ReadU64(br) / ts) : 0f; }
+                            br.ReadBytes(8);
+                            uint scale = ReadU32(br);
+                            return scale > 0 ? (float)ReadU32(br) / scale : 0f;
+                        }
+                        if (size < 8) return 0f;
+                        br.BaseStream.Position = start + size;
+                    }
+                }
+            } catch (Exception e) { Debug.LogWarning($"[GPRecord] can't read length of {file}: {e.Message}"); }
+            return 0f;
+        }
+
+        static uint ReadU32(BinaryReader br) {   // mp4 is big-endian
+            var b = br.ReadBytes(4);
+            return (uint)(b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3]);
+        }
+
+        static ulong ReadU64(BinaryReader br) => (ulong)ReadU32(br) << 32 | ReadU32(br);
+
+        /// <summary>Slide the whole take (every track + the end card / END markers) by
+        /// <paramref name="delta"/> — the hook sits BEFORE the gameplay, so moving its exit key
+        /// moves everything after it. Clamped so no key goes below 0; returns the delta applied.</summary>
+        public float ShiftAll(float delta) {
+            float first = float.MaxValue;
+            foreach (var a in actions) first = Mathf.Min(first, a.time);
+            foreach (var k in handKeys) first = Mathf.Min(first, k.time);
+            foreach (var k in spotKeys) first = Mathf.Min(first, k.time);
+            foreach (var k in voiceKeys) first = Mathf.Min(first, k.time);
+            if (first != float.MaxValue) delta = Mathf.Max(delta, -first);
+            foreach (var a in actions) a.time += delta;
+            foreach (var k in handKeys) k.time += delta;
+            foreach (var k in spotKeys) k.time += delta;
+            foreach (var k in voiceKeys) k.time += delta;
+            if (endCardTime > 0f) endCardTime = Mathf.Max(0f, endCardTime + delta);
+            if (endTime > 0f) endTime = Mathf.Max(0f, endTime + delta);   // 0 = "last key" — leave it
+            return delta;
         }
 
         /// <summary>Keep both lists time-ordered — the replayer and the timeline both assume it.
@@ -249,6 +425,18 @@ namespace qp {
         // ---- files: GPRecords/ beside Assets ------------------------------------------
 
         public static string Dir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "GPRecords"));
+
+        /// <summary>BG videos for the hook and the end card — shared by every record.</summary>
+        public static string VideosDir => Path.Combine(Dir, "HookVideos");
+
+        public static string[] ListVideos() {
+            if (!Directory.Exists(VideosDir)) return Array.Empty<string>();
+            return Directory.GetFiles(VideosDir)
+                .Where(p => p.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+                         || p.EndsWith(".mov", StringComparison.OrdinalIgnoreCase)
+                         || p.EndsWith(".webm", StringComparison.OrdinalIgnoreCase))
+                .Select(Path.GetFileName).OrderBy(n => n).ToArray();
+        }
 
         /// <summary>The folder a record's voices and wavs live in (its own folder in the new
         /// layout; GPRecords itself for a legacy flat file).</summary>
