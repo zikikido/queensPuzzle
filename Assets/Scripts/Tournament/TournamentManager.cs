@@ -33,14 +33,22 @@ namespace qp {
     /// </summary>
     public static class TournamentManager {
 
-        /// <summary>Boot (MBStartup, right after the server-time stage — the feature needs a
-        /// trusted clock). Loads the blob, builds the syncer and starts the background sync.
-        /// Main thread, instant: it never waits on the network.</summary>
-        public static void Init() => throw new NotImplementedException();
+        static TournamentState _state;
+        static TournamentSyncer _syncer;
+
+        /// <summary>Boot (MBStartup). Loads the blob, builds the syncer and starts the background
+        /// runner. Main thread, instant: it never waits on the network — the runner holds its first
+        /// sync until server time is trusted. Calling it twice does nothing.</summary>
+        public static void Init() {
+            if (_state != null) return;
+            _state = TournamentState.Load();
+            _syncer = new TournamentSyncer(new MockTournamentBackend(UserID.GetUserIDLocal()), _state);
+            MBTournamentSyncRunner.Create(_syncer);
+        }
 
         /// <summary>The blob: the tournament running now + the last closed one, and the wins not
         /// sent yet. Written only here — the UI reads.</summary>
-        public static TournamentState State => throw new NotImplementedException();
+        public static TournamentState State => _state;
 
         // ---- derived: needs the clock / config / connection, so it can't sit in State ----
 
@@ -68,9 +76,9 @@ namespace qp {
         /// oldest are dropped — they belong to a tournament that has closed anyway.</summary>
         public static void OnLevelWin(int score) => throw new NotImplementedException();
 
-        /// <summary>Background sync — one line over <see cref="TournamentSyncer"/>, which owns
-        /// the request, the answer and how they change <see cref="State"/>.</summary>
-        public static Task Sync() => throw new NotImplementedException();
+        /// <summary>Sync now. Scheduling lives in <see cref="MBTournamentSyncRunner"/>, so this
+        /// also pushes the next scheduled sync away.</summary>
+        public static Task Sync() => MBTournamentSyncRunner.RunNow();
 
         /// <summary>The Tournament Ended popup's button (Claim / Continue). The rank was already
         /// confirmed during sync, so the prize is granted here and nothing is sent. Marks the result

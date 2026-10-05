@@ -51,8 +51,10 @@ namespace qp {
                 LastOk = true;
                 LastUtc = MBServerTimeManagerV2.UTCNow;   // server time, like everything else here
             } catch (Exception e) {
+                // A player with no network hits this every sync — it is an ordinary state, not a
+                // defect, so it stays a log and never becomes a crash report.
                 LastOk = false;
-                CDebug.CrashLog($"[TournamentSyncer] sync failed, will retry: {e.Message}");
+                Debug.LogWarning($"[TournamentSyncer] sync failed, will retry: {e.Message}");
             } finally {
                 Running = false;
             }
@@ -68,17 +70,20 @@ namespace qp {
         // Fold the answer in: drop the wins the server now holds, replace the snapshots that came
         // with content, reset "already shown" when the closed tournament is a different one.
         void _apply(TournamentSyncResult res) {
+            if (res == null) return;   // nothing to fold in; the next run asks again
+
             // By id, never by position — wins made while the request was in flight stay put.
-            foreach (var id in res.acceptedWinIds)
-                _state.pending.RemoveAll(w => w.id == id);
+            if (res.acceptedWinIds != null)
+                foreach (var id in res.acceptedWinIds)
+                    _state.pending.RemoveAll(w => w.id == id);
 
             // Same etag = unchanged, keep what we hold. A different etag is the truth, whatever it
             // is: a new table, or nothing at all (no tournament running / none played yet).
-            if (res.current.etag != _state.lastSyncCurrent.etag)
+            if (res.current != null && res.current.etag != _state.lastSyncCurrent.etag)
                 _state.lastSyncCurrent = res.current;
 
-            if (res.lastClosed.etag != _state.lastSyncClosed.etag) {
-                bool isAnotherOne = res.lastClosed.info.id != _state.lastSyncClosed.info.id;
+            if (res.lastClosed != null && res.lastClosed.etag != _state.lastSyncClosed.etag) {
+                bool isAnotherOne = res.lastClosed.Id != _state.lastSyncClosed.Id;
                 _state.lastSyncClosed = res.lastClosed;
                 // Only a real result is something the player hasn't seen — "there is none" isn't.
                 if (isAnotherOne && res.lastClosed.Exists) _state.closedShown = false;

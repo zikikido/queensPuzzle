@@ -34,7 +34,11 @@ namespace qp {
         public TournamentStandings standings = new TournamentStandings();
 
         /// <summary>There is a tournament here. False after a sync = there is none.</summary>
-        public bool Exists => !string.IsNullOrEmpty(info.id);
+        public bool Exists => info != null && !string.IsNullOrEmpty(info.id);
+
+        /// <summary>Which tournament this is, or "" for none — null-safe, since the payload comes
+        /// off the wire.</summary>
+        public string Id => info != null && info.id != null ? info.id : "";
     }
 
     /// <summary>Everything the client tells the server in one sync.</summary>
@@ -108,6 +112,7 @@ namespace qp {
 
         public bool IsMe(int index) => index == myIndex;
 
-        public TournamentEntry Me => myIndex >= 0 && myIndex < entries.Length ? entries[myIndex] : null;
+        public TournamentEntry Me =>
+            entries != null && myIndex >= 0 && myIndex < entries.Length ? entries[myIndex] : null;
     }
 }
