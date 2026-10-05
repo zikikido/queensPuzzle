@@ -69,6 +69,21 @@ namespace qp {
         public TournamentSnapshot lastClosed = new TournamentSnapshot();
     }
 
+    /// <summary>What one level win did to the player's standing — everything the climb popup needs,
+    /// from a single call. <see cref="HasClimb"/> is false when there is nothing to animate (no
+    /// tournament running, the timer already out, the feature off): the win is still queued and will
+    /// count for the tournament it reaches, it just can't be shown on a table that is closing.
+    /// Which popup to show is the UI's call, off <see cref="ETournamentStatus"/>.</summary>
+    public struct TournamentWinResult {
+        public bool joined;      // this win is what put the player in the tournament
+        public int scoreAdded;
+        public int newScore;
+        public int fromIndex;    // row before (0-based; -1 = wasn't in the table)
+        public int toIndex;      // row after
+
+        public bool HasClimb => scoreAdded > 0;
+    }
+
     /// <summary>One level win as reported to the server. <see cref="id"/> is what makes a resend
     /// harmless: the server applies a win once and ignores an id it has already seen, so the client
     /// can simply send everything it still holds, newest wins included.

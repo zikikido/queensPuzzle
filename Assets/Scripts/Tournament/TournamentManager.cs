@@ -52,19 +52,76 @@ namespace qp {
 
         // ---- derived: needs the clock / config / connection, so it can't sit in State ----
 
-        public static ETournamentStatus Status => throw new NotImplementedException();
+        /// <summary>
+        /// What the lobby card shows. Read top to bottom — the first line that matches wins:
+        /// no feature at all, then the lock, then no connection (nothing below it can be trusted),
+        /// then a result waiting to be seen, and only then the running tournament.
+        /// </summary>
+        public static ETournamentStatus Status {
+            get {
+                if (TournamentConfig.Instance == null || _state == null) return ETournamentStatus.None;
+                if (!_isUnlocked) return ETournamentStatus.Locked;
+                if (!_isOnline) return ETournamentStatus.Offline;
+
+                // A closed tournament the player hasn't been shown yet — Claim Prize / See Results.
+                // The row check is a belt: the server only sends one the player actually played,
+                // and a popup with no rank in it would say nothing.
+                if (_state.lastSyncClosed.Exists && !_state.closedShown
+                    && _state.lastSyncClosed.standings.myIndex >= 0) return ETournamentStatus.Ended;
+
+                if (!_state.lastSyncCurrent.Exists) return ETournamentStatus.None;
+
+                // The timer ran out. "Calculating" only if there is really a result on the way —
+                // the player scored in this one. Otherwise (never joined, or a blob left over from
+                // weeks ago) there is nothing to wait for, so the card stays hidden until the sync
+                // brings the tournament running now.
+                if (TimeLeft <= TimeSpan.Zero)
+                    return _state.ConfirmedScore > 0 ? ETournamentStatus.Calculating
+                                                     : ETournamentStatus.None;
+
+                if (MyScoreWithPending <= 0) return ETournamentStatus.NotJoined;
+                return TimeLeft < TournamentConfig.Instance.EndingSoonTime
+                    ? ETournamentStatus.EndingSoon
+                    : ETournamentStatus.Active;
+            }
+        }
 
         /// <summary>Countdown to the end of the current tournament (zero once it is over).</summary>
-        public static TimeSpan TimeLeft => throw new NotImplementedException();
+        public static TimeSpan TimeLeft {
+            get {
+                if (_state == null || !_state.lastSyncCurrent.Exists) return TimeSpan.Zero;
+                var left = _state.lastSyncCurrent.info.EndUtc - MBServerTimeManagerV2.UTCNow;
+                return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+            }
+        }
 
         /// <summary>The player's score in the current tournament: what the server confirmed plus
         /// the wins still waiting to be sent. With an empty queue this is exactly the score in
-        /// <see cref="State"/>; it differs only between a win and its sync, or while offline.</summary>
-        public static int MyScoreWithPending => throw new NotImplementedException();
+        /// <see cref="State"/>; it differs only between a win and its sync, or while offline.
+        /// A pending win belongs to the tournament it will arrive at, so once this one is over it
+        /// already belongs to the next — counting it here would inflate a table that is closing.</summary>
+        public static int MyScoreWithPending =>
+            _state == null ? 0
+            : _state.ConfirmedScore + (TimeLeft > TimeSpan.Zero ? _state.PendingScore : 0);
 
         /// <summary>The player's row in the table, re-evaluated with that score — so a win that
-        /// hasn't been sent yet already moves the player up. 0-based; -1 = not joined.</summary>
-        public static int MyIndexWithPending => throw new NotImplementedException();
+        /// hasn't been sent yet already moves the player up, before the server has seen it.
+        /// 0-based; -1 = not in the table. Ties keep the player below whoever already has that
+        /// score, which is what the server will say too once the win lands.</summary>
+        public static int MyIndexWithPending {
+            get {
+                int mine = MyScoreWithPending;
+                if (mine <= 0) return -1;
+
+                var st = _state.lastSyncCurrent.standings;
+                if (st.entries == null) return 0;   // joined, table not synced yet
+
+                int index = 0;
+                for (int i = 0; i < st.entries.Length; i++)
+                    if (!st.IsMe(i) && st.entries[i].score >= mine) index++;
+                return index;
+            }
+        }
 
         // ---- what the game calls ---------------------------------------------------------
 
@@ -73,8 +130,37 @@ namespace qp {
         /// it arrives). Called from the win flow, before the win popup.
         /// Each win gets its own id, so it can be sent again freely until the server confirms it.
         /// The queue holds at most <see cref="TournamentConfig.maxPendingWins"/> wins; past that the
-        /// oldest are dropped — they belong to a tournament that has closed anyway.</summary>
-        public static void OnLevelWin(int score) => throw new NotImplementedException();
+        /// oldest are dropped — they belong to a tournament that has closed anyway.
+        /// Returns what the climb popup needs: where the player was, where they are now, and
+        /// whether there is anything to animate at all.</summary>
+        public static TournamentWinResult OnLevelWin(int score) {
+            var res = new TournamentWinResult { fromIndex = -1, toIndex = -1 };
+            if (_state == null || TournamentConfig.Instance == null || !_isUnlocked || score <= 0) return res;
+
+            res.fromIndex = MyIndexWithPending;
+            bool wasIn = res.fromIndex >= 0;
+
+            _state.pending.Add(new TournamentWin {
+                id = Guid.NewGuid().ToString("N"),
+                score = score,
+                wonAtTicks = MBServerTimeManagerV2.UTCNow.Ticks,
+            });
+
+            // Oldest first: a win that old belongs to a tournament that closed long ago anyway.
+            while (_state.pending.Count > TournamentConfig.Instance.maxPendingWins) _state.pending.RemoveAt(0);
+
+            _state.Save();
+
+            res.newScore = MyScoreWithPending;
+            res.toIndex = MyIndexWithPending;
+            // Nothing to animate when the tournament isn't running: the win is queued all the same
+            // and counts for the one it reaches (see MyScoreWithPending).
+            res.scoreAdded = res.toIndex >= 0 ? score : 0;
+            res.joined = !wasIn && res.toIndex >= 0;
+
+            _ = Sync();
+            return res;
+        }
 
         /// <summary>Sync now. Scheduling lives in <see cref="MBTournamentSyncRunner"/>, so this
         /// also pushes the next scheduled sync away.</summary>
@@ -82,31 +168,25 @@ namespace qp {
 
         /// <summary>The Tournament Ended popup's button (Claim / Continue). The rank was already
         /// confirmed during sync, so the prize is granted here and nothing is sent. Marks the result
-        /// as shown, so it never pops again.</summary>
-        public static void CompleteEnded() => throw new NotImplementedException();
+        /// as shown, so it never pops again — the server keeps returning that closed tournament.</summary>
+        public static void CompleteEnded() {
+            if (_state == null || !_state.lastSyncClosed.Exists || _state.closedShown) return;
 
-        // ---- debug (MBDebugWin) ----------------------------------------------------------
+            // TODO (step 5): grant the prize for _state.lastSyncClosed.standings.myIndex + 1
+            //                (TournamentConfig.Instance.prizePlaces decides who wins).
 
-        public static void DebugWin(int score) => throw new NotImplementedException();
+            _state.closedShown = true;
+            _state.Save();
+        }
 
-        /// <summary>Move the tournament clock so the current one ends in <paramref name="left"/>
-        /// (negative = already over).</summary>
-        public static void DebugSetTimeLeft(TimeSpan left) => throw new NotImplementedException();
-
-        /// <summary>Wipe the client blob, the mock server and the clock offset.</summary>
-        public static void DebugResetAll() => throw new NotImplementedException();
-
-        /// <summary>Dump both snapshots to the console, plus the sync bookkeeping.</summary>
-        public static void DebugLogTable() => throw new NotImplementedException();
 
         // ---- internal --------------------------------------------------------------------
-        //
-        // Config   — Resources/TournamentConfig, loaded once on the main thread; null = feature off.
-        // Backend  — the server (mock until the real one exists).
-        // Syncer   — TournamentSyncer: builds the request, calls the backend, applies the answer.
-        // Now      — server UTC + the debug offset; the clock the feature (and the mock) runs on.
-        // IsUnlocked / IsOnline — inputs to Status: the campaign reached Config.unlockLevel, and
-        //            there is a network AND a trusted clock (MBServerTimeManagerV2.IsTimeSynced).
-        // LastSyncOk / LastSyncUtc — sync bookkeeping, shown in the debug window only.
+
+        static bool _isUnlocked => AppData.LevelIdx.Value + 1 >= TournamentConfig.Instance.unlockLevel;
+
+        /// <summary>Network AND a trusted clock: without server time the timer and "is it over"
+        /// would run on a clock the player can set, so the card goes Offline instead.</summary>
+        static bool _isOnline => Application.internetReachability != NetworkReachability.NotReachable
+                                && MBServerTimeManagerV2.IsTimeSynced;
     }
 }
