@@ -904,6 +904,10 @@ namespace qp {
             // attempt's) and before LevelIdx++ (the win belongs to the level just solved).
             if (DailyChallengeManager.InDailyRun) DailyChallengeManager.OnSolved();
             Analytics.GameWin();
+            // The tournament scores the bones still standing, so it has to read them before
+            // Invalidate() clears the attempt. Daily counts too — a win is a win.
+            _tournamentWin = TournamentManager.OnLevelWin(
+                _topBar.MaxWrongMoves - AppData.LastPlayData.bonesLost);
             AppData.LastPlayData.Invalidate();   // level done — the saved attempt is history
             _saveQueued = false;   // a queued write would resurrect the board under the NEXT level
             if (!DailyChallengeManager.InDailyRun) AppData.LevelIdx.Value++;    // advance campaign progress (persisted)
@@ -919,6 +923,10 @@ namespace qp {
         // reward never flashes on the counter), wait out the full celebration, then show the streak
         // popup — its $ContinueButton hands off to the win popup. No streak popup when the win didn't
         // touch the streak (offline / already won today) — straight to the win popup.
+        // What the win did to the player's tournament standing — filled in Win(), read by the
+        // tournament popup once it exists (a closed tournament's result comes first, then the climb).
+        TournamentWinResult _tournamentWin;
+
         IEnumerator WinFlow() {
             var streak = DailyStreakManager.RegisterWin();
             if (streak.reward != null) MBBoostButton.SuppressUpdate = true;

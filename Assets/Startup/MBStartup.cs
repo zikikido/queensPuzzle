@@ -82,6 +82,11 @@ namespace qp {
             // buffers it and sends async, so the boot never waits on the network.
             Register("session_start", Analytics.SessionStart, () => true);
 
+            // The player's name, before the tournament: a win can be reported the moment the game
+            // starts, and the server should already know who it belongs to. Instant-done — Init
+            // only loads the blob and sends in the background.
+            Register("profile", ProfileManager.Init, () => true);
+
             // Tournament, as early as possible so its first request leaves while the loading screen
             // is still up. Instant-done, and deliberately NOT behind the stage that waits for MAX:
             // Init only loads the local blob and starts the background runner, and that runner
