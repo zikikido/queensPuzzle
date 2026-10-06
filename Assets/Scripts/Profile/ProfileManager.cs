@@ -27,24 +27,28 @@ namespace qp {
     public static class ProfileManager {
 
         static ProfileState _state;
-        static ProfilePusher _pusher;
+        static ProfileSyncer _syncer;
 
         /// <summary>Boot (MBStartup). Loads the blob, makes sure there is a name, and sends it if
         /// the server hasn't got this version yet.</summary>
         public static void Init() {
             if (_state != null) return;
             _state = ProfileState.Load();
-            _pusher = new ProfilePusher(new MockProfileBackend(UserID.GetUserIDLocal()), _state);
+            _syncer = new ProfileSyncer(new MockProfileBackend(UserID.GetUserIDLocal()), _state);
 
             if (string.IsNullOrEmpty(_state.name)) {
                 _state.name = _generateName();
-                _state.unsent = true;     // the server has never heard of this player
+                _state.rev++;            // the server has never heard of this player
                 _state.Save();
             }
 
-            MBProfileRetry.Create(_pusher);
-            _ = _pusher.PushIfUnsent();
+            _ = Sync();
         }
+
+        /// <summary>Send the profile to the server — one line over <see cref="ProfileSyncer"/>,
+        /// which owns the backend, the sending and the retry. Called at boot and on every change,
+        /// a skin later as well as a name.</summary>
+        public static Task Sync() => _syncer == null ? Task.CompletedTask : _syncer.Sync();
 
         /// <summary>The blob. Written only here — the UI reads.</summary>
         public static ProfileState State => _state;
@@ -63,9 +67,9 @@ namespace qp {
             if (name == _state.name) return ENameError.Ok;   // nothing changed, nothing to send
 
             _state.name = name;
-            _state.unsent = true;
+            _state.rev++;
             _state.Save();
-            _ = _pusher.PushIfUnsent();
+            _ = Sync();
             return ENameError.Ok;
         }
 

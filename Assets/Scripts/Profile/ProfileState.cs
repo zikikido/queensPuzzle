@@ -17,10 +17,14 @@ namespace qp {
         /// <summary>Shown to other players. Empty only before the first launch finishes.</summary>
         public string name = "";
 
-        /// <summary>The server hasn't got this version yet. Turned on when the name is generated on
-        /// first launch or changed later, turned off once a push succeeds — so a push that failed
-        /// simply goes out again.</summary>
-        public bool unsent;
+        /// <summary>Bumped on every change: the name generated on first launch, a rename, a skin
+        /// later on.</summary>
+        public int rev;
+
+        /// <summary>The revision the server confirmed. Anything else means there is something to
+        /// send — including an edit made while the previous request was still in flight, which is
+        /// why this is a revision and not a flag.</summary>
+        public int syncedRev;
 
         // Equipped skins arrive with the avatars.
 

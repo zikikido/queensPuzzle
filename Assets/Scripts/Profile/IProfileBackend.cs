@@ -10,7 +10,7 @@ namespace qp {
     ///
     /// Who is asking is part of the connection, not of the call: the implementation is built with
     /// the player's identity (later a token) and sends it itself.
-    /// A failure is thrown; the profile stays marked as unsent and goes out again later.
+    /// A failure is thrown; the confirmed revision doesn't move, so the profile goes out again.
     /// </summary>
     public interface IProfileBackend {
 
