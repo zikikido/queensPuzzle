@@ -16,6 +16,6 @@ namespace qp {
 
         /// <summary>Store this player's profile. Sent on the first launch and after every edit —
         /// not on a schedule, since it almost never changes.</summary>
-        Task Push(ProfilePush profile);
+        Task Push(PlayerProfile profile);
     }
 }

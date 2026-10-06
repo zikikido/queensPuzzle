@@ -8,9 +8,9 @@ namespace qp {
     /// unsent profile again — nothing else, no interval, no work while everything is confirmed.
     /// Created by <see cref="ProfileManager.Init"/>.
     /// </summary>
-    public sealed class MBProfilePushRetry : MonoBehaviour {
+    public sealed class MBProfileRetry : MonoBehaviour {
 
-        static MBProfilePushRetry _instance;
+        static MBProfileRetry _instance;
 
         /// <summary>Create the one retry (a second call does nothing).</summary>
         public static void Create() => throw new System.NotImplementedException();

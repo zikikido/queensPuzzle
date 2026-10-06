@@ -9,6 +9,6 @@ namespace qp {
 
         public MockProfileBackend(string playerId) => _playerId = playerId;
 
-        public Task Push(ProfilePush profile) => throw new System.NotImplementedException();
+        public Task Push(PlayerProfile profile) => throw new System.NotImplementedException();
     }
 }
