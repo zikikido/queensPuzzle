@@ -184,9 +184,11 @@ namespace qp {
 
         static bool _isUnlocked => AppData.LevelIdx.Value + 1 >= TournamentConfig.Instance.unlockLevel;
 
-        /// <summary>Network AND a trusted clock: without server time the timer and "is it over"
-        /// would run on a clock the player can set, so the card goes Offline instead.</summary>
-        static bool _isOnline => Application.internetReachability != NetworkReachability.NotReachable
+        /// <summary>A confirmed connection AND a trusted clock. Reachability alone lies — a captive
+        /// wifi "has network" — so this is the checked one. And without server time the timer and
+        /// "is it over" would run on a clock the player can set, so the card goes Offline instead.</summary>
+        static bool _isOnline => InternetConnection.Instance != null
+                                && InternetConnection.Instance.HasInternet
                                 && MBServerTimeManagerV2.IsTimeSynced;
     }
 }

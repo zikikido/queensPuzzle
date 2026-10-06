@@ -47,8 +47,11 @@ namespace qp {
         void OnApplicationFocus(bool focus) { if (focus) _ = _run(); }
 
         Task _run() {
-            // Without trusted server time the feature is offline anyway — don't spend a request.
-            if (!MBServerTimeManagerV2.IsTimeSynced) return Task.CompletedTask;
+            // No confirmed connection, or no trusted server time: the request would only fail, and
+            // the tick will come round again the moment both are back.
+            var net = InternetConnection.Instance;
+            if (net == null || !net.HasInternet || !MBServerTimeManagerV2.IsTimeSynced)
+                return Task.CompletedTask;
             // One already in flight: it will bring the same answer, and the schedule must not be
             // pushed away by an attempt that never happened.
             if (_syncer.Running) return Task.CompletedTask;

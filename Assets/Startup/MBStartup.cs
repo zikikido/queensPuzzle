@@ -91,6 +91,12 @@ namespace qp {
 
             Register(
                 Task("server-time", null, () => MBServerTimeManagerV2.IsTimeSynced, timeoutSec: 3f),
+                // The connectivity monitor, so the first screens already know whether there is
+                // internet instead of flashing an offline state for a second. Runs beside
+                // server-time, which waits the same 3s anyway, so it costs no wall clock.
+                Task("internet", () => InternetConnection.Ensure(),
+                     () => InternetConnection.Instance != null && InternetConnection.Instance.Ready,
+                     timeoutSec: 3f),
 #if !IGNORE_FIREBASE
                 Task("firebase", FirebaseBootstrap.Init, () => FirebaseBootstrap.FBSetupFinished, timeoutSec: 3f),
 #endif
