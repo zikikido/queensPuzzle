@@ -238,9 +238,6 @@ namespace qp {
             // duration and lose it if the process dies there.
             lock (_singularGate) SingularSDK.AdRevenue(data);
 
-            // Our events-server — per-user ad revenue, joinable to install source for ROAS.
-            Analytics.AdImpression(info);
-
 #if !IGNORE_FIREBASE
             if (Common.FirebaseBootstrap.FBAvailable) {
                 Firebase.Analytics.FirebaseAnalytics.LogEvent("ad_impression",
