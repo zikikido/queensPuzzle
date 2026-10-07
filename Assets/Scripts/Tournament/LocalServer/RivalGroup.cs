@@ -97,9 +97,17 @@ namespace qp {
         /// <paramref name="myName"/> keeps a rival from arriving under their name.
         /// </summary>
         public static List<LocalRival> Build(int myScore, uint myOwner, string myName) {
+            try { return _build(myScore, myOwner, myName); }
+            // The recordings are read here and nowhere else, so this is where they stop being
+            // worth holding: everything chosen is copied out below, and the ~280 KB behind it is
+            // not wanted again for another 48 hours.
+            finally { RivalsBlob.Unload(); }
+        }
+
+        static List<LocalRival> _build(int myScore, uint myOwner, string myName) {
             var rivals = new List<LocalRival>(Size);
             if (RivalsBlob.Count == 0) {
-                Debug.LogWarning("[RivalGroup] no recordings baked — the tournament has no rivals");
+                Debug.LogWarning("[RivalGroup] no recordings available — the tournament has no rivals");
                 return rivals;
             }
 

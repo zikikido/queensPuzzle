@@ -27,7 +27,8 @@ namespace qp {
 
         public const byte Version = 1;
 
-        const string ResourceName = "rivals";
+        /// <summary>The copy shipped in the build — the floor, used until a download replaces it.</summary>
+        const string BakedResource = "rivals";
 
         // Header: magic(4) version(1) headerSize(1) indexEntrySize(1) playSize(1) recordCount(4),
         // and after those the fields that arrived later — each read only if headerSize reaches it.
@@ -80,33 +81,72 @@ namespace qp {
         // ---- loading ---------------------------------------------------------------------
 
         /// <summary>
-        /// Read the blob at boot, on the main thread, before anything can ask for it.
+        /// The downloaded copy, and the only file anyone writes. <see cref="RivalsDownload"/>
+        /// replaces it; nothing else touches it, and nothing hands this class bytes.
         ///
-        /// <see cref="Resources.Load"/> is main-thread only, and the backend that reads this runs
-        /// after an await — whose continuation is not guaranteed to land back there. Loading
-        /// eagerly is the same deal <see cref="TournamentConfig"/> makes, for the same reason.
+        /// MAIN THREAD ONLY — <see cref="Application.persistentDataPath"/> is a Unity API. Callers
+        /// off the player loop read it once at boot and keep it.
         /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        static void _warm() {
-            if (!Load()) Debug.Log("[RivalsBlob] no blob baked — tournaments will report no rivals");
-        }
+        public static string FilePath => System.IO.Path.Combine(Application.persistentDataPath, FileName);
 
+        const string FileName = "rivals.bytes";
+
+        /// <summary>
+        /// Load the file, if it is not already loaded.
+        ///
+        /// ON DEMAND, and released again by <see cref="Unload"/> the moment the caller is done:
+        /// this is ~280 KB that a tournament needs for the few milliseconds it takes to pick
+        /// nineteen opponents, once every 48 hours. Keeping it resident for a whole session would
+        /// be paying for all of it to save none of it. There is no work to do at startup at all.
+        ///
+        /// TWO sources in ONE order, decided here and nowhere else: the downloaded file if there
+        /// is one, the copy baked into the build otherwise. Bytes used to arrive from three
+        /// directions and whichever landed last won, which is not something anyone can reason
+        /// about later. <see cref="RivalsDownload"/> only ever replaces the file; it hands this
+        /// class nothing.
+        ///
+        /// MAIN THREAD, because <see cref="Resources.Load"/> is. That holds today: the only
+        /// caller is a group build, which runs from the sync runner — a MonoBehaviour — so the
+        /// await before it returns to the player loop. Moving the sync off the main thread would
+        /// have to deal with this.
+        /// </summary>
         static bool Load() {
             if (_loadTried) return _blob != null;
             _loadTried = true;
 
-            var ta = Resources.Load<TextAsset>(ResourceName);
-            if (ta == null) return false;            // nothing baked yet — no rivals, no crash
-            byte[] bytes = ta.bytes;
-            Resources.UnloadAsset(ta);
-
-            Adopt(bytes);
-            return _blob != null;
+            return _adopt(_fromFile()) || _adopt(_fromResources());
         }
 
-        /// <summary>Use these bytes instead of the baked ones — the copy downloaded at runtime.
-        /// Rejected blobs leave whatever was loaded before in place.</summary>
-        public static bool Adopt(byte[] bytes) {
+        static byte[] _fromResources() {
+            var baked = Resources.Load<TextAsset>(BakedResource);
+            if (baked == null) return null;          // nothing baked either — no rivals, no crash
+            byte[] bytes = baked.bytes;
+            Resources.UnloadAsset(baked);
+            return bytes;
+        }
+
+        /// <summary>
+        /// Let the bytes go. Safe to call at any time — the next read loads them again, and a
+        /// tournament already underway holds its own copy of the nineteen recordings it chose.
+        /// </summary>
+        public static void Unload() {
+            _blob = null;
+            _loadTried = false;
+            _count = 0;
+        }
+
+        static byte[] _fromFile() {
+            try {
+                string path = FilePath;
+                return System.IO.File.Exists(path) ? System.IO.File.ReadAllBytes(path) : null;
+            } catch (Exception e) {
+                Debug.LogWarning("[RivalsBlob] downloaded blob unreadable: " + e.Message);
+                return null;
+            }
+        }
+
+        static bool _adopt(byte[] bytes) {
+            if (bytes == null) return false;
             string err = CheckHeader(bytes);
             if (err != null) {
                 CDebug.LogError("[RivalsBlob] blob rejected: " + err);
