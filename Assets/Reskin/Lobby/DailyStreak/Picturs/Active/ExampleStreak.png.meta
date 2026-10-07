@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: ef82633a275ca9f43a6f2038e0e9f7be
+guid: 3b3517949ebab7c49a42e57d9c1eb2eb
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2370008519308021154
-    second: BoxIcon_0
+      213: 4319697459089506298
+    second: ExampleStreak_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BoxIcon_0
+      name: ExampleStreak_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 68
-        height: 72
+        width: 1001
+        height: 373
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2ad01040136f3e020800000000000000
-      internalID: 2370008519308021154
+      spriteID: affff2ac3f5a2fb30800000000000000
+      internalID: 4319697459089506298
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BoxIcon_0: 2370008519308021154
+      ExampleStreak_0: 4319697459089506298
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
