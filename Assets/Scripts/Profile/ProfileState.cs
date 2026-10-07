@@ -26,6 +26,14 @@ namespace qp {
         /// why this is a revision and not a flag.</summary>
         public int syncedRev;
 
+        /// <summary>The player has picked their own name, at some point. Never goes back to false:
+        /// the hint that points at the field is for people who have not found it yet, and once
+        /// they have, they have.
+        ///
+        /// Its own flag rather than `rev > 1`, which says the same thing today and stops saying it
+        /// the moment a skin bumps the revision too.</summary>
+        public bool named;
+
         // Equipped skins arrive with the avatars.
 
         public static ProfileState Load() => _holder.Value ?? new ProfileState();

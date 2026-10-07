@@ -31,7 +31,7 @@ namespace qp {
         static ProfileSyncer _syncer;
 
         /// <summary>Boot (MBStartup). Loads the blob, makes sure there is a name, and sends it if
-        /// the server hasn't got this version yet.</summary>
+        /// the server hasn't got this version yet. Calling it twice does nothing.</summary>
         public static void Init() {
             if (_state != null) return;
             _state = ProfileState.Load();
@@ -68,6 +68,10 @@ namespace qp {
         /// <summary>The name shown to other players. Never empty after <see cref="Init"/>.</summary>
         public static string Name => _state == null ? "" : _state.name;
 
+        /// <summary>The player has named themselves at some point, rather than keeping the one
+        /// they were given. Once true, true for good.</summary>
+        public static bool Named => _state != null && _state.named;
+
         /// <summary>Change the name. Returns why it was refused; <see cref="ENameError.Ok"/> means
         /// it was saved and is on its way to the server.</summary>
         public static ENameError SetName(string name) {
@@ -80,6 +84,7 @@ namespace qp {
 
             _state.name = name;
             _state.rev++;
+            _state.named = true;     // they have found the field; stop pointing at it
             _state.Save();
             _ = Sync();
             return ENameError.Ok;
