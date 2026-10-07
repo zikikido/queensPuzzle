@@ -36,6 +36,12 @@ namespace qp {
         public static int TasksDone { get; private set; }
         public static bool Finished { get; private set; }
 
+        /// <summary>A run is in progress. <see cref="Run"/> refuses to start a second one on top
+        /// of it: two drivers would Begin every task again — two session_start events, two
+        /// syncers, two of everything — and the only reason that never happened is that exactly
+        /// one scene used to drive it.</summary>
+        public static bool Running { get; private set; }
+
         /// <summary>Build one task (use inside Register() for a parallel stage).</summary>
         public static StartupTask Task(string name, Action begin, Func<bool> isDone, float timeoutSec = 10f, Func<bool> holdTimeout = null)
             => new StartupTask { Name = name, Begin = begin, IsDone = isDone, TimeoutSec = timeoutSec, HoldTimeout = holdTimeout };
@@ -139,10 +145,16 @@ namespace qp {
         /// </summary>
         public static IEnumerator Run() {
             if (Finished) yield break;
+            if (Running) {
+                CDebug.LogError("[Startup] Run() called while a run is already in progress — ignored.");
+                yield break;
+            }
+            Running = true;
 
             foreach (var stage in _stages)
                 yield return RunStage(stage);
 
+            Running = false;
             Finished = true;
         }
 
