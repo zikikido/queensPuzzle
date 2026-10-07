@@ -28,9 +28,6 @@ namespace qp {
 
         const float RefreshSeconds = 1f;
 
-        /// <summary>Under an hour the seconds matter, over it they do not.</summary>
-        static readonly TimeSpan ShowSeconds = TimeSpan.FromHours(1);
-
         /// <summary>One state of the card: its object, and whichever of the fields it has. Found
         /// once; a state that has no $Place simply holds null for it.</summary>
         sealed class State {
@@ -172,13 +169,18 @@ namespace qp {
             }
         }
 
-        /// <summary>Hours and minutes while there is a day of it left, minutes and seconds once
-        /// the end is close enough that seconds are worth watching.</summary>
+        /// <summary>
+        /// hh:mm:ss, the same shape the daily challenge card uses — two countdowns side by side in
+        /// the same lobby should not be read two different ways.
+        ///
+        /// Built rather than ToString(@"hh\:mm\:ss"), which would be wrong here: that "hh" is the
+        /// Hours COMPONENT, 0-23, with days held separately. The daily resets every 24 hours so it
+        /// never notices; a 48-hour tournament would spend its whole first day showing the second
+        /// one's time, and 41 hours left would read as 17.
+        /// </summary>
         static string _clock(TimeSpan left) {
-            if (left <= TimeSpan.Zero) return "0:00";
-            return left >= ShowSeconds
-                ? $"{(int)left.TotalHours}h {left.Minutes}m"
-                : $"{left.Minutes}:{left.Seconds:00}";
+            if (left <= TimeSpan.Zero) left = TimeSpan.Zero;
+            return $"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
         }
     }
 }
