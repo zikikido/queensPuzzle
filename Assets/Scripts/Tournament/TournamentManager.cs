@@ -42,7 +42,7 @@ namespace qp {
         public static void Init() {
             if (_state != null) return;
             _state = TournamentState.Load();
-            _syncer = new TournamentSyncer(new MockTournamentBackend(UserID.GetUserIDLocal()), _state);
+            _syncer = new TournamentSyncer(new LocalTournamentBackend(UserID.GetUserIDLocal()), _state);
             MBTournamentSyncRunner.Create(_syncer);
         }
 

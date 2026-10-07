@@ -5,8 +5,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using UnityEditor;
-using UnityEditor.Build;
-using UnityEditor.Build.Reporting;
 using UnityEngine;
 using qp;
 
@@ -22,13 +20,10 @@ namespace QueensPuzzle
     ///
     /// Two entry points:
     ///  - Manual: QueensPuzzle → Export WinStats — fetch from the winstats-server and bake.
-    ///  - EVERY BUILD (IPreprocessBuildWithReport), three questions max:
-    ///    1. "Check the server?" — opt-in (Skip builds with the baked blob as-is).
-    ///    2. Checked and different → PAUSE: [Use Fresh] [Keep Current] [Cancel Build]
-    ///       (identical → continues silently; a failed fetch loops a Retry dialog).
-    ///    3. Used fresh → "Commit to git?" — so a build never ships a blob the repo lacks.
+    ///  - EVERY BUILD, through <see cref="BakedBlobsBuildCheck"/>, which asks about this and the
+    ///    rivals blob together rather than once each.
     /// </summary>
-    public sealed class WinStatsExporter : IPreprocessBuildWithReport
+    public static class WinStatsExporter
     {
         const string ServerUrl = "https://pawdoku-winstats-server-production.up.railway.app/winstats/build";
         const string AdminKey = "1ebe3fd24ea52fe8c2d02874182168c979959de36c2b67d2";   // editor-only; never ships
@@ -36,6 +31,10 @@ namespace QueensPuzzle
 
         const string BlobPath = "Assets/Reskin/Resources/winstats.bytes";
         const string LevelsFolder = "Assets/Reskin/Resources/Levels";
+
+        /// <summary>This blob for the pre-build check: what to call it, where it lives, how to
+        /// fetch it. Everything else about a baked blob is the same for all of them.</summary>
+        public static BakedBlob Blob => new BakedBlob("WinStats", BlobPath, FetchBlob);
 
         // ---- manual export -----------------------------------------------------------
 
@@ -45,7 +44,7 @@ namespace QueensPuzzle
             try
             {
                 byte[] blob = FetchBlob();
-                SaveBlob(blob);
+                Blob.Save(blob);
                 EditorUtility.DisplayDialog("WinStats export OK",
                     $"Blob: {blob.Length / 1024f:0.0} KB -> {BlobPath}", "OK");
             }
@@ -55,88 +54,6 @@ namespace QueensPuzzle
                 EditorUtility.DisplayDialog("WinStats export FAILED",
                     "The winstats blob was NOT updated!\n\n" + e.Message, "OK");
                 Debug.LogError("[WinStats] export failed: " + e);
-            }
-        }
-
-        // ---- every build -------------------------------------------------------------
-
-        public int callbackOrder => 0;
-
-        public void OnPreprocessBuild(BuildReport report)
-        {
-            // CI / -batchmode has nobody to answer a dialog: try, log loudly, never block.
-            if (Application.isBatchMode)
-            {
-                try { SaveBlob(FetchBlob()); Debug.Log("[WinStats] baked fresh blob (batch mode)"); }
-                catch (Exception e) { Debug.LogError("[WinStats] batch fetch FAILED — building with the existing blob. " + e.Message); }
-                return;
-            }
-
-            // Step 1: opt-in — checking is a conscious choice, and a difference WILL pause the build.
-            int check = EditorUtility.DisplayDialogComplex(
-                "WinStats",
-                "Check winstats against the server before building?\n\n" +
-                "If the server has newer stats than the baked blob, the build will PAUSE and ask.",
-                "Check Server",                  // 0 (ok)
-                "Cancel Build",                  // 1 (cancel)
-                "Skip — build with baked");      // 2 (alt)
-            if (check == 2) return;
-            if (check == 1) throw new BuildFailedException("[WinStats] build cancelled by user.");
-
-            string failure = null;
-            while (true)
-            {
-                byte[] fresh = null;
-                if (failure == null)
-                {
-                    try { fresh = FetchBlob(); }
-                    catch (Exception e) { failure = Innermost(e).Message; }
-                    finally { EditorUtility.ClearProgressBar(); }
-                }
-
-                if (fresh != null)
-                {
-                    byte[] baked = File.Exists(BlobPath) ? File.ReadAllBytes(BlobPath) : null;
-                    if (baked != null && baked.SequenceEqual(fresh))
-                        return;   // up to date — build continues silently
-
-                    int choice = EditorUtility.DisplayDialogComplex(
-                        "WinStats changed on the server",
-                        (baked == null ? "There is NO baked winstats blob yet.\n" : "The server has NEWER winstats than the baked blob.\n") +
-                        "\nThe fresh blob is already downloaded and validated — bake it into this build?",
-                        "Use Fresh & Continue",          // 0 (ok)
-                        "Cancel Build",                  // 1 (cancel)
-                        "Keep Current & Continue");      // 2 (alt)
-
-                    if (choice == 0)
-                    {
-                        try { SaveBlob(fresh); }
-                        catch (Exception e) { failure = e.Message; continue; }   // re-show as a failure
-
-                        // Step 3: the blob changed on disk — a build shouldn't ship what git doesn't have.
-                        if (EditorUtility.DisplayDialog("WinStats updated",
-                                "The baked blob changed. Commit it to git now?\n(Push stays manual.)",
-                                "Commit", "Don't Commit"))
-                            CommitBlob();
-                        return;
-                    }
-                    if (choice == 2) return;
-                    throw new BuildFailedException("[WinStats] build cancelled by user.");
-                }
-                else
-                {
-                    int choice = EditorUtility.DisplayDialogComplex(
-                        "WinStats download FAILED",
-                        "Could not fetch winstats from the server:\n\n" + failure +
-                        "\n\nTry the download again?",
-                        "Retry Download",             // 0 (ok)
-                        "Cancel Build",               // 1 (cancel)
-                        "Continue WITHOUT download"); // 2 (alt)
-
-                    if (choice == 0) { failure = null; continue; }
-                    if (choice == 2) return;
-                    throw new BuildFailedException("[WinStats] build cancelled by user.");
-                }
             }
         }
 
@@ -154,48 +71,6 @@ namespace QueensPuzzle
 
             Debug.Log($"[WinStats] set {setHash}: {levels.Count} unique levels, {counts}, blob {blob.Length / 1024f:0.0} KB");
             return blob;
-        }
-
-        static void SaveBlob(byte[] blob)
-        {
-            File.WriteAllBytes(BlobPath, blob);
-            AssetDatabase.ImportAsset(BlobPath);
-        }
-
-        // A build must never ship a blob that isn't in git — the pre-build "Use Fresh" choice
-        // saves AND commits (just these two files; pushing stays manual). A git failure logs
-        // loudly but doesn't cancel the build the user just approved.
-        static void CommitBlob()
-        {
-            try
-            {
-                RunGit($"add -- \"{BlobPath}\" \"{BlobPath}.meta\"");
-                RunGit($"commit -m \"winstats: refresh baked blob (pre-build)\" -- \"{BlobPath}\" \"{BlobPath}.meta\"");
-                Debug.Log("[WinStats] fresh blob committed to git");
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("[WinStats] blob saved but NOT committed to git — commit it manually! " + e.Message);
-            }
-        }
-
-        static void RunGit(string args)
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo("git", args)
-            {
-                WorkingDirectory = Directory.GetCurrentDirectory(),   // the project root = repo root
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-            };
-            using (var p = System.Diagnostics.Process.Start(psi))
-            {
-                string stderr = p.StandardError.ReadToEnd();
-                p.StandardOutput.ReadToEnd();
-                p.WaitForExit(30000);
-                if (p.ExitCode != 0) throw new Exception($"git {args} -> {stderr.Trim()}");
-            }
         }
 
         // hash -> weight for every unique board in the build (identical boards dedup by content).

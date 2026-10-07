@@ -17,8 +17,9 @@ namespace qp {
 
     /// <summary>
     /// The player as other players see them: for now a name, later what they have equipped too.
-    /// Editing is local and instant — <see cref="ProfilePusher"/> carries it to the server in the
+    /// Editing is local and instant — <see cref="ProfileSyncer"/> carries it to the server in the
     /// background, and a send that fails is retried, so nothing here ever waits on the network.
+    /// There is no profile server yet, so that half is dormant; see <see cref="Init"/>.
     ///
     /// The name is generated on first launch (never empty) and can be changed from the Profile
     /// popup. The rules live in <see cref="ProfileConfig"/>, and the same check belongs on the
@@ -34,10 +35,21 @@ namespace qp {
         public static void Init() {
             if (_state != null) return;
             _state = ProfileState.Load();
-            _syncer = new ProfileSyncer(new MockProfileBackend(UserID.GetUserIDLocal()), _state);
+
+            // TODO: when a profile server exists, this one line turns the whole half back on.
+            // _syncer = new ProfileSyncer(new HttpProfileBackend(UserID.GetUserIDLocal()), _state);
+            //
+            // Left off until then, because there is nothing to push to: the tournament's opponents
+            // are recordings under generated names, so nothing anywhere reads this player's name
+            // but this player. Sync() is a no-op and syncedRev stays 0 — which is the truth.
+            //
+            // And NOT a backend that accepts and discards, which is the obvious shortcut and a
+            // trap: it would move syncedRev up to rev, so on the day the line above goes in, every
+            // player already installed would look synced and never push. Only someone who happened
+            // to rename themselves afterwards ever would.
 
             if (string.IsNullOrEmpty(_state.name)) {
-                _state.name = _generateName();
+                _state.name = GenerateName();
                 _state.rev++;            // the server has never heard of this player
                 _state.Save();
             }
@@ -86,11 +98,12 @@ namespace qp {
             return _isClean(name) ? ENameError.Ok : ENameError.NotAllowed;
         }
 
-        // ---- internal --------------------------------------------------------------------
-
         /// <summary>Two words and a space — "Lucky Paw". Warm and readable instead of a handle, and
-        /// clean by construction, so a generated name can never trip the filter.</summary>
-        static string _generateName() {
+        /// clean by construction, so a generated name can never trip the filter.
+        ///
+        /// Public because the tournament's rivals are named from here too: a name that came from
+        /// somewhere else would make the player's own row look like a different kind of thing.</summary>
+        public static string GenerateName() {
             var cfg = ProfileConfig.Instance;
             if (cfg == null || cfg.nameAdjectives == null || cfg.nameAdjectives.Length == 0
                 || cfg.nameNouns == null || cfg.nameNouns.Length == 0)
@@ -100,6 +113,8 @@ namespace qp {
             return cfg.nameAdjectives[rnd.Next(cfg.nameAdjectives.Length)]
                    + " " + cfg.nameNouns[rnd.Next(cfg.nameNouns.Length)];
         }
+
+        // ---- internal --------------------------------------------------------------------
 
         // Letters, digits and single spaces between words — our font has nothing else, and a name
         // the game can't draw is worse than one the player didn't pick.

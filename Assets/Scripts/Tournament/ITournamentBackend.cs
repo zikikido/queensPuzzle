@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 namespace qp {
 
     /// <summary>
-    /// The tournament server as the client sees it — one call. <see cref="MockTournamentBackend"/>
-    /// fakes it locally (bots, delays, failures); a real HTTP backend replaces it later with no
-    /// change to <see cref="TournamentManager"/>.
+    /// The tournament server as the client sees it — one call. <see cref="LocalTournamentBackend"/>
+    /// is that server today, running on the phone off recorded play histories; a real HTTP backend
+    /// replaces it later with no change to <see cref="TournamentManager"/>.
     /// Who is asking is part of the connection, not of the calls: every implementation is built with
     /// the player's identity (later a token) and sends it itself — a server must never take the
     /// player id from the request body.
