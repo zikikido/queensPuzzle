@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: d69fd6d831448ac4f8647b2a5e2e09bf
+guid: 9731c2320edb831468c6c280480ca716
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4298839967402910704
-    second: TimeIcon_0
+      213: 2106829777612278787
+    second: IconCalendarOffline_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: TimeIcon_0
+      name: IconCalendarOffline_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 36
-        height: 36
+        width: 163
+        height: 172
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 01c92bc63d37754c0800000000000000
-      internalID: -4298839967402910704
+      spriteID: 30c8bc03586fc3d10800000000000000
+      internalID: 2106829777612278787
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      TimeIcon_0: -4298839967402910704
+      IconCalendarOffline_0: 2106829777612278787
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
