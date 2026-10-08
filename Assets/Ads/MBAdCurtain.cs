@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Common;
 using UnityEngine;
 
 namespace qp {
@@ -36,14 +37,15 @@ namespace qp {
             }
         }
 
-        /// <summary>Cover the screen, then run <paramref name="onCovered"/> (where the ad is shown).</summary>
-        public void FadeIn(Action onCovered) {
+        /// <summary>Cover the screen, then run <paramref name="onCovered"/> (where the ad is shown).
+        /// <paramref name="format"/> only names the caller for the failsafe's report.</summary>
+        public void FadeIn(Action onCovered, string format) {
             _stopFade();
             _group.blocksRaycasts = true;   // eat taps while the curtain is up
             _fade = StartCoroutine(_fadeTo(1f, FadeInSec, onCovered));
 
             _stopSafety();
-            _safety = StartCoroutine(_preDisplayGuard());
+            _safety = StartCoroutine(_preDisplayGuard(format));
         }
 
         /// <summary>Reveal whatever is behind the curtain by now.</summary>
@@ -75,10 +77,17 @@ namespace qp {
             onDone?.Invoke();
         }
 
-        IEnumerator _preDisplayGuard() {
+        IEnumerator _preDisplayGuard(string format) {
             yield return new WaitForSecondsRealtime(PreDisplayTimeoutSec);
             _safety = null;
             Debug.LogWarning("[Ads] curtain: no ad displayed in time — dropping it");
+
+            // Reported, not just logged: reaching here means MAX neither displayed the ad nor
+            // raised DisplayFailed or Hidden, so Ads never ran its Finish path and whatever the
+            // game was waiting on behind the ad was dropped on the floor. On a device that is a
+            // soft lock, and a console warning from a player's phone reaches nobody.
+            CDebug.LogError("ad_curtain_stuck_" + format);
+
             FadeOut();
         }
 

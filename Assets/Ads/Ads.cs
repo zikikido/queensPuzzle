@@ -125,7 +125,7 @@ namespace qp {
             MBAdCurtain.Instance.FadeIn(() => {
                 PauseGameAudio();
                 MaxSdk.ShowRewardedAd(RewardedId, placement);
-            });
+            }, "rewarded");
         }
 
         static void FinishRewarded() {
@@ -173,7 +173,7 @@ namespace qp {
             MBAdCurtain.Instance.FadeIn(() => {
                 PauseGameAudio();
                 MaxSdk.ShowInterstitial(InterstitialId, placement);
-            });
+            }, "inter");
         }
 
         static void FinishInterstitial(bool displayed) {
@@ -256,7 +256,19 @@ namespace qp {
 
         // ================== helpers ==================
 
-        static bool Usable(string id) => !string.IsNullOrEmpty(id);
+        static bool Usable(string id) {
+#if UNITY_EDITOR
+            // Nothing can be shown in the editor: Init() calls DisableStubAds(), because the stubs
+            // are fixed-size debug prefabs that misrepresent the layout rather than preview an ad.
+            //
+            // But MAX still raises OnAdLoaded there, so without this the game believed an ad was
+            // ready, raised the curtain, and sat behind a black screen until the display timeout
+            // gave up ("no ad displayed in time"). An ad that cannot be displayed is not ready.
+            return false;
+#else
+            return !string.IsNullOrEmpty(id);
+#endif
+        }
 
         // Reveal the screen two frames after the close-callback ran, so whatever it triggered
         // (a scene load, a popup) has rendered before the black lifts.
