@@ -9,6 +9,7 @@ namespace qp {
 
         CanvasGroup _group;
         bool _showing;   // a real fail is on screen (guards the layout pass from hiding it)
+        bool _opportunitySent;   // rewarded_ad_opportunity — once per Show
         GameObject _btnContinue;   // rewarded revive — only offered when a rewarded ad is ready
         TMPro.TMP_Text _remainingText;
 
@@ -18,6 +19,7 @@ namespace qp {
         /// <summary>The one way to open the popup (MBGameplay.Fail).</summary>
         public void Show() {
             _showing = true;
+            _opportunitySent = false;
             _group.alpha = 1f;   // whatever the layout pass left behind, a real show is opaque
             gameObject.SetActive(true);
             UpdateContinueButton();
@@ -109,6 +111,7 @@ namespace qp {
             bool ready = Ads.IsRewardedReady
                          && AppData.LevelIdx.Value + 1 >= GameConfig.StartShowReviveAtLevel;
             if (_btnContinue.activeSelf != ready) _btnContinue.SetActive(ready);
+            if (ready && !_opportunitySent) { _opportunitySent = true; Analytics.RewardedOpportunity(); }
         }
 
         // Continue — watch a rewarded ad; only revive (bones refill) if the reward is granted.

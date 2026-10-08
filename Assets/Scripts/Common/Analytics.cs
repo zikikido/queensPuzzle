@@ -41,6 +41,7 @@ namespace qp {
 
         public static void GameStart() {
             GameEvent("game_start");
+            AppLovinEvent("level_start", AppData.LevelIdx.Value + 1);
         }
 
         public static void GameWin() {
@@ -52,6 +53,8 @@ namespace qp {
                 if (System.Array.IndexOf(WinMilestones, levelNum) >= 0)
                     GameEvent("lvl_win_" + levelNum);
             }
+            AppLovinEvent("level_complete", AppData.LevelIdx.Value + 1);
+            if (AppData.LevelIdx.Value == 0) AppLovinEvent("tutorial_complete");
         }
 
         public static void GameLose() {
@@ -107,7 +110,25 @@ namespace qp {
         }
 
         /// <summary>A boost the player actually used ("hint" / "queen" / "undo") — counters already bumped.</summary>
-        public static void BoostUsed(string boost) => GameEvent("boost_used", "boost", boost);
+        public static void BoostUsed(string boost) {
+            GameEvent("boost_used", "boost", boost);
+            AppLovinEvent("use_prop");
+        }
+
+        /// <summary>The lose popup is offering the rewarded revive — once per popup show.</summary>
+        public static void RewardedOpportunity() => AppLovinEvent("rewarded_ad_opportunity");
+
+        // AppLovin in-game events (MaxSdk.TrackEvent, predefined names) — signals for their models.
+        // Campaign only: nothing is sent during a daily run.
+        // Reused: TrackEvent serializes it to JSON synchronously, and every caller is on the main thread.
+        static readonly System.Collections.Generic.Dictionary<string, string> _appLovinData = new();
+        static void AppLovinEvent(string name, int? value = null) {
+            if (DailyChallengeManager.InDailyRun) return;
+            CrashLog($"[applovin] {name}" + (value.HasValue ? $" value={value}" : ""));
+            _appLovinData.Clear();
+            if (value.HasValue) _appLovinData["value"] = value.Value.ToString();
+            MaxSdk.TrackEvent(name, _appLovinData);
+        }
 
         /// <summary>The fail-continue grant (later: video/coins) — its own event stream, not a boost.</summary>
         public static void LivesAdded(int amount) => GameEvent("lives_added", "amount", amount);
