@@ -105,18 +105,24 @@ namespace qp {
         /// <summary>What they end the window on — the number the group was built around.</summary>
         public int total;
 
-        /// <summary>Their wins, still packed as <see cref="RivalsBlob"/> stores them (int, not
-        /// ushort, because that is what JsonUtility will write). COPIED out of the blob when the
-        /// group is made: the blob is resampled daily and a running tournament must not notice.</summary>
-        public int[] plays = new int[0];
+        /// <summary>
+        /// When each of their wins lands, in minutes from the start of the tournament, and what
+        /// each was worth. Two arrays rather than one packed one: the blob packs because it holds
+        /// 120,000 wins, and nineteen rivals hold about 760 — there is nothing to save and
+        /// everything to read.
+        ///
+        /// COPIED out of the blob when the group is made, and already shifted to this
+        /// tournament's clock. The blob is resampled daily; a running tournament must not notice.
+        /// </summary>
+        public int[] minutes = new int[0];
+        public int[] points = new int[0];
 
-        /// <summary>Their score once <paramref name="minutes"/> of the window have passed.</summary>
-        public int ScoreAt(int minutes) {
+        /// <summary>Their score once <paramref name="elapsed"/> minutes of the window have passed.</summary>
+        public int ScoreAt(int elapsed) {
             int score = 0;
-            for (int i = 0; i < plays.Length; i++) {
-                var play = (ushort)plays[i];
-                if (RivalsBlob.MinuteOf(play) > minutes) break;   // packed in time order
-                score += RivalsBlob.PointsOf(play);
+            for (int i = 0; i < minutes.Length; i++) {
+                if (minutes[i] > elapsed) break;   // in time order
+                score += points[i];
             }
             return score;
         }

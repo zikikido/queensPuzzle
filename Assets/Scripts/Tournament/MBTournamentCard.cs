@@ -22,9 +22,14 @@ namespace qp {
     /// </summary>
     public sealed class MBTournamentCard : MonoBehaviour {
 
-        /// <summary>Tapped, and in which state — so the lobby decides what opens without this
-        /// knowing any screen exists.</summary>
+        /// <summary>The card itself was tapped, and in which state — so the lobby decides what
+        /// opens without this knowing any screen exists.</summary>
         public event Action<ETournamentStatus> Tapped;
+
+        /// <summary>The Play button inside a state was pressed. Its own event because it means
+        /// one thing and one thing only: start a level. A player who has not joined has nothing
+        /// to look at yet, so on that card this is the only part that does anything.</summary>
+        public event Action PlayTapped;
 
         const float RefreshSeconds = 1f;
 
@@ -67,6 +72,11 @@ namespace qp {
             // about the tournament. What that opens is the lobby's business, not the card's.
             var button = root.GetComponent<Button>();
             if (button != null) button.onClick.AddListener(() => Tapped?.Invoke(TournamentManager.Status));
+
+            // A Play button inside the state takes the tap instead — a child button is the
+            // raycast hit, so the card underneath never hears it.
+            var play = root.RecursiveFindChild("$PlayButton")?.GetComponent<Button>();
+            if (play != null) play.onClick.AddListener(() => PlayTapped?.Invoke());
 
             var bones = root.RecursiveFindChild("$PendingBones");
             return new State {

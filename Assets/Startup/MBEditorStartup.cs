@@ -77,6 +77,8 @@ namespace qp {
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             image.GetComponent<Image>().color = Color.black;
 
+            Debug.Log($"[EditorStartup] cover up (sorting {canvas.sortingOrder}, " +
+                      $"{((RectTransform)go.transform).rect.size})");
             return go;
         }
     }

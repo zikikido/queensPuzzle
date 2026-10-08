@@ -61,6 +61,7 @@ namespace qp {
             if (first || isMe != _meShown) {
                 Show(_bg, !isMe);   Show(_bgMe, isMe);
                 Show(_pill, !isMe); Show(_pillMe, isMe);
+                Show(_name, !isMe); Show(_nameMe, isMe);
                 _meShown = isMe;
                 _nameShown = null;          // the label in use changed, so it has to be written
                 _scoreShown = -1;

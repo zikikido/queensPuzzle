@@ -64,8 +64,13 @@ namespace qp {
                                         : new MBTournamentRow[0];
             _clock = Label("$StopWatchText");
 
-            Tap("$LvlButton",  ETournamentScreenResult.Play);
-            Tap("$BackButton", ETournamentScreenResult.Closed);
+            // Play answers at once: the caller is leaving for the gameplay scene, and making it
+            // wait out a fade on a screen that is about to be unloaded only delays the level.
+            Tap("$LvlButton", ETournamentScreenResult.Play, answerAtOnce: true);
+
+            // Closing answers last, when the screen is really gone, so the lobby underneath is
+            // never handed back control while something is still fading over it.
+            Tap("$CloseButton", ETournamentScreenResult.Closed, answerAtOnce: false);
 
             // Info stays here. It explains this screen, so it opens on top of it and closes back
             // to it — the lobby has no part in that and should not be told.
@@ -124,8 +129,9 @@ namespace qp {
 
         // Nothing is disabled on the way out: _pending already refuses a second button, and
         // SetActive at the end takes the whole screen out of the raycast anyway.
-        IEnumerator Close(ETournamentScreenResult result) {
+        IEnumerator Close(ETournamentScreenResult result, bool answerAtOnce) {
             CancelInvoke(nameof(Tick));
+            if (answerAtOnce) Answer(result);
 
             for (float e = 0f; e < FadeOut; e += Time.unscaledDeltaTime) {
                 _group.alpha = 1f - Mathf.Clamp01(e / FadeOut);
@@ -134,7 +140,11 @@ namespace qp {
             _group.alpha = 0f;
             gameObject.SetActive(false);
 
-            // Last, on purpose: the caller wakes up to a screen that is already gone.
+            if (!answerAtOnce) Answer(result);
+        }
+
+        /// <summary>Wake the caller up. Once — the handle is dropped with it.</summary>
+        void Answer(ETournamentScreenResult result) {
             var showing = _showing;
             _showing = null;
             if (showing != null) showing.Result = result;
@@ -177,6 +187,8 @@ namespace qp {
             int mine = TournamentManager.State?.lastSyncCurrent?.standings?.myIndex ?? -1;
             if (mine < 0) { _scroll.verticalNormalizedPosition = 1f; return; }
 
+            if (mine >= _rows.Length) return;
+
             // The fitter only resizes at the end of the frame, and the maths below needs the
             // height NOW.
             LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
@@ -185,28 +197,29 @@ namespace qp {
             float scrollable = _content.rect.height - view;
             if (scrollable <= 0f) { _scroll.verticalNormalizedPosition = 1f; return; }   // it all fits
 
-            float rowHeight = _content.rect.height / Mathf.Max(1, CountActiveRows());
-            float centred = mine * rowHeight - (view - rowHeight) * 0.5f;
-            _scroll.verticalNormalizedPosition = 1f - Mathf.Clamp01(centred / scrollable);
-        }
+            // Measured off the row itself, not from an average row height: padding and spacing
+            // make the content taller than the rows in it, and dividing by the count would miss
+            // by more the further down the list the player is.
+            var row = (RectTransform)_rows[mine].transform;
+            float rowCentre = _content.rect.yMax - _content.InverseTransformPoint(row.position).y;
 
-        int CountActiveRows() {
-            int n = 0;
-            foreach (var row in _rows) if (row.gameObject.activeSelf) n++;
-            return n;
+            float fromTop = rowCentre - view * 0.5f;   // put that row in the middle of the view
+            _scroll.verticalNormalizedPosition = 1f - Mathf.Clamp01(fromTop / scrollable);
         }
 
         // ---- the prefab ---------------------------------------------------------------------
 
-        void Tap(string name, ETournamentScreenResult result) {
+        void Tap(string name, ETournamentScreenResult result, bool answerAtOnce) {
             var found = transform.RecursiveFindChild(name);
-            if (found == null) return;                       // not in the art yet
+            if (found == null) { Debug.LogError($"[Leaderboard] {name} is missing from the prefab"); return; }
+
             var button = found.GetComponent<Button>();
-            if (button == null) return;
+            if (button == null) { Debug.LogError($"[Leaderboard] {name} has no Button — it cannot be pressed"); return; }
+
             button.onClick.AddListener(() => {
                 if (_pending != ETournamentScreenResult.None) return;   // already on its way out
                 _pending = result;
-                StartCoroutine(Close(result));
+                StartCoroutine(Close(result, answerAtOnce));
             });
         }
 

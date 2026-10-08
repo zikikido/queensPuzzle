@@ -70,6 +70,31 @@ namespace qp {
         const int DeadAccountScore = 2;
 
         /// <summary>
+        /// Rivals arrive within this many minutes of the tournament opening.
+        ///
+        /// A recording's window is a CALENDAR window, so its first win sits wherever that person
+        /// happened to play — sometimes forty hours in. That is not a player who joined late, it
+        /// is a player whose evening fell there, and replaying it as-is leaves the table empty
+        /// for the hours when the player is most curious about it.
+        ///
+        /// A real group is filled from the next players to win, so it is full within minutes. So
+        /// each recording is slid left until its first win lands somewhere in here: the gaps, the
+        /// quiet night and the sprint at the end all survive exactly as recorded, and only the
+        /// question of when the person started is replaced. Sliding left can never run past the
+        /// end of the window, so nothing is lost off the back.
+        ///
+        /// Spread across the whole stretch rather than bunched at zero, so the player — whose own
+        /// first win lands somewhere in here too — is sometimes third into the group and
+        /// sometimes fifteenth, instead of always being the one everyone else arrives after.
+        ///
+        /// Five, because that is the window the player's own first win falls in: a level takes
+        /// about two and a half minutes (the median gap between wins in a session, measured over
+        /// the export). Spread wider and they beat an empty table to the top; spread narrower and
+        /// the group is already complete before they have played a hand.
+        /// </summary>
+        const int JoinWithinMinutes = 5;
+
+        /// <summary>
         /// What a player scores in 48 hours when we have never seen them finish a tournament: the
         /// median of everyone past the unlock level. Wrong for any particular player and right for
         /// most, and only used once — the next group is built on what they actually did.
@@ -126,11 +151,12 @@ namespace qp {
                 if (pick < 0) continue;                 // bank too small to fill the group
                 usedRecordings.Add(pick);
 
-                rivals.Add(new LocalRival {
+                var rival = new LocalRival {
                     name = _pickName(usedNames),
                     total = RivalsBlob.TotalAt(pick),
-                    plays = _unpack(RivalsBlob.PlaysAt(pick)),
-                });
+                };
+                _unpack(RivalsBlob.PlaysAt(pick), rnd, rival);
+                rivals.Add(rival);
             }
             return rivals;
         }
@@ -198,10 +224,25 @@ namespace qp {
             return ProfileManager.GenerateName();
         }
 
-        static int[] _unpack(ushort[] plays) {
-            var copy = new int[plays.Length];
-            for (int i = 0; i < plays.Length; i++) copy[i] = plays[i];
-            return copy;
+        /// <summary>
+        /// Read the recording out of the blob into plain minutes and points — the packing is the
+        /// blob's business and stops here — and slide it so this rival joins in the first few
+        /// minutes, see <see cref="JoinWithinMinutes"/>.
+        ///
+        /// Everything inside keeps its spacing; only where it begins moves.
+        /// </summary>
+        static void _unpack(ushort[] plays, System.Random rnd, LocalRival into) {
+            into.minutes = new int[plays.Length];
+            into.points = new int[plays.Length];
+            if (plays.Length == 0) return;
+
+            int shift = RivalsBlob.MinuteOf(plays[0]) - rnd.Next(JoinWithinMinutes + 1);
+            if (shift < 0) shift = 0;                       // already starts early enough
+
+            for (int i = 0; i < plays.Length; i++) {
+                into.minutes[i] = Mathf.Max(0, RivalsBlob.MinuteOf(plays[i]) - shift);
+                into.points[i] = RivalsBlob.PointsOf(plays[i]);
+            }
         }
     }
 }

@@ -24,11 +24,18 @@ namespace qp {
     /// </summary>
     public sealed class LocalTournamentBackend : ITournamentBackend {
 
-        /// <summary>Tournaments sit on a fixed 48-hour grid, so every device agrees on when one
-        /// starts without being told — and a real server can keep the same grid. A Monday
-        /// midnight UTC, chosen once and never moved.</summary>
-        static readonly DateTime Epoch = new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc);
-
+        /// <summary>
+        /// A tournament lasts this long, counted from the player's FIRST WIN in it.
+        ///
+        /// Not from a shared grid. A real server fills a group out of the next players to win, so
+        /// by the time you are in one the other nineteen are already there — the group is born
+        /// full rather than filling up over two days. The matching rule is that your two days
+        /// start when you join, and a player who wins in the 47th hour of somebody else's window
+        /// is not handed a one-hour tournament.
+        ///
+        /// There is nothing to synchronise with anyway: every player's rivals are recordings of
+        /// their own, so a global window would buy nothing and cost exactly that problem.
+        /// </summary>
         const int WindowHours = 48;
         const int WindowMinutes = WindowHours * 60;
 
@@ -56,7 +63,12 @@ namespace qp {
             DateTime now = MBServerTimeManagerV2.UTCNow;
             if (_state == null) _state = LocalServerState.Load();
 
-            _roll(now);
+            // Retire the one that is over and have the next one waiting, both before the wins are
+            // counted — a win that arrives after the end belongs to the tournament now running,
+            // not to the one it just missed.
+            _closeIfOver(now);
+            if (!_running) _open(now);
+
             var accepted = _applyWins(req);
             _state.Save();
 
@@ -69,32 +81,41 @@ namespace qp {
 
         // ---- the schedule ----------------------------------------------------------------
 
-        static long _windowIndex(DateTime now) =>
-            (long)Math.Floor((now - Epoch).TotalHours / WindowHours);
+        bool _running => !string.IsNullOrEmpty(_state.currentId);
 
-        static DateTime _windowStart(long index) => Epoch.AddHours(index * WindowHours);
+        /// <summary>Freeze a tournament whose time is up. Nothing opens here — only a win does
+        /// that.</summary>
+        void _closeIfOver(DateTime now) {
+            if (!_running || now.Ticks < _state.endTicks) return;
+            _freezeClosed();
 
-        static string _windowId(long index) => "t" + index;
+            _state.currentId = "";
+            _state.myScore = 0;
+            _state.acceptedIds.Clear();
+            _state.rivals.Clear();
+        }
 
-        /// <summary>Close the window that ended and open the one we are in. Everything that makes
-        /// a tournament — its rivals, their whole 48 hours — is decided here, once.</summary>
-        void _roll(DateTime now) {
-            string id = _windowId(_windowIndex(now));
-            if (_state.currentId == id) return;
-
-            if (!string.IsNullOrEmpty(_state.currentId)) _freezeClosed();
-
-            long index = _windowIndex(now);
+        /// <summary>
+        /// Start one, right now, with the group already in it.
+        ///
+        /// This runs on the first sync after the last one ended, which in practice is the moment
+        /// the player opens the game — so there is never a time when there is no tournament to
+        /// look at. They are simply not in it yet; the first win puts them in.
+        ///
+        /// Everything a tournament is — its window, its nineteen rivals, their whole two days —
+        /// is decided here, once, and then only played back.
+        /// </summary>
+        void _open(DateTime now) {
             int usual = _state.UsualScore > 0 ? _state.UsualScore : RivalGroup.TypicalScore;
 
-            _state.currentId = id;
-            _state.startTicks = _windowStart(index).Ticks;
-            _state.endTicks = _windowStart(index + 1).Ticks;
+            _state.currentId = "t" + now.Ticks;
+            _state.startTicks = now.Ticks;
+            _state.endTicks = now.AddHours(WindowHours).Ticks;
             _state.myScore = 0;
             _state.acceptedIds.Clear();
             _state.rivals = RivalGroup.Build(usual, RivalsBlob.OwnerOf(_userId), ProfileManager.Name);
 
-            Debug.Log($"[LocalTournament] {id} opened with {_state.rivals.Count} rivals " +
+            Debug.Log($"[LocalTournament] {_state.currentId} opened with {_state.rivals.Count} rivals " +
                       $"(built around {usual} points)");
         }
 
@@ -141,15 +162,12 @@ namespace qp {
         // ---- the tables --------------------------------------------------------------------
 
         /// <summary>
-        /// Everyone who has joined by <paramref name="minutes"/> into the window, in rank order.
+        /// Everyone who has scored by <paramref name="minutes"/> into the window, in rank order.
         ///
-        /// A rival joins at their first recorded win, exactly as the player joins at theirs — so a
-        /// player who starts early really does watch the others arrive one by one, in the order
-        /// real people arrived. Listing all twenty from minute zero on nothing would throw that
-        /// away, and would also hold the player to a rule the rivals were exempt from.
-        ///
-        /// Every recording ends on at least a few points, so by the final table all of them are
-        /// there; this only shapes the hours while the tournament fills up.
+        /// Rivals arrive within the first few minutes, not across two days — their recordings are
+        /// shifted to the moment the group formed (see <see cref="RivalGroup"/>), the same moment
+        /// the player's own first win landed. So the table is full almost immediately, which is
+        /// what a group filled out of the next players to win looks like.
         /// </summary>
         List<LocalEntry> _table(int minutes, int myScore) {
             var rows = new List<LocalEntry>(_state.rivals.Count + 1);

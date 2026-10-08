@@ -26,7 +26,10 @@ namespace qp {
             else Debug.LogError("[MBLobby] MBTournamentLeaderboard missing in the scene");
 
             var card = FindAnyObjectByType<MBTournamentCard>(FindObjectsInactive.Include);
-            if (card != null) card.Tapped += OnTournamentTapped;
+            if (card != null) {
+                card.Tapped += OnTournamentTapped;
+                card.PlayTapped += PlayCurrentLevel;
+            }
             else Debug.LogError("[MBLobby] MBTournamentCard missing in the scene");
         }
 
@@ -40,14 +43,25 @@ namespace qp {
         }
 
         /// <summary>
-        /// The card was tapped. Which state it was in decides whether there is anything to open:
-        /// a locked card is an explanation, not a door, and a hidden one cannot be tapped at all.
+        /// The card was tapped. Only a card with a table behind it opens one.
+        ///
+        /// A locked card is an explanation, not a door. Offline has no table worth showing — the
+        /// last one may be hours old. And a player who has not joined has nothing of their own to
+        /// look at, so on that card only the Play button does anything at all.
         /// </summary>
         void OnTournamentTapped(ETournamentStatus status) {
-            if (status == ETournamentStatus.None || status == ETournamentStatus.Locked) return;
+            switch (status) {
+                case ETournamentStatus.Active:
+                case ETournamentStatus.EndingSoon:
+                case ETournamentStatus.Calculating:
+                    StartCoroutine(ShowLeaderboard());
+                    break;
 
-            // TODO: Ended should collect the prize first, then show the final table.
-            StartCoroutine(ShowLeaderboard());
+                case ETournamentStatus.Ended:
+                    // TODO: collect the prize first, then show the final table.
+                    StartCoroutine(ShowLeaderboard());
+                    break;
+            }
         }
 
         IEnumerator ShowLeaderboard() {
