@@ -95,6 +95,23 @@ namespace qp {
             }
         }
 
+        /// <summary>
+        /// <see cref="TimeLeft"/> as the UI writes it: hh:mm:ss, the same shape the daily
+        /// challenge card uses. Here rather than in each screen because the countdown appears on
+        /// both the lobby card and the leaderboard, and one tournament must not show two times.
+        ///
+        /// Built rather than ToString(@"hh\:mm\:ss"), which would be wrong: that "hh" is the Hours
+        /// COMPONENT, 0-23, with days held separately. The daily resets every 24 hours so it never
+        /// notices; a 48-hour tournament would spend its whole first day showing the second one's
+        /// time, and 41 hours left would read as 17.
+        /// </summary>
+        public static string TimeLeftText {
+            get {
+                var left = TimeLeft;
+                return $"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
+            }
+        }
+
         /// <summary>The player's score in the current tournament: what the server confirmed plus
         /// the wins still waiting to be sent. With an empty queue this is exactly the score in
         /// <see cref="State"/>; it differs only between a win and its sync, or while offline.

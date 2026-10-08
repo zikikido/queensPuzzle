@@ -107,7 +107,7 @@ namespace qp {
 
             if (wanted == null) return;   // None — the card is hidden, nothing to fill in
 
-            _set(wanted.stopwatch, _clock(TournamentManager.TimeLeft), ref _clockShown);
+            _set(wanted.stopwatch, TournamentManager.TimeLeftText, ref _clockShown);
 
             // A finished tournament shows where the player ENDED; a running one shows where they
             // stand right now, pending wins included, so a win moves the card before the server
@@ -169,18 +169,5 @@ namespace qp {
             }
         }
 
-        /// <summary>
-        /// hh:mm:ss, the same shape the daily challenge card uses — two countdowns side by side in
-        /// the same lobby should not be read two different ways.
-        ///
-        /// Built rather than ToString(@"hh\:mm\:ss"), which would be wrong here: that "hh" is the
-        /// Hours COMPONENT, 0-23, with days held separately. The daily resets every 24 hours so it
-        /// never notices; a 48-hour tournament would spend its whole first day showing the second
-        /// one's time, and 41 hours left would read as 17.
-        /// </summary>
-        static string _clock(TimeSpan left) {
-            if (left <= TimeSpan.Zero) left = TimeSpan.Zero;
-            return $"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
-        }
     }
 }
